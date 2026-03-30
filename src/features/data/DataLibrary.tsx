@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Alert, Button, Card, Divider, Input, Space, Tabs, Typography, Upload, Progress, Modal, Image, List, Input as AntInput } from "antd";
+import { Alert, Button, Card, Divider, Input, Space, Tabs, Typography, Upload, Modal, Image, List, Input as AntInput } from "antd";
 import { UploadOutlined, DeleteOutlined, EyeOutlined, DownloadOutlined } from "@ant-design/icons";
 import type { UploadProps } from "antd";
 import { useAppStore } from "@/store/useAppStore";
@@ -8,7 +8,7 @@ import { parseCsvFile } from "@/features/data/csv";
 const { Paragraph, Text } = Typography;
 const { Search } = AntInput;
 
-const { Paragraph, Text } = Typography;
+// const { Paragraph, Text } = Typography;
 
 export function DataLibrary() {
   const [newImageDatasetName, setNewImageDatasetName] = useState("");
@@ -18,7 +18,7 @@ export function DataLibrary() {
   const [tabularPredictionName, setTabularPredictionName] = useState("");
   const [tabularPredictionValue, setTabularPredictionValue] = useState("");
   const [csvError, setCsvError] = useState<string | null>(null);
-  const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
+  // const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
   const [previewVisible, setPreviewVisible] = useState(false);
   const [previewImages, setPreviewImages] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -71,16 +71,16 @@ export function DataLibrary() {
                     onChange={(event) => setNewImageDatasetName(event.target.value)}
                     placeholder="Название image dataset, например RPS v1"
                   />
-                  <Button
-                    type="primary"
-                    disabled={!canAddImageDataset}
-                    onClick={() => {
-                      addImageDataset(newImageDatasetName);
-                      setNewImageDatasetName("");
-                    }}
-                  >
-                    Создать
-                  </Button>
+                   <Button
+                     type="primary"
+                     disabled={newImageDatasetName.trim().length === 0}
+                     onClick={() => {
+                       addImageDataset(newImageDatasetName);
+                       setNewImageDatasetName("");
+                     }}
+                   >
+                     Создать
+                   </Button>
                 </Space.Compact>
                 {filteredImageDatasets.map((dataset) => (
                   <Card key={dataset.id} size="small" title={dataset.title} extra={<Button icon={<DeleteOutlined />} onClick={() => removeImageDataset(dataset.id)} />}>
