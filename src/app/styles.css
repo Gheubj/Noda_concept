@@ -55,6 +55,15 @@ body,
   font-size: 16px;
 }
 
+.workspace-card .ant-card-head {
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.workspace-card .ant-card-extra {
+  max-width: 100%;
+}
+
 .blockly-container {
   width: 100%;
   min-height: 420px;
@@ -62,7 +71,23 @@ body,
   border: 1px solid #d9d9d9;
   border-radius: 8px;
   overflow: hidden;
-  touch-action: manipulation;
+  position: relative;
+}
+
+/* Touch: drag для Blockly — manipulation ломает перетаскивание на мобильных */
+.blockly-container .blocklySvg,
+.blockly-container .blocklyToolboxDiv,
+.blockly-container .blocklyFlyout,
+.blockly-container .blocklyScrollbarHandle {
+  touch-action: none;
+}
+
+.blockly-container .blocklyToolboxDiv {
+  min-width: 52px;
+}
+
+.blockly-container .blocklyFlyout {
+  min-width: 200px;
 }
 
 @media (max-width: 900px) {
@@ -91,5 +116,9 @@ body,
   .blockly-container {
     min-height: 360px;
     height: 60vh;
+  }
+
+  .library-search {
+    width: 100% !important;
   }
 }

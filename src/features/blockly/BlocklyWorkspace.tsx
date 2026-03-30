@@ -1,11 +1,20 @@
 import { useEffect, useRef } from "react";
-import { Alert, Card, Space, Typography } from "antd";
+import { Alert, Card, Segmented, Space, Tag, Tooltip, Typography } from "antd";
 import * as Blockly from "blockly";
 import { useAppStore } from "@/store/useAppStore";
+import type { WorkspaceLevel } from "@/store/useAppStore";
 import { predictByModelType, trainByModelType } from "@/features/model/mlEngine";
 import type { ModelType } from "@/shared/types/ai";
 
-const { Paragraph } = Typography;
+const { Paragraph, Text } = Typography;
+
+const DEFAULT_TRAIN_CONFIG = {
+  trainSplit: 0.7,
+  valSplit: 0.15,
+  testSplit: 0.15,
+  epochs: 80,
+  learningRate: 0.02
+} as const;
 
 type BlockCommand =
   | { type: "start" }
@@ -52,6 +61,33 @@ function getPredictInputOptions(modelType: ModelType) {
     : ([["нет входных данных", "none"]] as [string, string][]);
 }
 
+/** Уровень 3 пока как 2 — только набор блоков в палитре */
+function effectiveToolboxLevel(level: WorkspaceLevel): 1 | 2 {
+  return level === 1 ? 1 : 2;
+}
+
+function getToolboxDefinition(level: 1 | 2): Blockly.utils.toolbox.ToolboxDefinition {
+  if (level === 1) {
+    return {
+      kind: "flyoutToolbox",
+      contents: [
+        { kind: "block", type: "noda_start" },
+        { kind: "block", type: "noda_train_model_simple" },
+        { kind: "block", type: "noda_predict_class" }
+      ]
+    };
+  }
+  return {
+    kind: "flyoutToolbox",
+    contents: [
+      { kind: "block", type: "noda_start" },
+      { kind: "block", type: "noda_train_model" },
+      { kind: "block", type: "noda_set_predict_input" },
+      { kind: "block", type: "noda_predict_class" }
+    ]
+  };
+}
+
 function registerBlocks() {
   if (Blockly.Blocks.noda_start) {
     return;
@@ -65,6 +101,34 @@ function registerBlocks() {
       this.setMovable(false);
     }
   };
+  /** Уровень 1: только модель и датасет */
+  Blockly.Blocks.noda_train_model_simple = {
+    init() {
+      this.appendDummyInput()
+        .appendField("обучить модель")
+        .appendField(
+          new Blockly.FieldDropdown([
+            ["Image KNN (картинки)", "image_knn"],
+            ["Регрессия (linear)", "tabular_regression"],
+            ["Классификация (логистическая)", "tabular_classification"],
+            ["Нейросеть (MLP)", "tabular_neural"]
+          ]),
+          "MODEL_TYPE"
+        )
+        .appendField("данные")
+        .appendField(
+          new Blockly.FieldDropdown(function () {
+            const modelType = this.getSourceBlock()?.getFieldValue("MODEL_TYPE") as ModelType;
+            return getTrainDatasetOptions(modelType);
+          }),
+          "DATASET_REF"
+        );
+      this.setPreviousStatement(true, null);
+      this.setNextStatement(true, null);
+      this.setColour(220);
+    }
+  };
+  /** Уровень 2+: сплит, эпохи, lr */
   Blockly.Blocks.noda_train_model = {
     init() {
       this.appendDummyInput()
@@ -141,11 +205,39 @@ function registerBlocks() {
   };
 }
 
+function getDefaultWorkspaceJson(trainBlockType: "noda_train_model_simple" | "noda_train_model") {
+  const blocks: Record<string, unknown>[] = [
+    { type: "noda_start", x: 20, y: 20 },
+    { type: trainBlockType, x: 20, y: 100 }
+  ];
+  if (trainBlockType === "noda_train_model") {
+    blocks.push(
+      { type: "noda_set_predict_input", x: 20, y: 180 },
+      { type: "noda_predict_class", x: 20, y: 260 }
+    );
+  } else {
+    blocks.push({ type: "noda_predict_class", x: 20, y: 180 });
+  }
+  return {
+    blocks: {
+      languageVersion: 0,
+      blocks
+    }
+  };
+}
+
 export function BlocklyWorkspace() {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const workspaceRef = useRef<Blockly.WorkspaceSvg | null>(null);
   const isRunningRef = useRef(false);
-  const { prediction, evaluation, training, blocklyState } = useAppStore();
+  const {
+    prediction,
+    evaluation,
+    training,
+    blocklyState,
+    workspaceLevel,
+    setWorkspaceLevel
+  } = useAppStore();
 
   const readCommandsFromStart = (): BlockCommand[] => {
     const workspace = workspaceRef.current;
@@ -159,6 +251,14 @@ export function BlocklyWorkspace() {
     const commands: BlockCommand[] = [{ type: "start" }];
     let current = startBlock.getNextBlock();
     while (current) {
+      if (current.type === "noda_train_model_simple") {
+        commands.push({
+          type: "train",
+          modelType: current.getFieldValue("MODEL_TYPE") as ModelType,
+          datasetRef: current.getFieldValue("DATASET_REF"),
+          ...DEFAULT_TRAIN_CONFIG
+        });
+      }
       if (current.type === "noda_train_model") {
         const trainSplit = Number(current.getFieldValue("TRAIN_SPLIT")) || 0.7;
         const valSplit = Number(current.getFieldValue("VAL_SPLIT")) || 0.15;
@@ -268,8 +368,11 @@ export function BlocklyWorkspace() {
           if (command.modelType === "image_knn" && !imageInput) {
             throw new Error("Для image предсказания выбери image input в блоке предсказания.");
           }
-          if (command.modelType !== "image_knn" && !tabularInput) {
-            throw new Error("Для tabular предсказания выбери tabular input в блоке предсказания.");
+          const manualFallback = state.workspaceTabularInput.trim();
+          if (command.modelType !== "image_knn" && !tabularInput && !manualFallback) {
+            throw new Error(
+              "Для таблиц: добавь вход в библиотеке (вкладка «Данные для предсказания») или на уровне 2 поставь блок «ввести данные для распознавания» перед «предсказать»."
+            );
           }
           const labelsMap = state.imageDatasets
             .flatMap((dataset) => dataset.classes)
@@ -281,7 +384,7 @@ export function BlocklyWorkspace() {
             modelType: command.modelType,
             predictionFile: imageInput?.file ?? null,
             labelsMap,
-            tabularInput: tabularInput || state.workspaceTabularInput
+            tabularInput: tabularInput || manualFallback
           });
           state.setPrediction(result);
         }
@@ -301,32 +404,37 @@ export function BlocklyWorkspace() {
     if (!containerRef.current) {
       return;
     }
+    const level = useAppStore.getState().workspaceLevel;
+    const toolboxLevel = effectiveToolboxLevel(level);
+    const toolbox = getToolboxDefinition(toolboxLevel);
     workspaceRef.current = Blockly.inject(containerRef.current, {
-      toolbox: {
-        kind: "flyoutToolbox",
-        contents: [
-          { kind: "block", type: "noda_start" },
-          { kind: "block", type: "noda_train_model" },
-          { kind: "block", type: "noda_set_predict_input" },
-          { kind: "block", type: "noda_predict_class" }
-        ]
+      toolbox,
+      trashcan: true,
+      grid: {
+        spacing: 20,
+        length: 3,
+        colour: "#e0e0e0",
+        snap: false
       },
-      trashcan: true
+      move: {
+        scrollbars: true,
+        drag: true,
+        wheel: true
+      },
+      zoom: {
+        controls: true,
+        wheel: true,
+        startScale: 1,
+        maxScale: 3,
+        minScale: 0.3,
+        scaleSpeed: 1.2
+      }
     });
+    const trainType = toolboxLevel === 1 ? "noda_train_model_simple" : "noda_train_model";
     const initialState =
       blocklyState.trim().length > 0
         ? JSON.parse(blocklyState)
-        : {
-            blocks: {
-              languageVersion: 0,
-              blocks: [
-                { type: "noda_start", x: 20, y: 20 },
-                { type: "noda_train_model", x: 20, y: 100 },
-                { type: "noda_set_predict_input", x: 20, y: 180 },
-                { type: "noda_predict_class", x: 20, y: 260 }
-              ]
-            }
-          };
+        : getDefaultWorkspaceJson(trainType);
     Blockly.serialization.workspaces.load(initialState, workspaceRef.current);
     const clickHandler = (event: Blockly.Events.Abstract) => {
       if (!workspaceRef.current) {
@@ -358,17 +466,39 @@ export function BlocklyWorkspace() {
     workspaceRef.current.addChangeListener(clickHandler);
     workspaceRef.current.addChangeListener(persistHandler);
     const resizeHandler = () => {
-      Blockly.svgResize(workspaceRef.current!);
+      if (workspaceRef.current) {
+        Blockly.svgResize(workspaceRef.current);
+      }
     };
     window.addEventListener("resize", resizeHandler);
+    const vv = window.visualViewport;
+    if (vv) {
+      vv.addEventListener("resize", resizeHandler);
+      vv.addEventListener("scroll", resizeHandler);
+    }
+    resizeHandler();
     return () => {
       workspaceRef.current?.removeChangeListener(clickHandler);
       workspaceRef.current?.removeChangeListener(persistHandler);
       window.removeEventListener("resize", resizeHandler);
+      if (vv) {
+        vv.removeEventListener("resize", resizeHandler);
+        vv.removeEventListener("scroll", resizeHandler);
+      }
       workspaceRef.current?.dispose();
       workspaceRef.current = null;
     };
   }, []);
+
+  useEffect(() => {
+    const ws = workspaceRef.current;
+    if (!ws) {
+      return;
+    }
+    const eff = effectiveToolboxLevel(workspaceLevel);
+    ws.updateToolbox(getToolboxDefinition(eff));
+    Blockly.svgResize(ws);
+  }, [workspaceLevel]);
 
   useEffect(() => {
     if (!workspaceRef.current || !blocklyState) {
@@ -381,16 +511,47 @@ export function BlocklyWorkspace() {
     }
     try {
       Blockly.serialization.workspaces.load(JSON.parse(blocklyState), workspaceRef.current);
+      Blockly.svgResize(workspaceRef.current);
     } catch {
       // Ignore malformed saved state.
     }
   }, [blocklyState]);
 
+  const showManualInputHint = effectiveToolboxLevel(workspaceLevel) === 2;
+
   return (
-    <Card title="Blockly Workspace" size="small">
+    <Card
+      size="small"
+      title="Blockly Workspace"
+      className="workspace-card"
+      extra={
+        <Space size={8} wrap>
+          {workspaceLevel === 3 ? (
+            <Tag color="processing">Скоро больше настроек</Tag>
+          ) : null}
+          <Segmented<WorkspaceLevel>
+            size="small"
+            value={workspaceLevel}
+            onChange={(v) => setWorkspaceLevel(v)}
+            options={[
+              { label: "Уровень 1", value: 1 },
+              { label: "Уровень 2", value: 2 },
+              { label: "Уровень 3", value: 3 }
+            ]}
+          />
+        </Space>
+      }
+    >
       <Paragraph>
-        Выполняется только цепочка, подключенная к блоку Старт.
+        Выполняется цепочка от блока <Text strong>Старт</Text>. Нажми на «Старт», чтобы запустить.
       </Paragraph>
+      {showManualInputHint ? (
+        <Paragraph type="secondary" style={{ marginBottom: 8 }}>
+          <Tooltip title="Для табличных моделей: если не создавал вход в библиотеке, впиши числа в блок «ввести данные для распознавания» перед «предсказать».">
+            <span>Подсказка уровня 2: ручной ввод чисел для таблиц — см. блок ниже в палитре.</span>
+          </Tooltip>
+        </Paragraph>
+      ) : null}
       <Space direction="vertical" size={10} style={{ width: "100%" }}>
         <div ref={containerRef} className="blockly-container" />
         <Alert type="info" showIcon message={training.message} />

@@ -12,6 +12,18 @@ import type {
 } from "@/shared/types/ai";
 import type { NodaProjectMeta, NodaProjectSnapshot } from "@/shared/types/project";
 
+export type WorkspaceLevel = 1 | 2 | 3;
+
+const WORKSPACE_LEVEL_KEY = "noda_workspace_level";
+
+function readWorkspaceLevel(): WorkspaceLevel {
+  const raw = localStorage.getItem(WORKSPACE_LEVEL_KEY);
+  if (raw === "1" || raw === "2" || raw === "3") {
+    return Number(raw) as WorkspaceLevel;
+  }
+  return 1;
+}
+
 interface AppState {
   activeProject: NodaProjectMeta | null;
   imageDatasets: ImageDataset[];
@@ -23,6 +35,7 @@ interface AppState {
   lastModelType: ModelType | null;
   blocklyState: string;
   workspaceTabularInput: string;
+  workspaceLevel: WorkspaceLevel;
   training: TrainingState;
   setActiveProject: (project: NodaProjectMeta | null) => void;
   addImageDataset: (title: string, taskType: "classification" | "clustering") => string | null;
@@ -43,6 +56,7 @@ interface AppState {
   getProjectSnapshot: () => NodaProjectSnapshot;
   loadProjectSnapshot: (snapshot: NodaProjectSnapshot) => void;
   setTraining: (state: Partial<TrainingState>) => void;
+  setWorkspaceLevel: (level: WorkspaceLevel) => void;
 }
 
 const createLabelId = (title: string) =>
@@ -60,6 +74,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   lastModelType: null,
   blocklyState: "",
   workspaceTabularInput: "",
+  workspaceLevel: readWorkspaceLevel(),
   training: {
     isTraining: false,
     progress: 0,
@@ -176,5 +191,9 @@ export const useAppStore = create<AppState>((set, get) => ({
   setTraining: (nextState) =>
     set((state) => ({
       training: { ...state.training, ...nextState }
-    }))
+    })),
+  setWorkspaceLevel: (level) => {
+    localStorage.setItem(WORKSPACE_LEVEL_KEY, String(level));
+    set({ workspaceLevel: level });
+  }
 }));

@@ -1,14 +1,27 @@
 import { useMemo, useState } from "react";
-import { Alert, Button, Card, Divider, Input, Space, Tabs, Typography, Upload, Modal, Image, List, Input as AntInput } from "antd";
+import {
+  Alert,
+  Button,
+  Card,
+  Collapse,
+  Divider,
+  Input,
+  Select,
+  Space,
+  Tabs,
+  Typography,
+  Upload,
+  Modal,
+  Image,
+  List,
+  message
+} from "antd";
 import { UploadOutlined, DeleteOutlined, EyeOutlined, DownloadOutlined } from "@ant-design/icons";
 import type { UploadProps } from "antd";
 import { useAppStore } from "@/store/useAppStore";
 import { parseCsvFile } from "@/features/data/csv";
 
 const { Paragraph, Text } = Typography;
-const { Search } = AntInput;
-
-// const { Paragraph, Text } = Typography;
 
 export function DataLibrary() {
   const [newImageDatasetName, setNewImageDatasetName] = useState("");
@@ -21,7 +34,6 @@ export function DataLibrary() {
   const [tabularPredictionName, setTabularPredictionName] = useState("");
   const [tabularPredictionValue, setTabularPredictionValue] = useState("");
   const [csvError, setCsvError] = useState<string | null>(null);
-  // const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
   const [previewVisible, setPreviewVisible] = useState(false);
   const [previewImages, setPreviewImages] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -52,51 +64,63 @@ export function DataLibrary() {
     [tabularDatasets, searchQuery]
   );
 
-  return (
-    <Card title="Библиотека данных" size="small">
-      <Tabs
-        defaultActiveKey="train"
+  const closePreview = () => {
+    previewImages.forEach((url) => URL.revokeObjectURL(url));
+    setPreviewImages([]);
+    setPreviewVisible(false);
+  };
+
+  const trainTabContent = (
+    <Space direction="vertical" size={12} style={{ width: "100%" }}>
+      <Input.Search
+        className="library-search"
+        value={searchQuery}
+        placeholder="Поиск датасетов по названию..."
+        allowClear
+        onChange={(e) => setSearchQuery(e.target.value)}
+      />
+      <Alert
+        type="info"
+        showIcon
+        message="Как собрать данные"
+        description="Шаг 1: создай набор → Шаг 2: добавь классы или кластеры → Шаг 3: загрузи файлы. Для картинок подойдут JPG, PNG, WEBP (до 10 МБ на файл)."
+      />
+      <Collapse
+        defaultActiveKey={["images", "tabular"]}
         items={[
           {
-            key: "train",
-            label: "Данные для обучения",
+            key: "images",
+            label: "Картинки по классам / кластерам",
             children: (
               <Space direction="vertical" size={12} style={{ width: "100%" }}>
-                <Search
-                  placeholder="Поиск датасетов..."
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  style={{ width: 200 }}
-                />
-                <Paragraph>
-                  Image dataset: создавай набор, классы/кластеры и загружай изображения.
-                  <Text type="secondary"> Форматы: JPG, PNG, WEBP. Рекомендация: до 500 изображений, до 10MB на файл.</Text>
-                </Paragraph>
-                <Space.Compact style={{ width: "100%" }}>
+                <Space wrap style={{ width: "100%" }}>
                   <Input
+                    style={{ flex: 1, minWidth: 160 }}
                     value={newImageDatasetName}
                     onChange={(event) => setNewImageDatasetName(event.target.value)}
-                    placeholder="Название image dataset, например RPS v1"
+                    placeholder="Название набора, например RPS v1"
                   />
-                  <select
+                  <Select
+                    style={{ minWidth: 160 }}
                     value={newImageDatasetTaskType}
-                    onChange={(event) =>
-                      setNewImageDatasetTaskType(event.target.value as "classification" | "clustering")
-                    }
+                    onChange={(v) => setNewImageDatasetTaskType(v)}
+                    options={[
+                      { value: "classification", label: "Классификация" },
+                      { value: "clustering", label: "Кластеризация (группы)" }
+                    ]}
+                  />
+                  <Button
+                    type="primary"
+                    disabled={newImageDatasetName.trim().length === 0}
+                    onClick={() => {
+                      addImageDataset(newImageDatasetName, newImageDatasetTaskType);
+                      setNewImageDatasetName("");
+                      message.success("Набор создан");
+                    }}
                   >
-                    <option value="classification">Классификация</option>
-                    <option value="clustering">Кластеризация</option>
-                  </select>
-                   <Button
-                     type="primary"
-                     disabled={newImageDatasetName.trim().length === 0}
-                     onClick={() => {
-                       addImageDataset(newImageDatasetName, newImageDatasetTaskType);
-                       setNewImageDatasetName("");
-                     }}
-                   >
-                     Создать
-                   </Button>
-                </Space.Compact>
+                    Создать набор
+                  </Button>
+                </Space>
                 {filteredImageDatasets.map((dataset) => (
                   <Card
                     key={dataset.id}
@@ -133,13 +157,13 @@ export function DataLibrary() {
                           showUploadList: false,
                           beforeUpload: (file) => {
                             if (file.size > 10 * 1024 * 1024) {
-                              alert("Файл слишком большой (макс 10MB)");
+                              message.error("Файл слишком большой (максимум 10 МБ)");
                               return false;
                             }
                             addSamplesToClass(dataset.id, datasetClass.labelId, [file]);
                             return false;
                           },
-                          customRequest: () => {} // Disable default upload
+                          customRequest: () => {}
                         };
                         return (
                           <Card key={datasetClass.labelId} size="small">
@@ -147,23 +171,25 @@ export function DataLibrary() {
                             <br />
                             <Text type="secondary">Снимков: {datasetClass.files.length}</Text>
                             <Divider style={{ margin: "8px 0" }} />
-                            <Space>
-                              <Upload {...uploadProps} style={{ width: '100%' }}>
-                                <Button icon={<UploadOutlined />} size="small" style={{ width: '100%' }}>Добавить (или перетащите файлы)</Button>
+                            <Space wrap>
+                              <Upload {...uploadProps}>
+                                <Button icon={<UploadOutlined />} size="small" block>
+                                  Добавить фото
+                                </Button>
                               </Upload>
-                              {datasetClass.files.length > 0 && (
+                              {datasetClass.files.length > 0 ? (
                                 <Button
                                   icon={<EyeOutlined />}
                                   size="small"
                                   onClick={() => {
-                                    const urls = datasetClass.files.map(f => URL.createObjectURL(f));
+                                    const urls = datasetClass.files.map((f) => URL.createObjectURL(f));
                                     setPreviewImages(urls);
                                     setPreviewVisible(true);
                                   }}
                                 >
                                   Просмотр
                                 </Button>
-                              )}
+                              ) : null}
                             </Space>
                           </Card>
                         );
@@ -171,14 +197,20 @@ export function DataLibrary() {
                     </Space>
                   </Card>
                 ))}
-
-                <Divider style={{ margin: "8px 0" }} />
-                <Paragraph>Табличные dataset (CSV): последняя колонка - целевая.</Paragraph>
+              </Space>
+            )
+          },
+          {
+            key: "tabular",
+            label: "Таблицы (CSV)",
+            children: (
+              <Space direction="vertical" size={12} style={{ width: "100%" }}>
+                <Paragraph>Признаки в колонках, целевое значение — в последней колонке.</Paragraph>
                 <Space.Compact style={{ width: "100%" }}>
                   <Input
                     value={csvDatasetName}
                     onChange={(event) => setCsvDatasetName(event.target.value)}
-                    placeholder="Название tabular dataset, например Students v1"
+                    placeholder="Название набора, например Students v1"
                   />
                   <Upload
                     accept=".csv,text/csv"
@@ -190,8 +222,11 @@ export function DataLibrary() {
                           addTabularDataset(csvDatasetName || file.name, parsed);
                           setCsvDatasetName("");
                           setCsvError(null);
+                          message.success("CSV добавлен");
                         } catch (error) {
-                          setCsvError(error instanceof Error ? error.message : "Не удалось прочитать CSV");
+                          const msg = error instanceof Error ? error.message : "Не удалось прочитать CSV";
+                          setCsvError(msg);
+                          message.error(msg);
                         }
                       })();
                       return false;
@@ -201,21 +236,36 @@ export function DataLibrary() {
                   </Upload>
                 </Space.Compact>
                 {filteredTabularDatasets.map((dataset) => (
-                  <Card key={dataset.id} size="small" extra={
-                    <Space>
-                      <Button icon={<DownloadOutlined />} size="small" onClick={() => {
-                        const csv = [dataset.dataset.headers.join(','), ...dataset.dataset.rows.map(r => r.join(','))].join('\n');
-                        const blob = new Blob([csv], { type: 'text/csv' });
-                        const url = URL.createObjectURL(blob);
-                        const a = document.createElement('a');
-                        a.href = url;
-                        a.download = `${dataset.title}.csv`;
-                        a.click();
-                        URL.revokeObjectURL(url);
-                      }} />
-                      <Button icon={<DeleteOutlined />} size="small" onClick={() => removeTabularDataset(dataset.id)} />
-                    </Space>
-                  }>
+                  <Card
+                    key={dataset.id}
+                    size="small"
+                    extra={
+                      <Space>
+                        <Button
+                          icon={<DownloadOutlined />}
+                          size="small"
+                          onClick={() => {
+                            const csv = [
+                              dataset.dataset.headers.join(","),
+                              ...dataset.dataset.rows.map((r) => r.join(","))
+                            ].join("\n");
+                            const blob = new Blob([csv], { type: "text/csv" });
+                            const url = URL.createObjectURL(blob);
+                            const a = document.createElement("a");
+                            a.href = url;
+                            a.download = `${dataset.title}.csv`;
+                            a.click();
+                            URL.revokeObjectURL(url);
+                          }}
+                        />
+                        <Button
+                          icon={<DeleteOutlined />}
+                          size="small"
+                          onClick={() => removeTabularDataset(dataset.id)}
+                        />
+                      </Space>
+                    }
+                  >
                     <Text strong>{dataset.title}</Text>
                     <br />
                     <Text type="secondary">
@@ -226,18 +276,30 @@ export function DataLibrary() {
                 {csvError ? <Alert type="error" showIcon message={csvError} /> : null}
               </Space>
             )
-          },
+          }
+        ]}
+      />
+    </Space>
+  );
+
+  const predictTabContent = (
+    <Space direction="vertical" size={12} style={{ width: "100%" }}>
+      <Paragraph>
+        Эти входы появляются в блоке <Text strong>«предсказать»</Text> в Blockly. Выбери их в выпадающем списке «вход».
+      </Paragraph>
+      <Collapse
+        defaultActiveKey={["img", "tab"]}
+        items={[
           {
-            key: "predict",
-            label: "Данные для предсказания",
+            key: "img",
+            label: "Картинка для проверки",
             children: (
-              <Space direction="vertical" size={12} style={{ width: "100%" }}>
-                <Paragraph>Подготовь входы для блока предсказания и выбирай их прямо в Blockly.</Paragraph>
+              <Space direction="vertical" style={{ width: "100%" }}>
                 <Space.Compact style={{ width: "100%" }}>
                   <Input
                     value={imagePredictionName}
                     onChange={(event) => setImagePredictionName(event.target.value)}
-                    placeholder="Название image входа, например test_rock"
+                    placeholder="Название входа, например test_rock"
                   />
                   <Upload
                     accept="image/*"
@@ -245,28 +307,42 @@ export function DataLibrary() {
                     beforeUpload={(file) => {
                       addImagePredictionInput(imagePredictionName || file.name, file);
                       setImagePredictionName("");
+                      message.success("Изображение добавлено");
                       return false;
                     }}
                   >
-                    <Button icon={<UploadOutlined />}>Добавить image</Button>
+                    <Button icon={<UploadOutlined />}>Добавить</Button>
                   </Upload>
                 </Space.Compact>
                 {imagePredictionInputs.map((item) => (
-                  <Card key={item.id} size="small" extra={<Button icon={<DeleteOutlined />} onClick={() => removeImagePredictionInput(item.id)} />}>
+                  <Card
+                    key={item.id}
+                    size="small"
+                    extra={
+                      <Button icon={<DeleteOutlined />} onClick={() => removeImagePredictionInput(item.id)} />
+                    }
+                  >
                     <Text strong>{item.title}</Text>
                   </Card>
                 ))}
-                <Divider style={{ margin: "8px 0" }} />
+              </Space>
+            )
+          },
+          {
+            key: "tab",
+            label: "Числа для таблицы (табличный вход)",
+            children: (
+              <Space direction="vertical" style={{ width: "100%" }}>
                 <Space.Compact style={{ width: "100%" }}>
                   <Input
                     value={tabularPredictionName}
                     onChange={(event) => setTabularPredictionName(event.target.value)}
-                    placeholder="Название tabular входа, например student_a"
+                    placeholder="Название входа, например student_a"
                   />
                   <Input
                     value={tabularPredictionValue}
                     onChange={(event) => setTabularPredictionValue(event.target.value)}
-                    placeholder="Значения через запятую, например 6,7,1"
+                    placeholder="Через запятую: 6,7,1"
                   />
                   <Button
                     type="primary"
@@ -274,13 +350,20 @@ export function DataLibrary() {
                       addTabularPredictionInput(tabularPredictionName || "tabular_input", tabularPredictionValue);
                       setTabularPredictionName("");
                       setTabularPredictionValue("");
+                      message.success("Вход добавлен");
                     }}
                   >
-                    Добавить tabular
+                    Добавить
                   </Button>
                 </Space.Compact>
                 {tabularPredictionInputs.map((item) => (
-                  <Card key={item.id} size="small" extra={<Button icon={<DeleteOutlined />} onClick={() => removeTabularPredictionInput(item.id)} />}>
+                  <Card
+                    key={item.id}
+                    size="small"
+                    extra={
+                      <Button icon={<DeleteOutlined />} onClick={() => removeTabularPredictionInput(item.id)} />
+                    }
+                  >
                     <Text strong>{item.title}</Text>
                     <br />
                     <Text type="secondary">{item.input}</Text>
@@ -291,19 +374,40 @@ export function DataLibrary() {
           }
         ]}
       />
+    </Space>
+  );
+
+  return (
+    <Card title="Библиотека данных" size="small">
+      <Tabs
+        defaultActiveKey="train"
+        items={[
+          {
+            key: "train",
+            label: "Данные для обучения",
+            children: trainTabContent
+          },
+          {
+            key: "predict",
+            label: "Данные для предсказания",
+            children: predictTabContent
+          }
+        ]}
+      />
       <Modal
         open={previewVisible}
-        onCancel={() => setPreviewVisible(false)}
+        onCancel={closePreview}
         footer={null}
         width={800}
         title="Предпросмотр изображений"
+        destroyOnClose
       >
         <List
           grid={{ gutter: 16, column: 4 }}
           dataSource={previewImages}
           renderItem={(src) => (
             <List.Item>
-              <Image src={src} alt="preview" style={{ width: '100%', height: 100, objectFit: 'cover' }} />
+              <Image src={src} alt="preview" style={{ width: "100%", height: 100, objectFit: "cover" }} />
             </List.Item>
           )}
         />
