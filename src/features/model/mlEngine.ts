@@ -3,6 +3,7 @@ import * as knnClassifier from "@tensorflow-models/knn-classifier";
 import * as tf from "@tensorflow/tfjs";
 import type {
   DatasetClass,
+  ImageDataset,
   ModelEvaluation,
   ModelType,
   PredictionResult,
@@ -15,6 +16,63 @@ const imageClassifier = knnClassifier.create();
 let tabularModel: tf.LayersModel | null = null;
 let tabularMode: "regression" | "classification" | null = null;
 let classIndexToLabel: string[] = [];
+/** Подписи для KNN по картинкам (в т.ч. кластеры cluster_0 … после обучения без учителя) */
+let imageKnnExtraLabels: Record<string, string> = {};
+
+function pickClusterCount(sampleCount: number): number {
+  return Math.min(sampleCount, Math.min(8, Math.max(2, Math.round(Math.sqrt(sampleCount / 2)))));
+}
+
+function kMeansAssign(flat: Float32Array, n: number, dim: number, k: number): number[] {
+  const centroids = new Float32Array(k * dim);
+  for (let ci = 0; ci < k; ci++) {
+    const idx = Math.min(n - 1, Math.floor(((ci + 0.5) * n) / k));
+    for (let j = 0; j < dim; j++) {
+      centroids[ci * dim + j] = flat[idx * dim + j];
+    }
+  }
+  const assignments = new Array<number>(n);
+  for (let iter = 0; iter < 40; iter++) {
+    for (let i = 0; i < n; i++) {
+      let best = 0;
+      let bestD = Infinity;
+      const base = i * dim;
+      for (let ci = 0; ci < k; ci++) {
+        let d = 0;
+        const cbase = ci * dim;
+        for (let j = 0; j < dim; j++) {
+          const diff = flat[base + j] - centroids[cbase + j];
+          d += diff * diff;
+        }
+        if (d < bestD) {
+          bestD = d;
+          best = ci;
+        }
+      }
+      assignments[i] = best;
+    }
+    const counts = new Array(k).fill(0);
+    const newCent = new Float32Array(k * dim);
+    for (let i = 0; i < n; i++) {
+      const ci = assignments[i];
+      counts[ci] += 1;
+      const ib = i * dim;
+      const cb = ci * dim;
+      for (let j = 0; j < dim; j++) {
+        newCent[cb + j] += flat[ib + j];
+      }
+    }
+    for (let ci = 0; ci < k; ci++) {
+      if (counts[ci] === 0) {
+        continue;
+      }
+      for (let j = 0; j < dim; j++) {
+        centroids[ci * dim + j] = newCent[ci * dim + j] / counts[ci];
+      }
+    }
+  }
+  return assignments;
+}
 
 async function getModel() {
   if (!mobileNetModel) {
@@ -32,6 +90,7 @@ export async function trainKnnModel(
   onProgress: (progress: number, message: string) => void
 ) {
   imageClassifier.clearAllClasses();
+  imageKnnExtraLabels = {};
   const model = await getModel();
 
   const totalSamples = classes.reduce((acc, item) => acc + item.files.length, 0);
@@ -58,6 +117,59 @@ export async function trainKnnModel(
   }
 }
 
+async function trainKnnClustering(
+  files: File[],
+  onProgress: (progress: number, message: string) => void
+) {
+  imageClassifier.clearAllClasses();
+  imageKnnExtraLabels = {};
+  const model = await getModel();
+  const n = files.length;
+  if (n < 2) {
+    throw new Error("Для кластеризации нужно минимум 2 изображения.");
+  }
+  const k = pickClusterCount(n);
+  const embeddings: tf.Tensor[] = [];
+  let dim = 0;
+
+  for (let i = 0; i < n; i++) {
+    const bitmap = await fileToImageBitmap(files[i]);
+    const activation = tf.tidy(() => {
+      const imageTensor = tf.browser.fromPixels(bitmap).toFloat();
+      const resized = tf.image.resizeBilinear(imageTensor, [224, 224]);
+      const normalized = resized.div(255);
+      const batched = normalized.expandDims(0);
+      return model.infer(batched, true) as tf.Tensor;
+    });
+    if (dim === 0) {
+      dim = activation.size;
+    }
+    embeddings.push(activation);
+    bitmap.close();
+    const progress = Math.round(((i + 1) / (n + 1)) * 90);
+    onProgress(progress, `Признаки: ${i + 1} из ${n}`);
+    await tf.nextFrame();
+  }
+
+  const flat = new Float32Array(n * dim);
+  for (let i = 0; i < n; i++) {
+    const data = await embeddings[i].data();
+    flat.set(data, i * dim);
+  }
+  const assignments = kMeansAssign(flat, n, dim, k);
+  onProgress(92, `K-means: ${k} групп`);
+
+  for (let i = 0; i < n; i++) {
+    imageClassifier.addExample(embeddings[i], `cluster_${assignments[i]}`);
+    embeddings[i].dispose();
+  }
+
+  for (let c = 0; c < k; c++) {
+    imageKnnExtraLabels[`cluster_${c}`] = `Кластер ${c + 1}`;
+  }
+  onProgress(100, `Готово: ${k} кластеров по сходству признаков MobileNet`);
+}
+
 async function predictImageByFile(
   file: File,
   labelsMap: Record<string, string>
@@ -81,7 +193,8 @@ async function predictImageByFile(
   activation.dispose();
   bitmap.close();
 
-  const title = labelsMap[result.label] ?? result.label;
+  const merged = { ...imageKnnExtraLabels, ...labelsMap };
+  const title = merged[result.label] ?? result.label;
   return {
     labelId: result.label,
     title,
@@ -256,14 +369,39 @@ async function trainTabularModel(
 
 export async function trainByModelType(args: {
   modelType: ModelType;
-  classes: DatasetClass[];
+  imageDataset: ImageDataset | null;
   tabularDataset: TabularDataset | null;
   config: TrainConfig;
   onProgress: (progress: number, message: string) => void;
 }): Promise<ModelEvaluation> {
   if (args.modelType === "image_knn") {
-    await trainKnnModel(args.classes, args.onProgress);
-    const sampleCount = args.classes.reduce((sum, item) => sum + item.files.length, 0);
+    const ds = args.imageDataset;
+    if (!ds) {
+      throw new Error("Для image модели выбери набор изображений в блоке обучения.");
+    }
+    if (ds.taskType === "clustering") {
+      let pool = ds.unlabeledFiles ?? [];
+      if (pool.length < 2) {
+        const legacy = ds.classes.flatMap((c) => c.files);
+        if (legacy.length >= 2) {
+          pool = legacy;
+        }
+      }
+      if (pool.length < 2) {
+        throw new Error("В наборе для кластеризации нужно минимум 2 изображения.");
+      }
+      await trainKnnClustering(pool, args.onProgress);
+      return {
+        summary: `Кластеризация: ${pool.length} изображений, группы по сходству (K-means + KNN)`,
+        metrics: { samples: pool.length }
+      };
+    }
+    const hasSamples = ds.classes.some((c) => c.files.length > 0);
+    if (!hasSamples) {
+      throw new Error("Добавь фото в классы набора для классификации.");
+    }
+    await trainKnnModel(ds.classes, args.onProgress);
+    const sampleCount = ds.classes.reduce((sum, item) => sum + item.files.length, 0);
     return {
       summary: `Image KNN обучен на ${sampleCount} изображениях`,
       metrics: { samples: sampleCount }

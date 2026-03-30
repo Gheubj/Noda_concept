@@ -24,6 +24,7 @@ interface EncodedImageDataset {
   title: string;
   taskType: "classification" | "clustering";
   classes: EncodedImageDatasetClass[];
+  unlabeledFiles?: EncodedFile[];
 }
 
 interface EncodedImagePredictionInput {
@@ -88,7 +89,11 @@ async function encodeImageDatasets(items: ImageDataset[]): Promise<EncodedImageD
           title: datasetClass.title,
           files: await Promise.all(datasetClass.files.map(encodeFile))
         }))
-      )
+      ),
+      unlabeledFiles:
+        dataset.unlabeledFiles && dataset.unlabeledFiles.length > 0
+          ? await Promise.all(dataset.unlabeledFiles.map(encodeFile))
+          : undefined
     }))
   );
 }
@@ -105,7 +110,10 @@ async function decodeImageDatasets(items: EncodedImageDataset[]): Promise<ImageD
           title: datasetClass.title,
           files: await Promise.all(datasetClass.files.map(decodeFile))
         }))
-      )
+      ),
+      unlabeledFiles: dataset.unlabeledFiles?.length
+        ? await Promise.all(dataset.unlabeledFiles.map(decodeFile))
+        : undefined
     }))
   );
 }

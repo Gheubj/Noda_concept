@@ -41,6 +41,8 @@ interface AppState {
   addImageDataset: (title: string, taskType: "classification" | "clustering") => string | null;
   addClassToImageDataset: (datasetId: string, title: string) => void;
   addSamplesToClass: (datasetId: string, labelId: string, files: File[]) => void;
+  addUnlabeledSamplesToImageDataset: (datasetId: string, files: File[]) => void;
+  clearUnlabeledSamples: (datasetId: string) => void;
   addTabularDataset: (title: string, dataset: TabularDataset) => void;
   addImagePredictionInput: (title: string, file: File) => void;
   addTabularPredictionInput: (title: string, input: string) => void;
@@ -92,7 +94,16 @@ export const useAppStore = create<AppState>((set, get) => ({
     }
     const id = createId();
     set((state) => ({
-      imageDatasets: [...state.imageDatasets, { id, title: normalizedTitle, taskType, classes: [] }]
+      imageDatasets: [
+        ...state.imageDatasets,
+        {
+          id,
+          title: normalizedTitle,
+          taskType,
+          classes: [],
+          ...(taskType === "clustering" ? { unlabeledFiles: [] } : {})
+        }
+      ]
     }));
     return id;
   },
@@ -128,6 +139,23 @@ export const useAppStore = create<AppState>((set, get) => ({
                 item.labelId === labelId ? { ...item, files: [...item.files, ...files] } : item
               )
             }
+      )
+    })),
+  addUnlabeledSamplesToImageDataset: (datasetId, files) =>
+    set((state) => ({
+      imageDatasets: state.imageDatasets.map((dataset) =>
+        dataset.id !== datasetId
+          ? dataset
+          : {
+              ...dataset,
+              unlabeledFiles: [...(dataset.unlabeledFiles ?? []), ...files]
+            }
+      )
+    })),
+  clearUnlabeledSamples: (datasetId) =>
+    set((state) => ({
+      imageDatasets: state.imageDatasets.map((dataset) =>
+        dataset.id !== datasetId ? dataset : { ...dataset, unlabeledFiles: [] }
       )
     })),
   addTabularDataset: (title, dataset) =>

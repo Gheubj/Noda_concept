@@ -16,6 +16,8 @@ export interface ImageDataset {
   title: string;
   taskType: "classification" | "clustering";
   classes: DatasetClass[];
+  /** Без учителя: все снимки в одном наборе (кластеризация) */
+  unlabeledFiles?: File[];
 }
 
 export interface ClassDatasetStat {

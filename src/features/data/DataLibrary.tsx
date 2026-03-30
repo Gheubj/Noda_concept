@@ -16,10 +16,29 @@ import {
   List,
   message
 } from "antd";
-import { UploadOutlined, DeleteOutlined, EyeOutlined, DownloadOutlined } from "@ant-design/icons";
+import {
+  UploadOutlined,
+  DeleteOutlined,
+  EyeOutlined,
+  DownloadOutlined,
+  FileZipOutlined
+} from "@ant-design/icons";
 import type { UploadProps } from "antd";
 import { useAppStore } from "@/store/useAppStore";
 import { parseCsvFile } from "@/features/data/csv";
+import { extractImageFilesFromZip } from "@/features/data/zipImages";
+
+const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
+
+function filterImageSize(files: File[], onSkip: (name: string) => void): File[] {
+  return files.filter((file) => {
+    if (file.size > MAX_IMAGE_BYTES) {
+      onSkip(file.name);
+      return false;
+    }
+    return true;
+  });
+}
 
 const { Paragraph, Text } = Typography;
 
@@ -45,6 +64,8 @@ export function DataLibrary() {
     addImageDataset,
     addClassToImageDataset,
     addSamplesToClass,
+    addUnlabeledSamplesToImageDataset,
+    clearUnlabeledSamples,
     addTabularDataset,
     addImagePredictionInput,
     addTabularPredictionInput,
@@ -83,14 +104,14 @@ export function DataLibrary() {
         type="info"
         showIcon
         message="Как собрать данные"
-        description="Шаг 1: создай набор → Шаг 2: добавь классы или кластеры → Шаг 3: загрузи файлы. Для картинок подойдут JPG, PNG, WEBP (до 10 МБ на файл)."
+        description="Классификация: набор → классы → фото или ZIP в каждый класс. Кластеризация без учителя: один набор → только фото или ZIP (имена кластеров не нужны). Форматы: JPG, PNG, WEBP, GIF (до 10 МБ на файл)."
       />
       <Collapse
         defaultActiveKey={["images", "tabular"]}
         items={[
           {
             key: "images",
-            label: "Картинки по классам / кластерам",
+            label: "Картинки (классификация и кластеризация)",
             children: (
               <Space direction="vertical" size={12} style={{ width: "100%" }}>
                 <Space wrap style={{ width: "100%" }}>
@@ -106,7 +127,7 @@ export function DataLibrary() {
                     onChange={(v) => setNewImageDatasetTaskType(v)}
                     options={[
                       { value: "classification", label: "Классификация" },
-                      { value: "clustering", label: "Кластеризация (группы)" }
+                      { value: "clustering", label: "Кластеризация (без учителя)" }
                     ]}
                   />
                   <Button
@@ -129,71 +150,187 @@ export function DataLibrary() {
                     extra={<Button icon={<DeleteOutlined />} onClick={() => removeImageDataset(dataset.id)} />}
                   >
                     <Space direction="vertical" size={8} style={{ width: "100%" }}>
-                      <Space.Compact style={{ width: "100%" }}>
-                        <Input
-                          value={classNames[dataset.id] ?? ""}
-                          onChange={(event) =>
-                            setClassNames((prev) => ({ ...prev, [dataset.id]: event.target.value }))
-                          }
-                          placeholder={
-                            dataset.taskType === "clustering"
-                              ? "Название кластера (Кластер A...)"
-                              : "Название класса (Камень, Ножницы...)"
-                          }
-                        />
-                        <Button
-                          onClick={() => {
-                            addClassToImageDataset(dataset.id, classNames[dataset.id] ?? "");
-                            setClassNames((prev) => ({ ...prev, [dataset.id]: "" }));
-                          }}
-                        >
-                          Добавить класс
-                        </Button>
-                      </Space.Compact>
-                      {dataset.classes.map((datasetClass) => {
-                        const uploadProps: UploadProps = {
-                          accept: "image/*",
-                          multiple: true,
-                          showUploadList: false,
-                          beforeUpload: (file) => {
-                            if (file.size > 10 * 1024 * 1024) {
-                              message.error("Файл слишком большой (максимум 10 МБ)");
-                              return false;
-                            }
-                            addSamplesToClass(dataset.id, datasetClass.labelId, [file]);
-                            return false;
-                          },
-                          customRequest: () => {}
-                        };
-                        return (
-                          <Card key={datasetClass.labelId} size="small">
-                            <Text strong>{datasetClass.title}</Text>
-                            <br />
-                            <Text type="secondary">Снимков: {datasetClass.files.length}</Text>
-                            <Divider style={{ margin: "8px 0" }} />
-                            <Space wrap>
-                              <Upload {...uploadProps}>
-                                <Button icon={<UploadOutlined />} size="small" block>
-                                  Добавить фото
-                                </Button>
-                              </Upload>
-                              {datasetClass.files.length > 0 ? (
+                      {dataset.taskType === "clustering" ? (
+                        <>
+                          <Paragraph type="secondary" style={{ marginBottom: 0 }}>
+                            Без учителя: загрузи фото или ZIP с картинками — имена кластеров не нужны. В Blockly
+                            выбери этот набор для Image KNN: похожие снимки сгруппируются автоматически (K-means
+                            по признакам MobileNet).
+                          </Paragraph>
+                          <Text type="secondary">Снимков в наборе: {dataset.unlabeledFiles?.length ?? 0}</Text>
+                          <Space wrap>
+                            <Upload
+                              accept="image/*"
+                              multiple
+                              showUploadList={false}
+                              beforeUpload={(file) => {
+                                const ok = filterImageSize([file], () =>
+                                  message.error("Файл слишком большой (максимум 10 МБ)")
+                                );
+                                if (ok.length) {
+                                  addUnlabeledSamplesToImageDataset(dataset.id, ok);
+                                  message.success("Фото добавлено");
+                                }
+                                return false;
+                              }}
+                              customRequest={() => {}}
+                            >
+                              <Button icon={<UploadOutlined />} size="small">
+                                Добавить фото
+                              </Button>
+                            </Upload>
+                            <Upload
+                              accept=".zip,application/zip,application/x-zip-compressed"
+                              showUploadList={false}
+                              beforeUpload={(file) => {
+                                void (async () => {
+                                  try {
+                                    const extracted = await extractImageFilesFromZip(file);
+                                    const ok = filterImageSize(extracted, (name) =>
+                                      message.warning(`Пропуск ${name}: больше 10 МБ`)
+                                    );
+                                    if (ok.length === 0) {
+                                      message.error("В архиве не найдено подходящих изображений");
+                                      return;
+                                    }
+                                    addUnlabeledSamplesToImageDataset(dataset.id, ok);
+                                    message.success(`Из ZIP добавлено: ${ok.length} файлов`);
+                                  } catch (e) {
+                                    message.error(e instanceof Error ? e.message : "Не удалось прочитать ZIP");
+                                  }
+                                })();
+                                return false;
+                              }}
+                              customRequest={() => {}}
+                            >
+                              <Button icon={<FileZipOutlined />} size="small">
+                                Загрузить ZIP
+                              </Button>
+                            </Upload>
+                            {(dataset.unlabeledFiles?.length ?? 0) > 0 ? (
+                              <>
                                 <Button
                                   icon={<EyeOutlined />}
                                   size="small"
                                   onClick={() => {
-                                    const urls = datasetClass.files.map((f) => URL.createObjectURL(f));
+                                    const urls = (dataset.unlabeledFiles ?? []).map((f) =>
+                                      URL.createObjectURL(f)
+                                    );
                                     setPreviewImages(urls);
                                     setPreviewVisible(true);
                                   }}
                                 >
                                   Просмотр
                                 </Button>
-                              ) : null}
-                            </Space>
-                          </Card>
-                        );
-                      })}
+                                <Button
+                                  size="small"
+                                  onClick={() => {
+                                    clearUnlabeledSamples(dataset.id);
+                                    message.success("Список фото очищен");
+                                  }}
+                                >
+                                  Очистить фото
+                                </Button>
+                              </>
+                            ) : null}
+                          </Space>
+                        </>
+                      ) : (
+                        <>
+                          <Space.Compact style={{ width: "100%" }}>
+                            <Input
+                              value={classNames[dataset.id] ?? ""}
+                              onChange={(event) =>
+                                setClassNames((prev) => ({ ...prev, [dataset.id]: event.target.value }))
+                              }
+                              placeholder="Название класса (Камень, Ножницы...)"
+                            />
+                            <Button
+                              onClick={() => {
+                                addClassToImageDataset(dataset.id, classNames[dataset.id] ?? "");
+                                setClassNames((prev) => ({ ...prev, [dataset.id]: "" }));
+                              }}
+                            >
+                              Добавить класс
+                            </Button>
+                          </Space.Compact>
+                          {dataset.classes.map((datasetClass) => {
+                            const uploadProps: UploadProps = {
+                              accept: "image/*",
+                              multiple: true,
+                              showUploadList: false,
+                              beforeUpload: (file) => {
+                                const ok = filterImageSize([file], () =>
+                                  message.error("Файл слишком большой (максимум 10 МБ)")
+                                );
+                                if (ok.length) {
+                                  addSamplesToClass(dataset.id, datasetClass.labelId, ok);
+                                }
+                                return false;
+                              },
+                              customRequest: () => {}
+                            };
+                            return (
+                              <Card key={datasetClass.labelId} size="small">
+                                <Text strong>{datasetClass.title}</Text>
+                                <br />
+                                <Text type="secondary">Снимков: {datasetClass.files.length}</Text>
+                                <Divider style={{ margin: "8px 0" }} />
+                                <Space wrap>
+                                  <Upload {...uploadProps}>
+                                    <Button icon={<UploadOutlined />} size="small" block>
+                                      Добавить фото
+                                    </Button>
+                                  </Upload>
+                                  <Upload
+                                    accept=".zip,application/zip,application/x-zip-compressed"
+                                    showUploadList={false}
+                                    beforeUpload={(file) => {
+                                      void (async () => {
+                                        try {
+                                          const extracted = await extractImageFilesFromZip(file);
+                                          const ok = filterImageSize(extracted, (name) =>
+                                            message.warning(`Пропуск ${name}: больше 10 МБ`)
+                                          );
+                                          if (ok.length === 0) {
+                                            message.error("В архиве не найдено изображений");
+                                            return;
+                                          }
+                                          addSamplesToClass(dataset.id, datasetClass.labelId, ok);
+                                          message.success(`Из ZIP: ${ok.length} фото в «${datasetClass.title}»`);
+                                        } catch (e) {
+                                          message.error(
+                                            e instanceof Error ? e.message : "Не удалось прочитать ZIP"
+                                          );
+                                        }
+                                      })();
+                                      return false;
+                                    }}
+                                    customRequest={() => {}}
+                                  >
+                                    <Button icon={<FileZipOutlined />} size="small">
+                                      ZIP в класс
+                                    </Button>
+                                  </Upload>
+                                  {datasetClass.files.length > 0 ? (
+                                    <Button
+                                      icon={<EyeOutlined />}
+                                      size="small"
+                                      onClick={() => {
+                                        const urls = datasetClass.files.map((f) => URL.createObjectURL(f));
+                                        setPreviewImages(urls);
+                                        setPreviewVisible(true);
+                                      }}
+                                    >
+                                      Просмотр
+                                    </Button>
+                                  ) : null}
+                                </Space>
+                              </Card>
+                            );
+                          })}
+                        </>
+                      )}
                     </Space>
                   </Card>
                 ))}

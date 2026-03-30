@@ -49,6 +49,8 @@ body,
   padding: 24px;
   background: #fff;
   overflow: auto;
+  touch-action: pan-y;
+  overscroll-behavior-y: contain;
 }
 
 .placeholder-text.ant-typography {
@@ -72,13 +74,16 @@ body,
   border-radius: 8px;
   overflow: hidden;
   position: relative;
+  touch-action: none;
+  overscroll-behavior: contain;
 }
 
-/* Touch: drag для Blockly — manipulation ломает перетаскивание на мобильных */
+/* Touch: вся область workspace отдаёт жесты Blockly (панорама, блоки, pinch-zoom) */
 .blockly-container .blocklySvg,
 .blockly-container .blocklyToolboxDiv,
 .blockly-container .blocklyFlyout,
-.blockly-container .blocklyScrollbarHandle {
+.blockly-container .blocklyScrollbarHandle,
+.blockly-container .blocklyScrollbarBackground {
   touch-action: none;
 }
 

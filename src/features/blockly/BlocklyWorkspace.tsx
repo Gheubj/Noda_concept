@@ -39,7 +39,14 @@ function getTrainDatasetOptions(modelType: ModelType) {
   const state = useAppStore.getState();
   const merged = isImageModel(modelType)
     ? state.imageDatasets
-        .filter((item) => item.taskType === "classification")
+        .filter((item) => {
+          if (item.taskType === "classification") {
+            return item.classes.some((c) => c.files.length > 0);
+          }
+          const unlabeled = item.unlabeledFiles?.length ?? 0;
+          const legacy = item.classes.reduce((n, c) => n + c.files.length, 0);
+          return unlabeled >= 2 || legacy >= 2;
+        })
         .map((item) => [`Image: ${item.title}`, `image:${item.id}`] as [string, string])
     : state.tabularDatasets.map(
         (item) => [`Tabular: ${item.title}`, `tabular:${item.id}`] as [string, string]
@@ -97,8 +104,6 @@ function registerBlocks() {
       this.appendDummyInput().appendField("Старт");
       this.setNextStatement(true, null);
       this.setColour(20);
-      this.setDeletable(false);
-      this.setMovable(false);
     }
   };
   /** Уровень 1: только модель и датасет */
@@ -337,7 +342,7 @@ export function BlocklyWorkspace() {
           }
           const evalResult = await trainByModelType({
             modelType: command.modelType,
-            classes: imageDataset?.classes ?? [],
+            imageDataset: imageDataset ?? null,
             tabularDataset,
             config: {
               trainSplit: command.trainSplit,
@@ -424,10 +429,11 @@ export function BlocklyWorkspace() {
       zoom: {
         controls: true,
         wheel: true,
+        pinch: true,
         startScale: 1,
         maxScale: 3,
         minScale: 0.3,
-        scaleSpeed: 1.2
+        scaleSpeed: 1.06
       }
     });
     const trainType = toolboxLevel === 1 ? "noda_train_model_simple" : "noda_train_model";
