@@ -14,6 +14,7 @@ export interface DatasetClass {
 export interface ImageDataset {
   id: string;
   title: string;
+  taskType: "classification" | "clustering";
   classes: DatasetClass[];
 }
 
@@ -56,4 +57,17 @@ export interface TrainingState {
   isTraining: boolean;
   progress: number;
   message: string;
+}
+
+export interface TrainConfig {
+  trainSplit: number;
+  valSplit: number;
+  testSplit: number;
+  epochs: number;
+  learningRate: number;
+}
+
+export interface ModelEvaluation {
+  summary: string;
+  metrics: Record<string, number>;
 }

@@ -3,9 +3,11 @@ import * as knnClassifier from "@tensorflow-models/knn-classifier";
 import * as tf from "@tensorflow/tfjs";
 import type {
   DatasetClass,
+  ModelEvaluation,
   ModelType,
   PredictionResult,
-  TabularDataset
+  TabularDataset,
+  TrainConfig
 } from "@/shared/types/ai";
 
 let mobileNetModel: mobilenet.MobileNet | null = null;
@@ -104,36 +106,85 @@ function parseTabular(dataset: TabularDataset) {
 async function trainTabularModel(
   modelType: ModelType,
   dataset: TabularDataset,
+  config: TrainConfig,
   onProgress: (progress: number, message: string) => void
-) {
+): Promise<ModelEvaluation> {
   const { x, yRaw, featureCount } = parseTabular(dataset);
-  const xTensor = tf.tensor2d(x);
+  const indices = x.map((_, index) => index);
+  tf.util.shuffle(indices);
+  const total = indices.length;
+  if (total < 3) {
+    throw new Error("Для train/val/test нужно минимум 3 строки в CSV.");
+  }
+  let trainCount = Math.max(1, Math.floor(total * config.trainSplit));
+  let valCount = Math.max(1, Math.floor(total * config.valSplit));
+  let testCount = total - trainCount - valCount;
+  if (testCount < 1) {
+    testCount = 1;
+  }
+  while (trainCount + valCount + testCount > total) {
+    if (trainCount >= valCount && trainCount >= testCount && trainCount > 1) {
+      trainCount -= 1;
+    } else if (valCount >= testCount && valCount > 1) {
+      valCount -= 1;
+    } else if (testCount > 1) {
+      testCount -= 1;
+    } else {
+      break;
+    }
+  }
+  const trainIdx = indices.slice(0, trainCount);
+  const valIdx = indices.slice(trainCount, trainCount + valCount);
+  const testIdx = indices.slice(trainCount + valCount, trainCount + valCount + testCount);
+  const xTrain = tf.tensor2d(trainIdx.map((i) => x[i]));
+  const xVal = tf.tensor2d(valIdx.map((i) => x[i]));
+  const xTest = tf.tensor2d(testIdx.map((i) => x[i]));
 
   if (modelType === "tabular_regression") {
     const y = yRaw.map((value) => Number(value));
     if (y.some((value) => Number.isNaN(value))) {
       throw new Error("Для регрессии целевая колонка должна быть числом.");
     }
-    const yTensor = tf.tensor2d(y, [y.length, 1]);
+    const yTrain = tf.tensor2d(trainIdx.map((i) => [y[i]]));
+    const yVal = tf.tensor2d(valIdx.map((i) => [y[i]]));
+    const yTest = tf.tensor2d(testIdx.map((i) => [y[i]]));
     tabularModel?.dispose();
     tabularModel = tf.sequential({
       layers: [tf.layers.dense({ inputShape: [featureCount], units: 1 })]
     });
-    tabularModel.compile({ optimizer: tf.train.adam(0.02), loss: "meanSquaredError" });
-    await tabularModel.fit(xTensor, yTensor, {
-      epochs: 80,
+    tabularModel.compile({
+      optimizer: tf.train.adam(config.learningRate),
+      loss: "meanSquaredError",
+      metrics: ["mse"]
+    });
+    await tabularModel.fit(xTrain, yTrain, {
+      epochs: config.epochs,
+      validationData: [xVal, yVal],
       callbacks: {
         onEpochEnd: async (epoch) => {
-          onProgress(Math.round(((epoch + 1) / 80) * 100), `Эпоха ${epoch + 1}/80`);
+          onProgress(
+            Math.round(((epoch + 1) / config.epochs) * 100),
+            `Эпоха ${epoch + 1}/${config.epochs}`
+          );
           await tf.nextFrame();
         }
       }
     });
+    const testEval = tabularModel.evaluate(xTest, yTest) as tf.Tensor | tf.Tensor[];
+    const evalTensor = Array.isArray(testEval) ? testEval[0] : testEval;
+    const mseValue = (await evalTensor.data())[0] ?? 0;
     tabularMode = "regression";
     classIndexToLabel = [];
-    xTensor.dispose();
-    yTensor.dispose();
-    return;
+    xTrain.dispose();
+    xVal.dispose();
+    xTest.dispose();
+    yTrain.dispose();
+    yVal.dispose();
+    yTest.dispose();
+    return {
+      summary: `Regression test MSE: ${mseValue.toFixed(4)}`,
+      metrics: { testMSE: mseValue }
+    };
   }
 
   const uniqueLabels = [...new Set(yRaw)];
@@ -142,7 +193,11 @@ async function trainTabularModel(
     return acc;
   }, {});
   const yIndices = yRaw.map((value) => labelToIndex[value]);
-  const yTensor = tf.oneHot(tf.tensor1d(yIndices, "int32"), uniqueLabels.length);
+  const buildOneHot = (rows: number[]) =>
+    tf.oneHot(tf.tensor1d(rows.map((i) => yIndices[i]), "int32"), uniqueLabels.length);
+  const yTrain = buildOneHot(trainIdx);
+  const yVal = buildOneHot(valIdx);
+  const yTest = buildOneHot(testIdx);
 
   tabularModel?.dispose();
   if (modelType === "tabular_neural") {
@@ -165,38 +220,59 @@ async function trainTabularModel(
     });
   }
   tabularModel.compile({
-    optimizer: tf.train.adam(0.02),
+    optimizer: tf.train.adam(config.learningRate),
     loss: "categoricalCrossentropy",
     metrics: ["accuracy"]
   });
-  await tabularModel.fit(xTensor, yTensor, {
-    epochs: 80,
+  await tabularModel.fit(xTrain, yTrain, {
+    epochs: config.epochs,
+    validationData: [xVal, yVal],
     callbacks: {
       onEpochEnd: async (epoch) => {
-        onProgress(Math.round(((epoch + 1) / 80) * 100), `Эпоха ${epoch + 1}/80`);
+        onProgress(
+          Math.round(((epoch + 1) / config.epochs) * 100),
+          `Эпоха ${epoch + 1}/${config.epochs}`
+        );
         await tf.nextFrame();
       }
     }
   });
+  const evaluation = tabularModel.evaluate(xTest, yTest) as tf.Tensor[];
+  const loss = (await evaluation[0].data())[0] ?? 0;
+  const acc = (await evaluation[1].data())[0] ?? 0;
   tabularMode = "classification";
   classIndexToLabel = uniqueLabels;
-  xTensor.dispose();
-  yTensor.dispose();
+  xTrain.dispose();
+  xVal.dispose();
+  xTest.dispose();
+  yTrain.dispose();
+  yVal.dispose();
+  yTest.dispose();
+  return {
+    summary: `Classification test accuracy: ${(acc * 100).toFixed(1)}%`,
+    metrics: { testLoss: loss, testAccuracy: acc }
+  };
 }
 
 export async function trainByModelType(args: {
   modelType: ModelType;
   classes: DatasetClass[];
   tabularDataset: TabularDataset | null;
+  config: TrainConfig;
   onProgress: (progress: number, message: string) => void;
-}) {
+}): Promise<ModelEvaluation> {
   if (args.modelType === "image_knn") {
-    return trainKnnModel(args.classes, args.onProgress);
+    await trainKnnModel(args.classes, args.onProgress);
+    const sampleCount = args.classes.reduce((sum, item) => sum + item.files.length, 0);
+    return {
+      summary: `Image KNN обучен на ${sampleCount} изображениях`,
+      metrics: { samples: sampleCount }
+    };
   }
   if (!args.tabularDataset) {
     throw new Error("Для табличной модели сначала загрузи CSV в библиотеке.");
   }
-  return trainTabularModel(args.modelType, args.tabularDataset, args.onProgress);
+  return trainTabularModel(args.modelType, args.tabularDataset, args.config, args.onProgress);
 }
 
 function parsePredictionFeatures(input: string) {

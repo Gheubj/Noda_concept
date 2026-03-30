@@ -22,6 +22,7 @@ interface EncodedImageDatasetClass {
 interface EncodedImageDataset {
   id: string;
   title: string;
+  taskType: "classification" | "clustering";
   classes: EncodedImageDatasetClass[];
 }
 
@@ -80,6 +81,7 @@ async function encodeImageDatasets(items: ImageDataset[]): Promise<EncodedImageD
     items.map(async (dataset) => ({
       id: dataset.id,
       title: dataset.title,
+      taskType: dataset.taskType,
       classes: await Promise.all(
         dataset.classes.map(async (datasetClass) => ({
           labelId: datasetClass.labelId,
@@ -96,6 +98,7 @@ async function decodeImageDatasets(items: EncodedImageDataset[]): Promise<ImageD
     items.map(async (dataset) => ({
       id: dataset.id,
       title: dataset.title,
+      taskType: dataset.taskType ?? "classification",
       classes: await Promise.all(
         dataset.classes.map(async (datasetClass) => ({
           labelId: datasetClass.labelId,

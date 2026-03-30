@@ -12,6 +12,9 @@ const { Search } = AntInput;
 
 export function DataLibrary() {
   const [newImageDatasetName, setNewImageDatasetName] = useState("");
+  const [newImageDatasetTaskType, setNewImageDatasetTaskType] = useState<"classification" | "clustering">(
+    "classification"
+  );
   const [classNames, setClassNames] = useState<Record<string, string>>({});
   const [csvDatasetName, setCsvDatasetName] = useState("");
   const [imagePredictionName, setImagePredictionName] = useState("");
@@ -64,18 +67,30 @@ export function DataLibrary() {
                   onChange={(e) => setSearchQuery(e.target.value)}
                   style={{ width: 200 }}
                 />
-                <Paragraph>Image dataset: создавай набор, классы и загружай изображения по классам. <Text type="secondary">Макс 500 изображений, до 10MB на файл.</Text></Paragraph>
+                <Paragraph>
+                  Image dataset: создавай набор, классы/кластеры и загружай изображения.
+                  <Text type="secondary"> Форматы: JPG, PNG, WEBP. Рекомендация: до 500 изображений, до 10MB на файл.</Text>
+                </Paragraph>
                 <Space.Compact style={{ width: "100%" }}>
                   <Input
                     value={newImageDatasetName}
                     onChange={(event) => setNewImageDatasetName(event.target.value)}
                     placeholder="Название image dataset, например RPS v1"
                   />
+                  <select
+                    value={newImageDatasetTaskType}
+                    onChange={(event) =>
+                      setNewImageDatasetTaskType(event.target.value as "classification" | "clustering")
+                    }
+                  >
+                    <option value="classification">Классификация</option>
+                    <option value="clustering">Кластеризация</option>
+                  </select>
                    <Button
                      type="primary"
                      disabled={newImageDatasetName.trim().length === 0}
                      onClick={() => {
-                       addImageDataset(newImageDatasetName);
+                       addImageDataset(newImageDatasetName, newImageDatasetTaskType);
                        setNewImageDatasetName("");
                      }}
                    >
@@ -83,7 +98,12 @@ export function DataLibrary() {
                    </Button>
                 </Space.Compact>
                 {filteredImageDatasets.map((dataset) => (
-                  <Card key={dataset.id} size="small" title={dataset.title} extra={<Button icon={<DeleteOutlined />} onClick={() => removeImageDataset(dataset.id)} />}>
+                  <Card
+                    key={dataset.id}
+                    size="small"
+                    title={`${dataset.title} (${dataset.taskType === "clustering" ? "Кластеризация" : "Классификация"})`}
+                    extra={<Button icon={<DeleteOutlined />} onClick={() => removeImageDataset(dataset.id)} />}
+                  >
                     <Space direction="vertical" size={8} style={{ width: "100%" }}>
                       <Space.Compact style={{ width: "100%" }}>
                         <Input
@@ -91,7 +111,11 @@ export function DataLibrary() {
                           onChange={(event) =>
                             setClassNames((prev) => ({ ...prev, [dataset.id]: event.target.value }))
                           }
-                          placeholder="Название класса (Камень, Ножницы...)"
+                          placeholder={
+                            dataset.taskType === "clustering"
+                              ? "Название кластера (Кластер A...)"
+                              : "Название класса (Камень, Ножницы...)"
+                          }
                         />
                         <Button
                           onClick={() => {

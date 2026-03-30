@@ -9,7 +9,17 @@ const { Paragraph } = Typography;
 
 type BlockCommand =
   | { type: "start" }
-  | { type: "train"; modelType: ModelType; datasetRef: string }
+  | {
+      type: "train";
+      modelType: ModelType;
+      datasetRef: string;
+      trainSplit: number;
+      valSplit: number;
+      testSplit: number;
+      epochs: number;
+      learningRate: number;
+    }
+  | { type: "set_input"; value: string }
   | { type: "predict"; modelType: ModelType; inputRef: string };
 
 function isImageModel(modelType: ModelType) {
@@ -19,7 +29,9 @@ function isImageModel(modelType: ModelType) {
 function getTrainDatasetOptions(modelType: ModelType) {
   const state = useAppStore.getState();
   const merged = isImageModel(modelType)
-    ? state.imageDatasets.map((item) => [`Image: ${item.title}`, `image:${item.id}`] as [string, string])
+    ? state.imageDatasets
+        .filter((item) => item.taskType === "classification")
+        .map((item) => [`Image: ${item.title}`, `image:${item.id}`] as [string, string])
     : state.tabularDatasets.map(
         (item) => [`Tabular: ${item.title}`, `tabular:${item.id}`] as [string, string]
       );
@@ -74,9 +86,31 @@ function registerBlocks() {
           }),
           "DATASET_REF"
         );
+      this.appendDummyInput()
+        .appendField("train")
+        .appendField(new Blockly.FieldNumber(0.7, 0.1, 0.9, 0.05), "TRAIN_SPLIT")
+        .appendField("val")
+        .appendField(new Blockly.FieldNumber(0.15, 0.05, 0.4, 0.05), "VAL_SPLIT")
+        .appendField("test")
+        .appendField(new Blockly.FieldNumber(0.15, 0.05, 0.4, 0.05), "TEST_SPLIT");
+      this.appendDummyInput()
+        .appendField("epochs")
+        .appendField(new Blockly.FieldNumber(80, 5, 500, 5), "EPOCHS")
+        .appendField("lr")
+        .appendField(new Blockly.FieldNumber(0.02, 0.0001, 1, 0.001), "LR");
       this.setPreviousStatement(true, null);
       this.setNextStatement(true, null);
       this.setColour(220);
+    }
+  };
+  Blockly.Blocks.noda_set_predict_input = {
+    init() {
+      this.appendDummyInput()
+        .appendField("ввести данные для распознавания")
+        .appendField(new Blockly.FieldTextInput("5.1,3.5,1.4,0.2"), "MANUAL_INPUT");
+      this.setPreviousStatement(true, null);
+      this.setNextStatement(true, null);
+      this.setColour(120);
     }
   };
   Blockly.Blocks.noda_predict_class = {
@@ -111,7 +145,7 @@ export function BlocklyWorkspace() {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const workspaceRef = useRef<Blockly.WorkspaceSvg | null>(null);
   const isRunningRef = useRef(false);
-  const { prediction, training, blocklyState } = useAppStore();
+  const { prediction, evaluation, training, blocklyState } = useAppStore();
 
   const readCommandsFromStart = (): BlockCommand[] => {
     const workspace = workspaceRef.current;
@@ -126,10 +160,26 @@ export function BlocklyWorkspace() {
     let current = startBlock.getNextBlock();
     while (current) {
       if (current.type === "noda_train_model") {
+        const trainSplit = Number(current.getFieldValue("TRAIN_SPLIT")) || 0.7;
+        const valSplit = Number(current.getFieldValue("VAL_SPLIT")) || 0.15;
+        const testSplit = Number(current.getFieldValue("TEST_SPLIT")) || 0.15;
+        const epochs = Number(current.getFieldValue("EPOCHS")) || 80;
+        const learningRate = Number(current.getFieldValue("LR")) || 0.02;
         commands.push({
           type: "train",
           modelType: current.getFieldValue("MODEL_TYPE") as ModelType,
-          datasetRef: current.getFieldValue("DATASET_REF")
+          datasetRef: current.getFieldValue("DATASET_REF"),
+          trainSplit,
+          valSplit,
+          testSplit,
+          epochs,
+          learningRate
+        });
+      }
+      if (current.type === "noda_set_predict_input") {
+        commands.push({
+          type: "set_input",
+          value: current.getFieldValue("MANUAL_INPUT")
         });
       }
       if (current.type === "noda_predict_class") {
@@ -181,15 +231,30 @@ export function BlocklyWorkspace() {
             progress: 0,
             message: `Запуск обучения: ${command.modelType}`
           });
-          await trainByModelType({
+          const splitSum = command.trainSplit + command.valSplit + command.testSplit;
+          if (Math.abs(splitSum - 1) > 0.02) {
+            throw new Error("Сумма train/val/test должна быть около 1.0");
+          }
+          const evalResult = await trainByModelType({
             modelType: command.modelType,
             classes: imageDataset?.classes ?? [],
             tabularDataset,
+            config: {
+              trainSplit: command.trainSplit,
+              valSplit: command.valSplit,
+              testSplit: command.testSplit,
+              epochs: command.epochs,
+              learningRate: command.learningRate
+            },
             onProgress: (progress, message) => {
               state.setTraining({ progress, message });
             }
           });
+          state.setEvaluation(evalResult);
           state.setTraining({ isTraining: false, progress: 100, message: "Обучение завершено." });
+        }
+        if (command.type === "set_input") {
+          state.setWorkspaceTabularInput(command.value);
         }
         if (command.type === "predict") {
           state.setLastModelType(command.modelType);
@@ -216,7 +281,7 @@ export function BlocklyWorkspace() {
             modelType: command.modelType,
             predictionFile: imageInput?.file ?? null,
             labelsMap,
-            tabularInput
+            tabularInput: tabularInput || state.workspaceTabularInput
           });
           state.setPrediction(result);
         }
@@ -242,6 +307,7 @@ export function BlocklyWorkspace() {
         contents: [
           { kind: "block", type: "noda_start" },
           { kind: "block", type: "noda_train_model" },
+          { kind: "block", type: "noda_set_predict_input" },
           { kind: "block", type: "noda_predict_class" }
         ]
       },
@@ -256,7 +322,8 @@ export function BlocklyWorkspace() {
               blocks: [
                 { type: "noda_start", x: 20, y: 20 },
                 { type: "noda_train_model", x: 20, y: 100 },
-                { type: "noda_predict_class", x: 20, y: 180 }
+                { type: "noda_set_predict_input", x: 20, y: 180 },
+                { type: "noda_predict_class", x: 20, y: 260 }
               ]
             }
           };
@@ -290,9 +357,14 @@ export function BlocklyWorkspace() {
     };
     workspaceRef.current.addChangeListener(clickHandler);
     workspaceRef.current.addChangeListener(persistHandler);
+    const resizeHandler = () => {
+      Blockly.svgResize(workspaceRef.current!);
+    };
+    window.addEventListener("resize", resizeHandler);
     return () => {
       workspaceRef.current?.removeChangeListener(clickHandler);
       workspaceRef.current?.removeChangeListener(persistHandler);
+      window.removeEventListener("resize", resizeHandler);
       workspaceRef.current?.dispose();
       workspaceRef.current = null;
     };
@@ -328,6 +400,16 @@ export function BlocklyWorkspace() {
             showIcon
             message={`Результат: ${prediction.title}`}
             description={`Уверенность: ${(prediction.confidence * 100).toFixed(1)}%`}
+          />
+        ) : null}
+        {evaluation ? (
+          <Alert
+            type="warning"
+            showIcon
+            message="Оценка модели"
+            description={`${evaluation.summary}. ${Object.entries(evaluation.metrics)
+              .map(([key, value]) => `${key}: ${value.toFixed(4)}`)
+              .join(", ")}`}
           />
         ) : null}
       </Space>
