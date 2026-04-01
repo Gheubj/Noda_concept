@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { apiClient, setAccessToken } from "@/shared/api/client";
+import { apiClient, getApiBaseUrl, setAccessToken } from "@/shared/api/client";
 
 export type UserRole = "teacher" | "student";
 export type StudentMode = "school" | "direct";
@@ -29,10 +29,11 @@ interface SessionState {
   }) => Promise<void>;
   logout: () => Promise<void>;
   refreshMe: () => Promise<void>;
+  restoreSession: () => Promise<void>;
   setUser: (user: SessionUser | null) => void;
 }
 
-export const useSessionStore = create<SessionState>((set) => ({
+export const useSessionStore = create<SessionState>((set, get) => ({
   user: null,
   loading: false,
   setUser: (user) => set({ user }),
@@ -79,6 +80,27 @@ export const useSessionStore = create<SessionState>((set) => ({
     } catch {
       set({ user: null });
     }
+  },
+  restoreSession: async () => {
+    set({ loading: true });
+    try {
+      await get().refreshMe();
+      if (get().user) {
+        return;
+      }
+      const res = await fetch(`${getApiBaseUrl()}/api/auth/refresh`, {
+        method: "POST",
+        credentials: "include"
+      });
+      if (res.ok) {
+        const data = (await res.json()) as { accessToken?: string };
+        if (data.accessToken) {
+          setAccessToken(data.accessToken);
+          await get().refreshMe();
+        }
+      }
+    } finally {
+      set({ loading: false });
+    }
   }
 }));
-

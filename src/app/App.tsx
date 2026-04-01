@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import {
   Button,
-  Card,
   Drawer,
   Input,
   Layout,
@@ -13,18 +12,45 @@ import {
   Typography,
   message
 } from "antd";
+import { UserOutlined } from "@ant-design/icons";
+import { Link, Route, Routes } from "react-router-dom";
 import { BlocklyWorkspace } from "@/features/blockly/BlocklyWorkspace";
 import { DataLibrary } from "@/features/data/DataLibrary";
+import { AccountPage } from "@/app/AccountPage";
 import { useAppStore } from "@/store/useAppStore";
 import type { NodaProjectMeta } from "@/shared/types/project";
 import { loadProjectSmart, listProjects, saveProjectSmart } from "@/features/project/projectRepository";
 import { useSessionStore } from "@/store/useSessionStore";
-import { apiClient } from "@/shared/api/client";
 import { setAccessToken } from "@/shared/api/client";
 
 const { Header, Content } = Layout;
 const { Title, Paragraph } = Typography;
 const USER_ID_KEY = "noda_user_id";
+
+function WorkspaceHome() {
+  return (
+    <>
+      <Paragraph className="placeholder-text">
+        MVP Модуль A. Запуск только через блок Старт в Blockly.
+      </Paragraph>
+      <Tabs
+        defaultActiveKey="workspace"
+        items={[
+          {
+            key: "workspace",
+            label: "Workspace",
+            children: <BlocklyWorkspace />
+          },
+          {
+            key: "library",
+            label: "Библиотека",
+            children: <DataLibrary />
+          }
+        ]}
+      />
+    </>
+  );
+}
 
 export function App() {
   const [messageApi, contextHolder] = message.useMessage();
@@ -37,9 +63,6 @@ export function App() {
   const [role, setRole] = useState<"teacher" | "student">("student");
   const [studentMode, setStudentMode] = useState<"school" | "direct">("direct");
   const [displayName, setDisplayName] = useState("");
-  const [joinCode, setJoinCode] = useState("");
-  const [spriteCatalog, setSpriteCatalog] = useState<{ id: string; title: string }[]>([]);
-  const [selectedSpriteId, setSelectedSpriteId] = useState<string>("");
   const [projectTitle, setProjectTitle] = useState("");
   const [projectItems, setProjectItems] = useState<NodaProjectMeta[]>([]);
   const { getProjectSnapshot, loadProjectSnapshot, activeProject, setActiveProject } = useAppStore();
@@ -51,8 +74,19 @@ export function App() {
   };
 
   useEffect(() => {
+    void useSessionStore.getState().restoreSession();
+  }, []);
+
+  useEffect(() => {
     void refreshProjects(userId);
   }, [userId]);
+
+  useEffect(() => {
+    if (user?.id) {
+      setUserId(user.id);
+      localStorage.setItem(USER_ID_KEY, user.id);
+    }
+  }, [user]);
 
   useEffect(() => {
     const token = new URLSearchParams(window.location.search).get("access_token");
@@ -62,20 +96,6 @@ export function App() {
       window.history.replaceState({}, "", window.location.pathname);
     }
   }, [refreshMe]);
-
-  useEffect(() => {
-    if (user) {
-      void refreshProjects(user.id);
-      void (async () => {
-        try {
-          const result = await apiClient.get<{ packs: { id: string; title: string }[] }>("/api/sprites");
-          setSpriteCatalog(result.packs);
-        } catch {
-          setSpriteCatalog([]);
-        }
-      })();
-    }
-  }, [user]);
 
   const handleSave = async () => {
     const normalizedUserId = userId.trim();
@@ -138,32 +158,14 @@ export function App() {
     window.location.href = `${import.meta.env.VITE_API_BASE_URL ?? "http://localhost:3001"}/api/auth/yandex/start`;
   };
 
-  const handleJoinClassroom = async () => {
-    try {
-      await apiClient.post("/api/classrooms/join", { code: joinCode });
-      await refreshMe();
-      messageApi.success("Класс подключен");
-    } catch (error) {
-      messageApi.error(error instanceof Error ? error.message : "Не удалось подключиться");
-    }
-  };
-
-  const handleSpriteSave = async () => {
-    try {
-      await apiClient.post("/api/me/sprite", { spritePackId: selectedSpriteId || undefined });
-      await refreshMe();
-      messageApi.success("Персонаж обновлен");
-    } catch (error) {
-      messageApi.error(error instanceof Error ? error.message : "Ошибка сохранения персонажа");
-    }
-  };
-
   return (
     <Layout className="app-layout">
       {contextHolder}
       <Header className="app-header">
         <Title level={3} className="app-title">
-          Noda PoC - AI в браузере
+          <Link to="/" className="app-title-link">
+            Noda PoC - AI в браузере
+          </Link>
         </Title>
         <Space className="header-actions">
           {!user ? (
@@ -175,9 +177,9 @@ export function App() {
             </>
           ) : (
             <>
-              <Paragraph style={{ margin: 0 }}>
-                {user.role === "teacher" ? "Учитель" : "Ученик"}: {user.email}
-              </Paragraph>
+              <Link to="/account" aria-label="Личный кабинет">
+                <Button type="text" icon={<UserOutlined />} className="header-user-btn" />
+              </Link>
               <Button onClick={() => void logout()}>Выйти</Button>
             </>
           )}
@@ -203,55 +205,17 @@ export function App() {
           <Button onClick={() => setLibraryOpen(true)}>Библиотека проектов</Button>
         </Space>
       </Header>
-      <Content className="app-content">
-        {user ? (
-          <Card size="small" style={{ marginBottom: 12 }}>
-            <Space wrap>
-              <Paragraph style={{ margin: 0 }}>
-                Режим ученика: {user.studentMode === "school" ? "со школой" : "самостоятельный"}
-              </Paragraph>
-              {user.role === "student" && user.studentMode !== "school" ? (
-                <>
-                  <Input
-                    placeholder="Код класса"
-                    value={joinCode}
-                    onChange={(e) => setJoinCode(e.target.value)}
-                    style={{ width: 160 }}
-                  />
-                  <Button onClick={() => void handleJoinClassroom()}>Присоединиться</Button>
-                </>
-              ) : null}
-              <Select
-                style={{ minWidth: 220 }}
-                placeholder="Выбор спрайта"
-                value={selectedSpriteId || undefined}
-                onChange={(v) => setSelectedSpriteId(v)}
-                options={spriteCatalog.map((item) => ({ value: item.id, label: item.title }))}
-                allowClear
-              />
-              <Button onClick={() => void handleSpriteSave()}>Сохранить персонажа</Button>
-            </Space>
-          </Card>
-        ) : null}
-        <Paragraph className="placeholder-text">
-          MVP Модуль A. Запуск только через блок Старт в Blockly.
-        </Paragraph>
-        <Tabs
-          defaultActiveKey="workspace"
-          items={[
-            {
-              key: "workspace",
-              label: "Workspace",
-              children: <BlocklyWorkspace />
-            },
-            {
-              key: "library",
-              label: "Библиотека",
-              children: <DataLibrary />
-            }
-          ]}
+      <Routes>
+        <Route
+          path="/"
+          element={
+            <Content className="app-content">
+              <WorkspaceHome />
+            </Content>
+          }
         />
-      </Content>
+        <Route path="/account" element={<AccountPage />} />
+      </Routes>
       <Drawer
         title={`Проекты пользователя: ${userId || "-"}`}
         open={libraryOpen}

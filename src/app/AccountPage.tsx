@@ -1,0 +1,131 @@
+import { useEffect, useState } from "react";
+import { Button, Card, Input, Select, Space, Typography, message } from "antd";
+import { Link } from "react-router-dom";
+import { useSessionStore } from "@/store/useSessionStore";
+import { apiClient } from "@/shared/api/client";
+
+const { Title, Paragraph, Text } = Typography;
+
+export function AccountPage() {
+  const [messageApi, contextHolder] = message.useMessage();
+  const { user, refreshMe, logout } = useSessionStore();
+  const [joinCode, setJoinCode] = useState("");
+  const [spriteCatalog, setSpriteCatalog] = useState<{ id: string; title: string }[]>([]);
+  const [selectedSpriteId, setSelectedSpriteId] = useState<string>("");
+
+  useEffect(() => {
+    if (!user) {
+      return;
+    }
+    void (async () => {
+      try {
+        const result = await apiClient.get<{ packs: { id: string; title: string }[] }>("/api/sprites");
+        setSpriteCatalog(result.packs);
+      } catch {
+        setSpriteCatalog([]);
+      }
+    })();
+  }, [user]);
+
+  useEffect(() => {
+    const packId = user?.spriteSelection?.spritePack?.id;
+    setSelectedSpriteId(packId ?? "");
+  }, [user]);
+
+  if (!user) {
+    return (
+      <div className="app-content account-page">
+        <Card>
+          <Paragraph>Войдите в аккаунт, чтобы открыть личный кабинет.</Paragraph>
+          <Link to="/">
+            <Button type="primary">На главную</Button>
+          </Link>
+        </Card>
+      </div>
+    );
+  }
+
+  const handleJoinClassroom = async () => {
+    try {
+      await apiClient.post("/api/classrooms/join", { code: joinCode });
+      await refreshMe();
+      messageApi.success("Класс подключен");
+    } catch (e) {
+      messageApi.error(e instanceof Error ? e.message : "Не удалось подключиться");
+    }
+  };
+
+  const handleSpriteSave = async () => {
+    try {
+      await apiClient.post("/api/me/sprite", { spritePackId: selectedSpriteId || undefined });
+      await refreshMe();
+      messageApi.success("Сохранено");
+    } catch (e) {
+      messageApi.error(e instanceof Error ? e.message : "Ошибка сохранения");
+    }
+  };
+
+  return (
+    <div className="app-content account-page">
+      {contextHolder}
+      <Space direction="vertical" size="large" style={{ width: "100%", maxWidth: 560 }}>
+        <Link to="/">
+          <Button type="link">← Назад в workspace</Button>
+        </Link>
+        <Title level={4} style={{ margin: 0 }}>
+          Личный кабинет
+        </Title>
+        <Card title="Профиль">
+          <Space direction="vertical" style={{ width: "100%" }}>
+            <Text>
+              Роль: {user.role === "teacher" ? "Учитель" : "Ученик"}
+              {user.displayName ? ` · ${user.displayName}` : ""}
+            </Text>
+            <Text type="secondary">{user.email}</Text>
+            {user.role === "student" ? (
+              <Text>
+                Режим: {user.studentMode === "school" ? "со школой (по коду класса)" : "самостоятельное обучение"}
+              </Text>
+            ) : null}
+            <Button danger onClick={() => void logout()}>
+              Выйти
+            </Button>
+          </Space>
+        </Card>
+        {user.role === "student" && user.studentMode === "school" ? (
+          <Card title="Класс">
+            <Space wrap>
+              <Input
+                placeholder="Код класса"
+                value={joinCode}
+                onChange={(e) => setJoinCode(e.target.value)}
+                style={{ width: 200 }}
+              />
+              <Button type="primary" onClick={() => void handleJoinClassroom()}>
+                Присоединиться
+              </Button>
+            </Space>
+          </Card>
+        ) : null}
+        <Card title="Персонаж и спрайт">
+          <Space direction="vertical" style={{ width: "100%" }}>
+            <Select
+              style={{ width: "100%", maxWidth: 360 }}
+              placeholder="Набор спрайта"
+              value={selectedSpriteId || undefined}
+              onChange={(v) => setSelectedSpriteId(v)}
+              options={spriteCatalog.map((item) => ({ value: item.id, label: item.title }))}
+              allowClear
+            />
+            <Button type="primary" onClick={() => void handleSpriteSave()}>
+              Сохранить
+            </Button>
+            {user.spriteSelection?.spritePack?.title ? (
+              <Text type="secondary">Сейчас: {user.spriteSelection.spritePack.title}</Text>
+            ) : null}
+          </Space>
+        </Card>
+      </Space>
+    </div>
+  );
+}

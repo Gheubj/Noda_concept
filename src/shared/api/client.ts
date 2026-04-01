@@ -1,9 +1,29 @@
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:3001";
 
+const ACCESS_STORAGE_KEY = "noda_access_token";
+
 let accessToken = "";
+
+if (typeof sessionStorage !== "undefined") {
+  const stored = sessionStorage.getItem(ACCESS_STORAGE_KEY);
+  if (stored) {
+    accessToken = stored;
+  }
+}
+
+export function getApiBaseUrl() {
+  return API_BASE;
+}
 
 export function setAccessToken(token: string) {
   accessToken = token;
+  if (typeof sessionStorage !== "undefined") {
+    if (token) {
+      sessionStorage.setItem(ACCESS_STORAGE_KEY, token);
+    } else {
+      sessionStorage.removeItem(ACCESS_STORAGE_KEY);
+    }
+  }
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
@@ -31,6 +51,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
         return request<T>(path, init);
       }
     }
+    setAccessToken("");
   }
   if (!response.ok) {
     const text = await response.text();
@@ -46,4 +67,3 @@ export const apiClient = {
   put: <T>(path: string, body?: unknown) =>
     request<T>(path, { method: "PUT", body: body ? JSON.stringify(body) : undefined })
 };
-

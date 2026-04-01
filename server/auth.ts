@@ -42,8 +42,8 @@ export async function persistRefreshToken(userId: string, refreshToken: string) 
 export function setRefreshCookie(res: Response, refreshToken: string) {
   res.cookie("noda_refresh", refreshToken, {
     httpOnly: true,
-    sameSite: "lax",
-    secure: false,
+    sameSite: config.cookieSameSite,
+    secure: config.cookieSecure,
     path: "/api/auth",
     maxAge: config.refreshTokenTtlSec * 1000
   });
@@ -51,7 +51,9 @@ export function setRefreshCookie(res: Response, refreshToken: string) {
 
 export function clearRefreshCookie(res: Response) {
   res.clearCookie("noda_refresh", {
-    path: "/api/auth"
+    path: "/api/auth",
+    sameSite: config.cookieSameSite,
+    secure: config.cookieSecure
   });
 }
 
