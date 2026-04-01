@@ -25,7 +25,8 @@ import { setAccessToken } from "@/shared/api/client";
 
 const { Header, Content } = Layout;
 const { Title, Paragraph } = Typography;
-const USER_ID_KEY = "noda_user_id";
+const GUEST_USER_ID_KEY = "noda_guest_user_id";
+const DEFAULT_PROJECT_TITLE = "Новый проект";
 
 function WorkspaceHome() {
   return (
@@ -54,7 +55,15 @@ function WorkspaceHome() {
 
 export function App() {
   const [messageApi, contextHolder] = message.useMessage();
-  const [userId, setUserId] = useState(() => localStorage.getItem(USER_ID_KEY) ?? "student-1");
+  const [guestUserId] = useState(() => {
+    const stored = localStorage.getItem(GUEST_USER_ID_KEY);
+    if (stored) {
+      return stored;
+    }
+    const next = `guest_${Math.random().toString(36).slice(2, 8)}`;
+    localStorage.setItem(GUEST_USER_ID_KEY, next);
+    return next;
+  });
   const [libraryOpen, setLibraryOpen] = useState(false);
   const [authOpen, setAuthOpen] = useState(false);
   const [isRegister, setIsRegister] = useState(false);
@@ -62,11 +71,14 @@ export function App() {
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<"teacher" | "student">("student");
   const [studentMode, setStudentMode] = useState<"school" | "direct">("direct");
-  const [displayName, setDisplayName] = useState("");
-  const [projectTitle, setProjectTitle] = useState("");
+  const [nickname, setNickname] = useState("");
+  const [saveOpen, setSaveOpen] = useState(false);
+  const [saveTitle, setSaveTitle] = useState(DEFAULT_PROJECT_TITLE);
   const [projectItems, setProjectItems] = useState<NodaProjectMeta[]>([]);
   const { getProjectSnapshot, loadProjectSnapshot, activeProject, setActiveProject } = useAppStore();
   const { user, register, login, refreshMe } = useSessionStore();
+  const resolvedUserId = user?.id ?? guestUserId;
+  const currentProjectTitle = activeProject?.title ?? DEFAULT_PROJECT_TITLE;
 
   const refreshProjects = async (nextUserId: string) => {
     const list = await listProjects(nextUserId.trim());
@@ -78,15 +90,8 @@ export function App() {
   }, []);
 
   useEffect(() => {
-    void refreshProjects(userId);
-  }, [userId]);
-
-  useEffect(() => {
-    if (user?.id) {
-      setUserId(user.id);
-      localStorage.setItem(USER_ID_KEY, user.id);
-    }
-  }, [user]);
+    void refreshProjects(resolvedUserId);
+  }, [resolvedUserId]);
 
   useEffect(() => {
     const token = new URLSearchParams(window.location.search).get("access_token");
@@ -98,10 +103,10 @@ export function App() {
   }, [refreshMe]);
 
   const handleSave = async () => {
-    const normalizedUserId = userId.trim();
-    const normalizedTitle = projectTitle.trim();
-    if (!normalizedUserId || !normalizedTitle) {
-      messageApi.error("Укажи user id и название проекта.");
+    const normalizedUserId = resolvedUserId.trim();
+    const normalizedTitle = saveTitle.trim();
+    if (!normalizedTitle) {
+      messageApi.error("Укажи название проекта.");
       return;
     }
     const now = new Date().toISOString();
@@ -124,6 +129,7 @@ export function App() {
       updatedAt: now
     });
     await refreshProjects(normalizedUserId);
+    setSaveOpen(false);
     messageApi.success("Проект сохранен");
   };
 
@@ -135,7 +141,6 @@ export function App() {
     }
     setActiveProject(project.meta);
     loadProjectSnapshot(project.snapshot);
-    setProjectTitle(project.meta.title);
     setLibraryOpen(false);
     messageApi.success(`Загружен проект: ${project.meta.title}`);
   };
@@ -143,7 +148,7 @@ export function App() {
   const handleAuth = async () => {
     try {
       if (isRegister) {
-        await register({ email, password, role, studentMode, displayName });
+        await register({ email, password, nickname, role, studentMode });
       } else {
         await login(email, password);
       }
@@ -176,23 +181,19 @@ export function App() {
               <Button onClick={handleYandexLogin}>Войти через Яндекс</Button>
             </>
           ) : null}
-          <Input
-            value={userId}
-            onChange={(event) => {
-              const nextValue = event.target.value;
-              setUserId(nextValue);
-              localStorage.setItem(USER_ID_KEY, nextValue);
+          <Button type="default" className="header-input">
+            {user ? `Ник: ${user.nickname}` : "Гость"}
+          </Button>
+          <Button type="default" className="header-input">
+            {currentProjectTitle}
+          </Button>
+          <Button
+            type="primary"
+            onClick={() => {
+              setSaveTitle(currentProjectTitle);
+              setSaveOpen(true);
             }}
-            placeholder="user id"
-            className="header-input"
-          />
-          <Input
-            value={projectTitle}
-            onChange={(event) => setProjectTitle(event.target.value)}
-            placeholder="Название проекта"
-            className="header-input"
-          />
-          <Button type="primary" onClick={() => void handleSave()}>
+          >
             Сохранить проект
           </Button>
           <Button onClick={() => setLibraryOpen(true)}>Библиотека проектов</Button>
@@ -220,7 +221,7 @@ export function App() {
         <Route path="/account" element={<AccountPage />} />
       </Routes>
       <Drawer
-        title={`Проекты пользователя: ${userId || "-"}`}
+        title={`Проекты: ${user?.nickname ?? "Гость"}`}
         open={libraryOpen}
         width={460}
         onClose={() => setLibraryOpen(false)}
@@ -261,9 +262,9 @@ export function App() {
           {isRegister ? (
             <>
               <Input
-                value={displayName}
-                onChange={(e) => setDisplayName(e.target.value)}
-                placeholder="Имя"
+                value={nickname}
+                onChange={(e) => setNickname(e.target.value)}
+                placeholder="Ник (уникальный)"
               />
               <Select
                 value={role}
@@ -287,6 +288,17 @@ export function App() {
           <Button type="link" onClick={() => setIsRegister((v) => !v)}>
             {isRegister ? "Уже есть аккаунт? Войти" : "Нет аккаунта? Зарегистрироваться"}
           </Button>
+        </Space>
+      </Modal>
+      <Modal
+        open={saveOpen}
+        title="Сохранить проект"
+        okText="Сохранить"
+        onOk={() => void handleSave()}
+        onCancel={() => setSaveOpen(false)}
+      >
+        <Space direction="vertical" style={{ width: "100%" }}>
+          <Input value={saveTitle} onChange={(e) => setSaveTitle(e.target.value)} placeholder="Название проекта" />
         </Space>
       </Modal>
     </Layout>

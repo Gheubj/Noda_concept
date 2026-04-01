@@ -7,9 +7,9 @@ export type StudentMode = "school" | "direct";
 export interface SessionUser {
   id: string;
   email: string;
+  nickname: string;
   role: UserRole;
   studentMode: StudentMode;
-  displayName?: string | null;
   spriteSelection?: {
     character?: { id: string; title: string } | null;
     spritePack?: { id: string; title: string } | null;
@@ -23,9 +23,9 @@ interface SessionState {
   register: (args: {
     email: string;
     password: string;
+    nickname: string;
     role: UserRole;
     studentMode: StudentMode;
-    displayName?: string;
   }) => Promise<void>;
   logout: () => Promise<void>;
   refreshMe: () => Promise<void>;
@@ -51,15 +51,15 @@ export const useSessionStore = create<SessionState>((set, get) => ({
       throw error;
     }
   },
-  register: async ({ email, password, role, studentMode, displayName }) => {
+  register: async ({ email, password, nickname, role, studentMode }) => {
     set({ loading: true });
     try {
       const data = await apiClient.post<{ accessToken: string; user: SessionUser }>("/api/auth/register", {
         email,
         password,
+        nickname,
         role,
-        studentMode,
-        displayName
+        studentMode
       });
       setAccessToken(data.accessToken);
       set({ user: data.user, loading: false });

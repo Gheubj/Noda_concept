@@ -44,8 +44,13 @@ app.post("/api/auth/register", authLimiter, async (req, res) => {
     .object({
       email: z.string().email(),
       password: z.string().min(8),
+      nickname: z
+        .string()
+        .trim()
+        .min(3)
+        .max(32)
+        .regex(/^[a-zA-Z0-9_а-яА-Я-]+$/),
       role: z.enum(["teacher", "student"]).default("student"),
-      displayName: z.string().trim().min(1).optional(),
       studentMode: z.enum(["school", "direct"]).default("direct")
     })
     .safeParse(req.body);
@@ -53,20 +58,25 @@ app.post("/api/auth/register", authLimiter, async (req, res) => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
-  const { email, password, role, displayName, studentMode } = parsed.data;
+  const { email, password, nickname, role, studentMode } = parsed.data;
   const exists = await prisma.user.findUnique({ where: { email } });
   if (exists) {
     res.status(409).json({ error: "Email already exists" });
+    return;
+  }
+  const nickTaken = await prisma.user.findUnique({ where: { nickname } });
+  if (nickTaken) {
+    res.status(409).json({ error: "Nickname already exists" });
     return;
   }
   const passwordHash = await hashPassword(password);
   const user = await prisma.user.create({
     data: {
       email,
+      nickname,
       passwordHash,
       provider: "email",
       role,
-      displayName,
       studentMode
     }
   });
@@ -80,9 +90,9 @@ app.post("/api/auth/register", authLimiter, async (req, res) => {
     user: {
       id: user.id,
       email: user.email,
+      nickname: user.nickname,
       role: user.role,
-      studentMode: user.studentMode,
-      displayName: user.displayName
+      studentMode: user.studentMode
     }
   });
 });
@@ -118,9 +128,9 @@ app.post("/api/auth/login", authLimiter, async (req, res) => {
     user: {
       id: user.id,
       email: user.email,
+      nickname: user.nickname,
       role: user.role,
-      studentMode: user.studentMode,
-      displayName: user.displayName
+      studentMode: user.studentMode
     }
   });
 });
@@ -172,6 +182,27 @@ app.get("/api/auth/yandex/callback", async (req, res) => {
     return;
   }
   try {
+    const makeSafeNick = (raw: string) =>
+      raw
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9а-я_-]/gi, "_")
+        .replace(/_+/g, "_")
+        .replace(/^_+|_+$/g, "")
+        .slice(0, 24);
+    const pickUniqueNick = async (baseRaw: string, fallback: string) => {
+      let base = makeSafeNick(baseRaw) || makeSafeNick(fallback) || `user_${Date.now().toString(36)}`;
+      if (base.length < 3) {
+        base = `${base}_noda`;
+      }
+      let candidate = base;
+      let idx = 1;
+      while (await prisma.user.findUnique({ where: { nickname: candidate } })) {
+        candidate = `${base}_${idx}`;
+        idx += 1;
+      }
+      return candidate;
+    };
     const tokenResp = await fetch("https://oauth.yandex.ru/token", {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -198,14 +229,15 @@ app.get("/api/auth/yandex/callback", async (req, res) => {
     const email = info.default_email ?? `${info.id}@yandex.local`;
     let user = await prisma.user.findUnique({ where: { email } });
     if (!user) {
+      const nickname = await pickUniqueNick(info.display_name ?? info.real_name ?? email.split("@")[0], info.id);
       user = await prisma.user.create({
         data: {
           email,
+          nickname,
           provider: "yandex",
           providerUserId: info.id,
           role: "student",
-          studentMode: "direct",
-          displayName: info.real_name ?? info.display_name ?? email
+          studentMode: "direct"
         }
       });
     }
@@ -237,9 +269,9 @@ app.get("/api/me", authRequired, async (req: AuthenticatedRequest, res) => {
   res.json({
     id: user.id,
     email: user.email,
+    nickname: user.nickname,
     role: user.role,
     studentMode: user.studentMode,
-    displayName: user.displayName,
     schoolsOwned: user.schoolsOwned,
     enrollments: user.enrollments.map((e: { id: string; classroomId: string; classroom: { title: string } }) => ({
       id: e.id,
@@ -248,6 +280,41 @@ app.get("/api/me", authRequired, async (req: AuthenticatedRequest, res) => {
     })),
     spriteSelection: user.spriteSelection
   });
+});
+
+app.patch("/api/me/nickname", authRequired, async (req: AuthenticatedRequest, res) => {
+  const parsed = z
+    .object({
+      nickname: z
+        .string()
+        .trim()
+        .min(3)
+        .max(32)
+        .regex(/^[a-zA-Z0-9_а-яА-Я-]+$/)
+    })
+    .safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+  const userId = req.session!.sub;
+  const current = await prisma.user.findUnique({ where: { id: userId } });
+  if (!current) {
+    res.status(404).json({ error: "User not found" });
+    return;
+  }
+  if (current.nickname !== parsed.data.nickname) {
+    const duplicate = await prisma.user.findUnique({ where: { nickname: parsed.data.nickname } });
+    if (duplicate) {
+      res.status(409).json({ error: "Nickname already exists" });
+      return;
+    }
+  }
+  const user = await prisma.user.update({
+    where: { id: userId },
+    data: { nickname: parsed.data.nickname }
+  });
+  res.json({ id: user.id, nickname: user.nickname });
 });
 
 app.post("/api/schools", authRequired, roleGuard(["teacher"]), async (req: AuthenticatedRequest, res) => {

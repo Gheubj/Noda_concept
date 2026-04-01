@@ -12,6 +12,7 @@ export function AccountPage() {
   const [joinCode, setJoinCode] = useState("");
   const [spriteCatalog, setSpriteCatalog] = useState<{ id: string; title: string }[]>([]);
   const [selectedSpriteId, setSelectedSpriteId] = useState<string>("");
+  const [nickname, setNickname] = useState("");
 
   useEffect(() => {
     if (!user) {
@@ -30,6 +31,7 @@ export function AccountPage() {
   useEffect(() => {
     const packId = user?.spriteSelection?.spritePack?.id;
     setSelectedSpriteId(packId ?? "");
+    setNickname(user?.nickname ?? "");
   }, [user]);
 
   if (!user) {
@@ -65,6 +67,16 @@ export function AccountPage() {
     }
   };
 
+  const handleNicknameSave = async () => {
+    try {
+      await apiClient.patch("/api/me/nickname", { nickname });
+      await refreshMe();
+      messageApi.success("Ник обновлен");
+    } catch (e) {
+      messageApi.error(e instanceof Error ? e.message : "Ошибка сохранения ника");
+    }
+  };
+
   return (
     <div className="app-content account-page">
       {contextHolder}
@@ -79,9 +91,15 @@ export function AccountPage() {
           <Space direction="vertical" style={{ width: "100%" }}>
             <Text>
               Роль: {user.role === "teacher" ? "Учитель" : "Ученик"}
-              {user.displayName ? ` · ${user.displayName}` : ""}
+              {user.nickname ? ` · ${user.nickname}` : ""}
             </Text>
             <Text type="secondary">{user.email}</Text>
+            <Space.Compact style={{ width: "100%", maxWidth: 360 }}>
+              <Input value={nickname} onChange={(e) => setNickname(e.target.value)} placeholder="Ник" />
+              <Button type="primary" onClick={() => void handleNicknameSave()}>
+                Сменить ник
+              </Button>
+            </Space.Compact>
             {user.role === "student" ? (
               <Text>
                 Режим: {user.studentMode === "school" ? "со школой (по коду класса)" : "самостоятельное обучение"}
