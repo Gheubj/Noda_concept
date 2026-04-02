@@ -289,3 +289,41 @@ body,
     width: 100% !important;
   }
 }
+
+/* Телефоны: полноэкранное сообщение (основной UI скрыт NarrowScreenGate при width < 768px) */
+.narrow-viewport-block {
+  position: fixed;
+  inset: 0;
+  z-index: 100000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: linear-gradient(160deg, #0d3b66 0%, #1677ff 45%, #69b1ff 100%);
+  color: #fff;
+  text-align: center;
+  overflow: auto;
+}
+
+.narrow-viewport-block__inner {
+  max-width: 400px;
+}
+
+.narrow-viewport-block__title.ant-typography {
+  color: #fff !important;
+  margin-bottom: 16px !important;
+}
+
+.narrow-viewport-block__text,
+.narrow-viewport-block__hint {
+  color: rgba(255, 255, 255, 0.95);
+  font-size: 1rem;
+  line-height: 1.5;
+  margin-bottom: 12px !important;
+}
+
+.narrow-viewport-block__hint {
+  color: rgba(255, 255, 255, 0.75);
+  font-size: 0.9rem;
+  margin-bottom: 0 !important;
+}
