@@ -3,6 +3,7 @@ import express from "express";
 import rateLimit from "express-rate-limit";
 import cookieParser from "cookie-parser";
 import type { Request, Response } from "express";
+import { randomBytes } from "crypto";
 import { z } from "zod";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "./db.js";
@@ -11,6 +12,7 @@ import {
   authRequired,
   clearRefreshCookie,
   hashPassword,
+  hashToken,
   persistRefreshToken,
   randomJoinCode,
   roleGuard,
@@ -21,6 +23,7 @@ import {
   verifyPassword,
   type AuthenticatedRequest
 } from "./auth.js";
+import { sendPasswordResetLink, sendRegistrationCode } from "./email.js";
 
 const app = express();
 
@@ -35,8 +38,54 @@ const authLimiter = rateLimit({
   legacyHeaders: false
 });
 
+const registerCodeLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 3,
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
+const forgotPasswordLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 5,
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
 app.get("/api/health", (_req: Request, res: Response) => {
   res.json({ ok: true, service: "noda-poc-server" });
+});
+
+app.post("/api/auth/register/request-code", registerCodeLimiter, async (req, res) => {
+  const parsed = z.object({ email: z.string().email() }).safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+  const email = parsed.data.email.toLowerCase();
+  const exists = await prisma.user.findUnique({ where: { email } });
+  if (exists) {
+    res.status(409).json({ error: "Этот email уже зарегистрирован" });
+    return;
+  }
+  const code = String(Math.floor(100000 + Math.random() * 900000));
+  const codeHash = await hashPassword(code);
+  const expiresAt = new Date(Date.now() + config.registrationOtpTtlMin * 60 * 1000);
+  await prisma.registrationOtp.upsert({
+    where: { email },
+    create: { email, codeHash, expiresAt },
+    update: { codeHash, expiresAt, attempts: 0 }
+  });
+  try {
+    await sendRegistrationCode(email, code);
+  } catch (err) {
+    await prisma.registrationOtp.deleteMany({ where: { email } });
+    res.status(503).json({
+      error: err instanceof Error ? err.message : "Не удалось отправить письмо с кодом"
+    });
+    return;
+  }
+  res.json({ ok: true, message: "Код отправлен на email" });
 });
 
 app.post("/api/auth/register", authLimiter, async (req, res) => {
@@ -44,6 +93,7 @@ app.post("/api/auth/register", authLimiter, async (req, res) => {
     .object({
       email: z.string().email(),
       password: z.string().min(8),
+      verificationCode: z.string().regex(/^\d{6}$/, "Нужен 6-значный код из письма"),
       nickname: z
         .string()
         .trim()
@@ -58,7 +108,29 @@ app.post("/api/auth/register", authLimiter, async (req, res) => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
-  const { email, password, nickname, role, studentMode } = parsed.data;
+  const { email: rawEmail, password, nickname, role, studentMode, verificationCode } = parsed.data;
+  const email = rawEmail.toLowerCase();
+  const otp = await prisma.registrationOtp.findUnique({ where: { email } });
+  if (!otp || otp.expiresAt.getTime() < Date.now()) {
+    res.status(400).json({ error: "Код истёк или не запрошен. Запросите код снова." });
+    return;
+  }
+  if (otp.attempts >= 5) {
+    await prisma.registrationOtp.delete({ where: { email } });
+    res.status(400).json({ error: "Слишком много попыток. Запросите новый код." });
+    return;
+  }
+  const codeOk = await verifyPassword(verificationCode, otp.codeHash);
+  if (!codeOk) {
+    await prisma.registrationOtp.update({
+      where: { email },
+      data: { attempts: { increment: 1 } }
+    });
+    res.status(400).json({ error: "Неверный код" });
+    return;
+  }
+  await prisma.registrationOtp.delete({ where: { email } });
+
   const exists = await prisma.user.findUnique({ where: { email } });
   if (exists) {
     res.status(409).json({ error: "Email already exists" });
@@ -77,7 +149,8 @@ app.post("/api/auth/register", authLimiter, async (req, res) => {
       passwordHash,
       provider: "email",
       role,
-      studentMode
+      studentMode,
+      emailVerifiedAt: new Date()
     }
   });
   const payload = { sub: user.id, role: user.role };
@@ -95,6 +168,65 @@ app.post("/api/auth/register", authLimiter, async (req, res) => {
       studentMode: user.studentMode
     }
   });
+});
+
+app.post("/api/auth/forgot-password", forgotPasswordLimiter, async (req, res) => {
+  const parsed = z.object({ email: z.string().email() }).safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+  const email = parsed.data.email.toLowerCase();
+  res.json({
+    ok: true,
+    message: "Если аккаунт с таким email есть, мы отправили ссылку для сброса пароля."
+  });
+  void (async () => {
+    try {
+      const user = await prisma.user.findUnique({ where: { email } });
+      if (!user?.passwordHash || user.provider !== "email") {
+        return;
+      }
+      await prisma.passwordResetToken.deleteMany({ where: { userId: user.id } });
+      const raw = randomBytes(32).toString("hex");
+      const tokenHash = hashToken(raw);
+      const expiresAt = new Date(Date.now() + config.passwordResetTtlMin * 60 * 1000);
+      await prisma.passwordResetToken.create({
+        data: { userId: user.id, tokenHash, expiresAt }
+      });
+      const url = `${config.appBaseUrl.replace(/\/$/, "")}/reset-password?token=${encodeURIComponent(raw)}`;
+      await sendPasswordResetLink(user.email, url);
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error("forgot-password send:", err);
+    }
+  })();
+});
+
+app.post("/api/auth/reset-password", authLimiter, async (req, res) => {
+  const parsed = z
+    .object({
+      token: z.string().min(32),
+      newPassword: z.string().min(8)
+    })
+    .safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+  const tokenHash = hashToken(parsed.data.token);
+  const row = await prisma.passwordResetToken.findUnique({ where: { tokenHash } });
+  if (!row || row.expiresAt.getTime() < Date.now()) {
+    res.status(400).json({ error: "Ссылка недействительна или истекла" });
+    return;
+  }
+  const passwordHash = await hashPassword(parsed.data.newPassword);
+  await prisma.$transaction([
+    prisma.user.update({ where: { id: row.userId }, data: { passwordHash } }),
+    prisma.passwordResetToken.delete({ where: { id: row.id } }),
+    prisma.refreshToken.deleteMany({ where: { userId: row.userId } })
+  ]);
+  res.json({ ok: true });
 });
 
 app.post("/api/auth/login", authLimiter, async (req, res) => {

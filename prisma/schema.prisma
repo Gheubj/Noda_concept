@@ -33,6 +33,7 @@ model User {
   studentMode    StudentMode @default(direct)
   avatarUrl      String?
   lastActiveAt   DateTime?
+  emailVerifiedAt DateTime?
   createdAt      DateTime    @default(now())
   updatedAt      DateTime    @updatedAt
 
@@ -47,6 +48,28 @@ model User {
   analyticsEvents   AnalyticsEvent[]
   spriteSelection   UserSpriteSelection?
   refreshTokens     RefreshToken[]
+  passwordResetTokens PasswordResetToken[]
+}
+
+// Одноразовый код подтверждения email перед регистрацией
+model RegistrationOtp {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  codeHash  String
+  expiresAt DateTime
+  attempts  Int      @default(0)
+  createdAt DateTime @default(now())
+}
+
+// Токен сброса пароля (в БД только хэш)
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  userId    String
+  tokenHash String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model RefreshToken {

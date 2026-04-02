@@ -20,13 +20,17 @@ interface SessionState {
   user: SessionUser | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
+  requestRegistrationCode: (email: string) => Promise<void>;
   register: (args: {
     email: string;
     password: string;
+    verificationCode: string;
     nickname: string;
     role: UserRole;
     studentMode: StudentMode;
   }) => Promise<void>;
+  requestForgotPassword: (email: string) => Promise<void>;
+  resetPassword: (token: string, newPassword: string) => Promise<void>;
   logout: () => Promise<void>;
   refreshMe: () => Promise<void>;
   restoreSession: () => Promise<void>;
@@ -51,12 +55,16 @@ export const useSessionStore = create<SessionState>((set, get) => ({
       throw error;
     }
   },
-  register: async ({ email, password, nickname, role, studentMode }) => {
+  requestRegistrationCode: async (email) => {
+    await apiClient.post<{ ok: boolean; message?: string }>("/api/auth/register/request-code", { email });
+  },
+  register: async ({ email, password, verificationCode, nickname, role, studentMode }) => {
     set({ loading: true });
     try {
       const data = await apiClient.post<{ accessToken: string; user: SessionUser }>("/api/auth/register", {
         email,
         password,
+        verificationCode,
         nickname,
         role,
         studentMode
@@ -67,6 +75,12 @@ export const useSessionStore = create<SessionState>((set, get) => ({
       set({ loading: false });
       throw error;
     }
+  },
+  requestForgotPassword: async (email) => {
+    await apiClient.post<{ ok: boolean; message: string }>("/api/auth/forgot-password", { email });
+  },
+  resetPassword: async (token, newPassword) => {
+    await apiClient.post<{ ok: boolean }>("/api/auth/reset-password", { token, newPassword });
   },
   logout: async () => {
     await apiClient.post<{ ok: boolean }>("/api/auth/logout");

@@ -9,6 +9,9 @@ const cookieSameSite =
     ? cookieSameSiteRaw
     : "lax";
 
+const emailProviderRaw = (process.env.EMAIL_PROVIDER ?? "resend").toLowerCase();
+const emailProvider = emailProviderRaw === "smtp" ? "smtp" : "resend";
+
 export const config = {
   port: Number(process.env.PORT ?? 3001),
   jwtAccessSecret: process.env.JWT_ACCESS_SECRET ?? "dev_access_secret_change_me",
@@ -21,5 +24,17 @@ export const config = {
   appBaseUrl: process.env.APP_BASE_URL ?? "http://localhost:5173",
   /** Cross-origin SPA + API: SameSite=None и Secure нужны, чтобы refresh-cookie уходил с fetch. */
   cookieSecure: process.env.COOKIE_SECURE === "true" || cookieSameSite === "none" || isProd,
-  cookieSameSite: cookieSameSite as "lax" | "strict" | "none"
+  cookieSameSite: cookieSameSite as "lax" | "strict" | "none",
+
+  emailProvider,
+  resendApiKey: process.env.RESEND_API_KEY ?? "",
+  emailFrom: process.env.EMAIL_FROM ?? "Noda <onboarding@resend.dev>",
+  smtpHost: process.env.SMTP_HOST ?? "",
+  smtpPort: Number(process.env.SMTP_PORT ?? 587),
+  smtpUser: process.env.SMTP_USER ?? "",
+  smtpPass: process.env.SMTP_PASS ?? "",
+  smtpSecure: process.env.SMTP_SECURE === "true",
+
+  registrationOtpTtlMin: Number(process.env.REGISTRATION_OTP_TTL_MIN ?? 15),
+  passwordResetTtlMin: Number(process.env.PASSWORD_RESET_TTL_MIN ?? 60)
 };

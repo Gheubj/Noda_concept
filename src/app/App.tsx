@@ -17,6 +17,7 @@ import { Link, Route, Routes } from "react-router-dom";
 import { BlocklyWorkspace } from "@/features/blockly/BlocklyWorkspace";
 import { DataLibrary } from "@/features/data/DataLibrary";
 import { AccountPage } from "@/app/AccountPage";
+import { ResetPasswordPage } from "@/app/ResetPasswordPage";
 import { useAppStore } from "@/store/useAppStore";
 import type { NodaProjectMeta } from "@/shared/types/project";
 import { loadProjectSmart, listProjects, saveProjectSmart } from "@/features/project/projectRepository";
@@ -72,11 +73,14 @@ export function App() {
   const [role, setRole] = useState<"teacher" | "student">("student");
   const [studentMode, setStudentMode] = useState<"school" | "direct">("direct");
   const [nickname, setNickname] = useState("");
+  const [verificationCode, setVerificationCode] = useState("");
+  const [forgotOpen, setForgotOpen] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState("");
   const [saveOpen, setSaveOpen] = useState(false);
   const [saveTitle, setSaveTitle] = useState(DEFAULT_PROJECT_TITLE);
   const [projectItems, setProjectItems] = useState<NodaProjectMeta[]>([]);
   const { getProjectSnapshot, loadProjectSnapshot, activeProject, setActiveProject } = useAppStore();
-  const { user, register, login, refreshMe } = useSessionStore();
+  const { user, register, login, refreshMe, requestRegistrationCode, requestForgotPassword } = useSessionStore();
   const resolvedUserId = user?.id ?? guestUserId;
   const currentProjectTitle = activeProject?.title ?? DEFAULT_PROJECT_TITLE;
 
@@ -145,17 +149,54 @@ export function App() {
     messageApi.success(`Загружен проект: ${project.meta.title}`);
   };
 
+  const handleSendRegistrationCode = async () => {
+    const normalized = email.trim();
+    if (!normalized) {
+      messageApi.error("Укажи email");
+      return;
+    }
+    try {
+      await requestRegistrationCode(normalized);
+      messageApi.success("Код отправлен на почту");
+    } catch (error) {
+      messageApi.error(error instanceof Error ? error.message : "Не удалось отправить код");
+    }
+  };
+
   const handleAuth = async () => {
     try {
       if (isRegister) {
-        await register({ email, password, nickname, role, studentMode });
+        await register({
+          email,
+          password,
+          verificationCode: verificationCode.trim(),
+          nickname,
+          role,
+          studentMode
+        });
       } else {
         await login(email, password);
       }
       setAuthOpen(false);
-      messageApi.success("Вход выполнен");
+      setVerificationCode("");
+      messageApi.success(isRegister ? "Регистрация выполнена" : "Вход выполнен");
     } catch (error) {
       messageApi.error(error instanceof Error ? error.message : "Ошибка авторизации");
+    }
+  };
+
+  const handleForgotSubmit = async () => {
+    const normalized = forgotEmail.trim() || email.trim();
+    if (!normalized) {
+      messageApi.error("Укажи email");
+      return;
+    }
+    try {
+      await requestForgotPassword(normalized);
+      messageApi.success("Если аккаунт есть, письмо отправлено");
+      setForgotOpen(false);
+    } catch (error) {
+      messageApi.error(error instanceof Error ? error.message : "Ошибка запроса");
     }
   };
 
@@ -219,6 +260,7 @@ export function App() {
           }
         />
         <Route path="/account" element={<AccountPage />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
       </Routes>
       <Drawer
         title={`Проекты: ${user?.nickname ?? "Гость"}`}
@@ -248,12 +290,20 @@ export function App() {
       <Modal
         open={authOpen}
         title={isRegister ? "Регистрация" : "Вход"}
-        onCancel={() => setAuthOpen(false)}
+        onCancel={() => {
+          setAuthOpen(false);
+          setVerificationCode("");
+        }}
         onOk={() => void handleAuth()}
         okText={isRegister ? "Создать аккаунт" : "Войти"}
       >
         <Space direction="vertical" style={{ width: "100%" }}>
           <Input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" />
+          {isRegister ? (
+            <Space.Compact style={{ width: "100%" }}>
+              <Button onClick={() => void handleSendRegistrationCode()}>Отправить код</Button>
+            </Space.Compact>
+          ) : null}
           <Input.Password
             value={password}
             onChange={(e) => setPassword(e.target.value)}
@@ -261,6 +311,12 @@ export function App() {
           />
           {isRegister ? (
             <>
+              <Input
+                value={verificationCode}
+                onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                placeholder="Код из письма (6 цифр)"
+                maxLength={6}
+              />
               <Input
                 value={nickname}
                 onChange={(e) => setNickname(e.target.value)}
@@ -284,10 +340,42 @@ export function App() {
                 disabled={role !== "student"}
               />
             </>
-          ) : null}
-          <Button type="link" onClick={() => setIsRegister((v) => !v)}>
+          ) : (
+            <Button
+              type="link"
+              style={{ padding: 0 }}
+              onClick={() => {
+                setForgotEmail(email);
+                setForgotOpen(true);
+              }}
+            >
+              Забыли пароль?
+            </Button>
+          )}
+          <Button
+            type="link"
+            onClick={() => {
+              setIsRegister((v) => !v);
+              setVerificationCode("");
+            }}
+          >
             {isRegister ? "Уже есть аккаунт? Войти" : "Нет аккаунта? Зарегистрироваться"}
           </Button>
+        </Space>
+      </Modal>
+      <Modal
+        open={forgotOpen}
+        title="Сброс пароля"
+        okText="Отправить ссылку"
+        onCancel={() => setForgotOpen(false)}
+        onOk={() => void handleForgotSubmit()}
+      >
+        <Space direction="vertical" style={{ width: "100%" }}>
+          <Input
+            value={forgotEmail}
+            onChange={(e) => setForgotEmail(e.target.value)}
+            placeholder="Email аккаунта"
+          />
         </Space>
       </Modal>
       <Modal
