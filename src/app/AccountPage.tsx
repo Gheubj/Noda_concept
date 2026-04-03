@@ -87,6 +87,11 @@ export function AccountPage() {
         <Title level={4} style={{ margin: 0 }}>
           Личный кабинет
         </Title>
+        {user.role === "teacher" ? (
+          <Link to="/teacher">
+            <Button type="primary">Кабинет учителя — классы и ученики</Button>
+          </Link>
+        ) : null}
         <Card title="Профиль">
           <Space direction="vertical" style={{ width: "100%" }}>
             <Text>

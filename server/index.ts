@@ -478,6 +478,47 @@ app.post("/api/schools", authRequired, roleGuard(["teacher"]), async (req: Authe
   res.json(school);
 });
 
+app.get("/api/teacher/dashboard", authRequired, roleGuard(["teacher"]), async (req: AuthenticatedRequest, res) => {
+  const teacherId = req.session!.sub;
+  const [schools, classrooms] = await Promise.all([
+    prisma.school.findMany({
+      where: { ownerId: teacherId },
+      orderBy: { createdAt: "asc" }
+    }),
+    prisma.classroom.findMany({
+      where: { teacherId },
+      include: {
+        school: { select: { id: true, name: true } },
+        enrollments: {
+          include: {
+            student: { select: { id: true, nickname: true, email: true } }
+          },
+          orderBy: { joinedAt: "asc" }
+        }
+      },
+      orderBy: { createdAt: "desc" }
+    })
+  ]);
+  res.json({
+    schools,
+    classrooms: classrooms.map((c) => ({
+      id: c.id,
+      title: c.title,
+      code: c.code,
+      schoolId: c.schoolId,
+      schoolName: c.school.name,
+      createdAt: c.createdAt.toISOString(),
+      students: c.enrollments.map((e) => ({
+        enrollmentId: e.id,
+        joinedAt: e.joinedAt.toISOString(),
+        id: e.student.id,
+        nickname: e.student.nickname,
+        email: e.student.email
+      }))
+    }))
+  });
+});
+
 app.post(
   "/api/classrooms",
   authRequired,
@@ -486,6 +527,13 @@ app.post(
     const parsed = z.object({ schoolId: z.string(), title: z.string().min(2) }).safeParse(req.body);
     if (!parsed.success) {
       res.status(400).json({ error: parsed.error.message });
+      return;
+    }
+    const school = await prisma.school.findFirst({
+      where: { id: parsed.data.schoolId, ownerId: req.session!.sub }
+    });
+    if (!school) {
+      res.status(403).json({ error: "Школа не найдена или нет доступа" });
       return;
     }
     const code = randomJoinCode();
@@ -507,7 +555,7 @@ app.post(
   }
 );
 
-app.post("/api/classrooms/join", authRequired, async (req: AuthenticatedRequest, res) => {
+app.post("/api/classrooms/join", authRequired, roleGuard(["student"]), async (req: AuthenticatedRequest, res) => {
   const parsed = z.object({ code: z.string().min(4) }).safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });

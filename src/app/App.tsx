@@ -17,6 +17,7 @@ import { Link, Route, Routes } from "react-router-dom";
 import { BlocklyWorkspace } from "@/features/blockly/BlocklyWorkspace";
 import { DataLibrary } from "@/features/data/DataLibrary";
 import { AccountPage } from "@/app/AccountPage";
+import { TeacherPage } from "@/app/TeacherPage";
 import { ResetPasswordPage } from "@/app/ResetPasswordPage";
 import { useAppStore } from "@/store/useAppStore";
 import type { NodaProjectMeta } from "@/shared/types/project";
@@ -76,7 +77,7 @@ export function App() {
   const [verificationCode, setVerificationCode] = useState("");
   const [forgotOpen, setForgotOpen] = useState(false);
   const [forgotEmail, setForgotEmail] = useState("");
-  const [yandexModalOpen, setYandexModalOpen] = useState(false);
+  const [authLoginTab, setAuthLoginTab] = useState<"email" | "yandex">("email");
   const [yandexRole, setYandexRole] = useState<"teacher" | "student">("student");
   const [yandexStudentMode, setYandexStudentMode] = useState<"school" | "direct">("direct");
   const [saveOpen, setSaveOpen] = useState(false);
@@ -187,6 +188,7 @@ export function App() {
       }
       setAuthOpen(false);
       setVerificationCode("");
+      setAuthLoginTab("email");
       messageApi.success(isRegister ? "Регистрация выполнена" : "Вход выполнен");
     } catch (error) {
       messageApi.error(error instanceof Error ? error.message : "Ошибка авторизации");
@@ -228,12 +230,9 @@ export function App() {
         </Title>
         <Space className="header-actions">
           {!user ? (
-            <>
-              <Button type="primary" onClick={() => setAuthOpen(true)}>
-                Войти / Регистрация
-              </Button>
-              <Button onClick={() => setYandexModalOpen(true)}>Войти через Яндекс</Button>
-            </>
+            <Button type="primary" onClick={() => setAuthOpen(true)}>
+              Войти
+            </Button>
           ) : null}
           <Button type="default" className="header-input">
             {user ? `Ник: ${user.nickname}` : "Гость"}
@@ -251,6 +250,13 @@ export function App() {
             Сохранить проект
           </Button>
           <Button onClick={() => setLibraryOpen(true)}>Библиотека проектов</Button>
+          {user?.role === "teacher" ? (
+            <Link to="/teacher">
+              <Button type="default" className="header-input">
+                Кабинет учителя
+              </Button>
+            </Link>
+          ) : null}
         </Space>
         {user ? (
           <Link to="/account" className="app-header-account" aria-label="Личный кабинет">
@@ -273,6 +279,7 @@ export function App() {
           }
         />
         <Route path="/account" element={<AccountPage />} />
+        <Route path="/teacher" element={<TeacherPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
       </Routes>
       <Drawer
@@ -302,111 +309,156 @@ export function App() {
       </Drawer>
       <Modal
         open={authOpen}
-        title={isRegister ? "Регистрация" : "Вход"}
+        title="Вход"
         onCancel={() => {
           setAuthOpen(false);
           setVerificationCode("");
+          setAuthLoginTab("email");
         }}
-        onOk={() => void handleAuth()}
-        okText={isRegister ? "Создать аккаунт" : "Войти"}
+        footer={
+          authLoginTab === "email"
+            ? [
+                <Button
+                  key="cancel"
+                  onClick={() => {
+                    setAuthOpen(false);
+                    setVerificationCode("");
+                    setAuthLoginTab("email");
+                  }}
+                >
+                  Отмена
+                </Button>,
+                <Button key="submit" type="primary" onClick={() => void handleAuth()}>
+                  {isRegister ? "Создать аккаунт" : "Войти"}
+                </Button>
+              ]
+            : [
+                <Button
+                  key="cancel"
+                  onClick={() => {
+                    setAuthOpen(false);
+                    setAuthLoginTab("email");
+                  }}
+                >
+                  Отмена
+                </Button>,
+                <Button key="yandex" type="primary" onClick={() => handleYandexContinue()}>
+                  Продолжить в Яндексе
+                </Button>
+              ]
+        }
       >
-        <Space direction="vertical" style={{ width: "100%" }}>
-          <Input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" />
-          {isRegister ? (
-            <Space.Compact style={{ width: "100%" }}>
-              <Button onClick={() => void handleSendRegistrationCode()}>Отправить код</Button>
-            </Space.Compact>
-          ) : null}
-          <Input.Password
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="Пароль"
-          />
-          {isRegister ? (
-            <>
-              <Input
-                value={verificationCode}
-                onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                placeholder="Код из письма (6 цифр)"
-                maxLength={6}
-              />
-              <Input
-                value={nickname}
-                onChange={(e) => setNickname(e.target.value)}
-                placeholder="Ник (уникальный)"
-              />
-              <Select
-                value={role}
-                onChange={(v) => setRole(v)}
-                options={[
-                  { value: "student", label: "Ученик" },
-                  { value: "teacher", label: "Учитель" }
-                ]}
-              />
-              <Select
-                value={studentMode}
-                onChange={(v) => setStudentMode(v)}
-                options={[
-                  { value: "direct", label: "Ученик без учителя" },
-                  { value: "school", label: "Ученик школы" }
-                ]}
-                disabled={role !== "student"}
-              />
-            </>
-          ) : (
-            <Button
-              type="link"
-              style={{ padding: 0 }}
-              onClick={() => {
-                setForgotEmail(email);
-                setForgotOpen(true);
-              }}
-            >
-              Забыли пароль?
-            </Button>
-          )}
-          <Button
-            type="link"
-            onClick={() => {
-              setIsRegister((v) => !v);
-              setVerificationCode("");
-            }}
-          >
-            {isRegister ? "Уже есть аккаунт? Войти" : "Нет аккаунта? Зарегистрироваться"}
-          </Button>
-        </Space>
-      </Modal>
-      <Modal
-        open={yandexModalOpen}
-        title="Вход через Яндекс"
-        okText="Продолжить в Яндексе"
-        onCancel={() => setYandexModalOpen(false)}
-        onOk={() => handleYandexContinue()}
-      >
-        <Space direction="vertical" style={{ width: "100%" }}>
-          <Paragraph type="secondary" style={{ marginBottom: 0 }}>
-            Выбери роль для нового аккаунта. У уже существующего пользователя роль не меняется.
-          </Paragraph>
-          <Select
-            value={yandexRole}
-            onChange={(v) => setYandexRole(v)}
-            style={{ width: "100%" }}
-            options={[
-              { value: "student", label: "Ученик" },
-              { value: "teacher", label: "Учитель" }
-            ]}
-          />
-          <Select
-            value={yandexStudentMode}
-            onChange={(v) => setYandexStudentMode(v)}
-            style={{ width: "100%" }}
-            options={[
-              { value: "direct", label: "Ученик без учителя" },
-              { value: "school", label: "Ученик школы" }
-            ]}
-            disabled={yandexRole !== "student"}
-          />
-        </Space>
+        <Tabs
+          activeKey={authLoginTab}
+          onChange={(k) => setAuthLoginTab(k as "email" | "yandex")}
+          items={[
+            {
+              key: "email",
+              label: "Почта",
+              children: (
+                <Space direction="vertical" style={{ width: "100%", marginTop: 8 }}>
+                  <Paragraph type="secondary" style={{ marginBottom: 0 }}>
+                    {isRegister ? "Регистрация по email и коду из письма." : "Вход по email и паролю."}
+                  </Paragraph>
+                  <Input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" />
+                  {isRegister ? (
+                    <Space.Compact style={{ width: "100%" }}>
+                      <Button onClick={() => void handleSendRegistrationCode()}>Отправить код</Button>
+                    </Space.Compact>
+                  ) : null}
+                  <Input.Password
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Пароль"
+                  />
+                  {isRegister ? (
+                    <>
+                      <Input
+                        value={verificationCode}
+                        onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                        placeholder="Код из письма (6 цифр)"
+                        maxLength={6}
+                      />
+                      <Input
+                        value={nickname}
+                        onChange={(e) => setNickname(e.target.value)}
+                        placeholder="Ник (уникальный)"
+                      />
+                      <Select
+                        value={role}
+                        onChange={(v) => setRole(v)}
+                        options={[
+                          { value: "student", label: "Ученик" },
+                          { value: "teacher", label: "Учитель" }
+                        ]}
+                      />
+                      <Select
+                        value={studentMode}
+                        onChange={(v) => setStudentMode(v)}
+                        options={[
+                          { value: "direct", label: "Ученик без учителя" },
+                          { value: "school", label: "Ученик школы" }
+                        ]}
+                        disabled={role !== "student"}
+                      />
+                    </>
+                  ) : (
+                    <Button
+                      type="link"
+                      style={{ padding: 0 }}
+                      onClick={() => {
+                        setForgotEmail(email);
+                        setForgotOpen(true);
+                      }}
+                    >
+                      Забыли пароль?
+                    </Button>
+                  )}
+                  <Button
+                    type="link"
+                    onClick={() => {
+                      setIsRegister((v) => !v);
+                      setVerificationCode("");
+                    }}
+                  >
+                    {isRegister ? "Уже есть аккаунт? Войти" : "Нет аккаунта? Зарегистрироваться"}
+                  </Button>
+                </Space>
+              )
+            },
+            {
+              key: "yandex",
+              label: "Яндекс",
+              children: (
+                <Space direction="vertical" style={{ width: "100%", marginTop: 8 }}>
+                  <Paragraph type="secondary" style={{ marginBottom: 0 }}>
+                    Вход или первый вход через Яндекс ID. Для нового аккаунта выбери роль; у существующего
+                    пользователя роль не меняется.
+                  </Paragraph>
+                  <Select
+                    value={yandexRole}
+                    onChange={(v) => setYandexRole(v)}
+                    style={{ width: "100%" }}
+                    options={[
+                      { value: "student", label: "Ученик" },
+                      { value: "teacher", label: "Учитель" }
+                    ]}
+                  />
+                  <Select
+                    value={yandexStudentMode}
+                    onChange={(v) => setYandexStudentMode(v)}
+                    style={{ width: "100%" }}
+                    options={[
+                      { value: "direct", label: "Ученик без учителя" },
+                      { value: "school", label: "Ученик школы" }
+                    ]}
+                    disabled={yandexRole !== "student"}
+                  />
+                </Space>
+              )
+            }
+          ]}
+        />
       </Modal>
       <Modal
         open={forgotOpen}
