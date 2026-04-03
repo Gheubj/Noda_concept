@@ -20,6 +20,8 @@ import {
   setRefreshCookie,
   signAccessToken,
   signRefreshToken,
+  signYandexOAuthState,
+  verifyYandexOAuthState,
   verifyPassword,
   type AuthenticatedRequest
 } from "./auth.js";
@@ -294,15 +296,26 @@ app.post("/api/auth/logout", async (req, res) => {
   res.json({ ok: true });
 });
 
-app.get("/api/auth/yandex/start", (_req, res) => {
+app.get("/api/auth/yandex/start", (req, res) => {
   if (!config.yandexClientId || !config.yandexRedirectUri) {
     res.status(400).json({ error: "Yandex OAuth is not configured" });
     return;
   }
+  const roleRaw = typeof req.query.role === "string" ? req.query.role : "student";
+  const modeRaw = typeof req.query.studentMode === "string" ? req.query.studentMode : "direct";
+  const roleParsed = z.enum(["teacher", "student"]).safeParse(roleRaw);
+  const modeParsed = z.enum(["school", "direct"]).safeParse(modeRaw);
+  let role = roleParsed.success ? roleParsed.data : "student";
+  let studentMode = modeParsed.success ? modeParsed.data : "direct";
+  if (role === "teacher") {
+    studentMode = "direct";
+  }
+  const state = signYandexOAuthState(role, studentMode);
   const params = new URLSearchParams({
     response_type: "code",
     client_id: config.yandexClientId,
-    redirect_uri: config.yandexRedirectUri
+    redirect_uri: config.yandexRedirectUri,
+    state
   });
   res.redirect(`https://oauth.yandex.ru/authorize?${params.toString()}`);
 });
@@ -359,17 +372,21 @@ app.get("/api/auth/yandex/callback", async (req, res) => {
       display_name?: string;
     };
     const email = info.default_email ?? `${info.id}@yandex.local`;
+    const stateRaw = typeof req.query.state === "string" ? req.query.state : "";
+    const fromState = verifyYandexOAuthState(stateRaw);
     let user = await prisma.user.findUnique({ where: { email } });
     if (!user) {
       const nickname = await pickUniqueNick(info.display_name ?? info.real_name ?? email.split("@")[0], info.id);
+      const newRole = fromState?.role ?? "student";
+      const newStudentMode = fromState?.studentMode ?? "direct";
       user = await prisma.user.create({
         data: {
           email,
           nickname,
           provider: "yandex",
           providerUserId: info.id,
-          role: "student",
-          studentMode: "direct"
+          role: newRole,
+          studentMode: newRole === "teacher" ? "direct" : newStudentMode
         }
       });
     }

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useState } from "react";
 import {
   Button,
   Drawer,
@@ -76,11 +76,14 @@ export function App() {
   const [verificationCode, setVerificationCode] = useState("");
   const [forgotOpen, setForgotOpen] = useState(false);
   const [forgotEmail, setForgotEmail] = useState("");
+  const [yandexModalOpen, setYandexModalOpen] = useState(false);
+  const [yandexRole, setYandexRole] = useState<"teacher" | "student">("student");
+  const [yandexStudentMode, setYandexStudentMode] = useState<"school" | "direct">("direct");
   const [saveOpen, setSaveOpen] = useState(false);
   const [saveTitle, setSaveTitle] = useState(DEFAULT_PROJECT_TITLE);
   const [projectItems, setProjectItems] = useState<NodaProjectMeta[]>([]);
   const { getProjectSnapshot, loadProjectSnapshot, activeProject, setActiveProject } = useAppStore();
-  const { user, register, login, refreshMe, requestRegistrationCode, requestForgotPassword } = useSessionStore();
+  const { user, register, login, requestRegistrationCode, requestForgotPassword } = useSessionStore();
   const resolvedUserId = user?.id ?? guestUserId;
   const currentProjectTitle = activeProject?.title ?? DEFAULT_PROJECT_TITLE;
 
@@ -89,6 +92,20 @@ export function App() {
     setProjectItems(list);
   };
 
+  useLayoutEffect(() => {
+    const url = new URL(window.location.href);
+    if (!url.searchParams.has("access_token")) {
+      return;
+    }
+    const token = url.searchParams.get("access_token");
+    if (token) {
+      setAccessToken(token);
+    }
+    url.searchParams.delete("access_token");
+    const qs = url.searchParams.toString();
+    window.history.replaceState({}, "", `${url.pathname}${qs ? `?${qs}` : ""}${url.hash}`);
+  }, []);
+
   useEffect(() => {
     void useSessionStore.getState().restoreSession();
   }, []);
@@ -96,15 +113,6 @@ export function App() {
   useEffect(() => {
     void refreshProjects(resolvedUserId);
   }, [resolvedUserId]);
-
-  useEffect(() => {
-    const token = new URLSearchParams(window.location.search).get("access_token");
-    if (token) {
-      setAccessToken(token);
-      void refreshMe();
-      window.history.replaceState({}, "", window.location.pathname);
-    }
-  }, [refreshMe]);
 
   const handleSave = async () => {
     const normalizedUserId = resolvedUserId.trim();
@@ -200,8 +208,13 @@ export function App() {
     }
   };
 
-  const handleYandexLogin = () => {
-    window.location.href = `${import.meta.env.VITE_API_BASE_URL ?? "http://localhost:3001"}/api/auth/yandex/start`;
+  const handleYandexContinue = () => {
+    const api = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:3001";
+    const params = new URLSearchParams({
+      role: yandexRole,
+      studentMode: yandexRole === "teacher" ? "direct" : yandexStudentMode
+    });
+    window.location.href = `${api}/api/auth/yandex/start?${params.toString()}`;
   };
 
   return (
@@ -219,7 +232,7 @@ export function App() {
               <Button type="primary" onClick={() => setAuthOpen(true)}>
                 Войти / Регистрация
               </Button>
-              <Button onClick={handleYandexLogin}>Войти через Яндекс</Button>
+              <Button onClick={() => setYandexModalOpen(true)}>Войти через Яндекс</Button>
             </>
           ) : null}
           <Button type="default" className="header-input">
@@ -361,6 +374,38 @@ export function App() {
           >
             {isRegister ? "Уже есть аккаунт? Войти" : "Нет аккаунта? Зарегистрироваться"}
           </Button>
+        </Space>
+      </Modal>
+      <Modal
+        open={yandexModalOpen}
+        title="Вход через Яндекс"
+        okText="Продолжить в Яндексе"
+        onCancel={() => setYandexModalOpen(false)}
+        onOk={() => handleYandexContinue()}
+      >
+        <Space direction="vertical" style={{ width: "100%" }}>
+          <Paragraph type="secondary" style={{ marginBottom: 0 }}>
+            Выбери роль для нового аккаунта. У уже существующего пользователя роль не меняется.
+          </Paragraph>
+          <Select
+            value={yandexRole}
+            onChange={(v) => setYandexRole(v)}
+            style={{ width: "100%" }}
+            options={[
+              { value: "student", label: "Ученик" },
+              { value: "teacher", label: "Учитель" }
+            ]}
+          />
+          <Select
+            value={yandexStudentMode}
+            onChange={(v) => setYandexStudentMode(v)}
+            style={{ width: "100%" }}
+            options={[
+              { value: "direct", label: "Ученик без учителя" },
+              { value: "school", label: "Ученик школы" }
+            ]}
+            disabled={yandexRole !== "student"}
+          />
         </Space>
       </Modal>
       <Modal

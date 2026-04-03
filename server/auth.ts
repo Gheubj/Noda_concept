@@ -2,7 +2,7 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { randomBytes, createHash } from "crypto";
 import type { Request, Response, NextFunction } from "express";
-import type { UserRole } from "@prisma/client";
+import type { StudentMode, UserRole } from "@prisma/client";
 import { prisma } from "./db.js";
 import { config } from "./config.js";
 
@@ -25,6 +25,45 @@ export function signAccessToken(payload: SessionPayload) {
 
 export function signRefreshToken(payload: SessionPayload) {
   return jwt.sign(payload, config.jwtRefreshSecret, { expiresIn: config.refreshTokenTtlSec });
+}
+
+const YANDEX_OAUTH_STATE_TYP = "yandex_oauth";
+
+/** Подписанный state для OAuth Яндекса: роль и режим ученика при первом создании пользователя. */
+export function signYandexOAuthState(role: UserRole, studentMode: StudentMode): string {
+  const mode: StudentMode = role === "teacher" ? "direct" : studentMode;
+  return jwt.sign(
+    { typ: YANDEX_OAUTH_STATE_TYP, role, studentMode: mode },
+    config.jwtAccessSecret,
+    { expiresIn: "1h" }
+  );
+}
+
+export function verifyYandexOAuthState(
+  token: string
+): { role: UserRole; studentMode: StudentMode } | null {
+  try {
+    const decoded = jwt.verify(token, config.jwtAccessSecret) as {
+      typ?: string;
+      role?: UserRole;
+      studentMode?: StudentMode;
+    };
+    if (decoded.typ !== YANDEX_OAUTH_STATE_TYP) {
+      return null;
+    }
+    if (decoded.role !== "teacher" && decoded.role !== "student") {
+      return null;
+    }
+    if (decoded.studentMode !== "school" && decoded.studentMode !== "direct") {
+      return null;
+    }
+    return {
+      role: decoded.role,
+      studentMode: decoded.role === "teacher" ? "direct" : decoded.studentMode
+    };
+  } catch {
+    return null;
+  }
 }
 
 export function hashToken(token: string) {

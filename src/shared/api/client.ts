@@ -8,6 +8,16 @@ function readPersistedAccessToken(): string {
   if (typeof window === "undefined") {
     return "";
   }
+  // OAuth (Яндекс) редирект кладёт токен в query до первого React effect — иначе restoreSession
+  // успевает вызвать /api/me без Bearer, получить 401 и очистить токен гонкой с useEffect.
+  const fromQuery = new URLSearchParams(window.location.search).get("access_token");
+  if (fromQuery) {
+    localStorage.setItem(ACCESS_STORAGE_KEY, fromQuery);
+    if (typeof sessionStorage !== "undefined") {
+      sessionStorage.removeItem(ACCESS_STORAGE_KEY);
+    }
+    return fromQuery;
+  }
   let stored = localStorage.getItem(ACCESS_STORAGE_KEY);
   if (!stored && typeof sessionStorage !== "undefined") {
     const legacy = sessionStorage.getItem(ACCESS_STORAGE_KEY);
