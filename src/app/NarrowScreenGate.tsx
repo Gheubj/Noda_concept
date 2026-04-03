@@ -36,14 +36,15 @@ export function NarrowScreenGate({ children }: { children: ReactNode }) {
     <div className="narrow-viewport-block" role="dialog" aria-modal="true" aria-labelledby="narrow-screen-title">
       <div className="narrow-viewport-block__inner">
         <Title level={3} id="narrow-screen-title" className="narrow-viewport-block__title">
-          Нужен планшет или компьютер
+          Пока нет версии для телефонов
         </Title>
         <Paragraph className="narrow-viewport-block__text">
-          Редактор Blockly и рабочая область рассчитаны на экран не уже <strong>{MIN_VIEWPORT_WIDTH_PX}px</strong>.
-          Откройте сайт на планшете (альбомная ориентация или экран от 10&quot;) или на компьютере.
+          Используйте <strong>планшет</strong> или <strong>компьютер</strong> — на маленьком экране редактор и уроки
+          нормально не помещаются.
         </Paragraph>
         <Paragraph type="secondary" className="narrow-viewport-block__hint">
-          Если у вас уже планшет, попробуйте повернуть его или увеличить окно браузера.
+          Если это планшет, поверните его в альбомную ориентацию или разверните окно браузера шире{" "}
+          {MIN_VIEWPORT_WIDTH_PX}px.
         </Paragraph>
       </div>
     </div>
