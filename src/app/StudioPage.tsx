@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Button, Drawer, Input, Layout, List, Modal, Space, Tabs, Typography, message } from "antd";
 import { BlocklyWorkspace } from "@/features/blockly/BlocklyWorkspace";
 import { DataLibrary } from "@/features/data/DataLibrary";
@@ -6,8 +6,6 @@ import { useAppStore } from "@/store/useAppStore";
 import type { NodaProjectMeta, NodaProjectSnapshot } from "@/shared/types/project";
 import { loadProjectSmart, listProjects, saveProjectSmart } from "@/features/project/projectRepository";
 import { useSessionStore } from "@/store/useSessionStore";
-import { StudentClassPage } from "@/app/StudentClassPage";
-import { StudentLearningPage } from "@/app/StudentLearningPage";
 
 const { Content } = Layout;
 const { Paragraph, Text } = Typography;
@@ -24,7 +22,7 @@ const EMPTY_SNAPSHOT: NodaProjectSnapshot = {
   blocklyState: ""
 };
 
-export function HomePage() {
+export function StudioPage() {
   const [messageApi, contextHolder] = message.useMessage();
   const [guestUserId] = useState(() => {
     const stored = localStorage.getItem(GUEST_USER_ID_KEY);
@@ -35,7 +33,6 @@ export function HomePage() {
     localStorage.setItem(GUEST_USER_ID_KEY, next);
     return next;
   });
-  const [mainTab, setMainTab] = useState("dev");
   const [libraryOpen, setLibraryOpen] = useState(false);
   const [saveOpen, setSaveOpen] = useState(false);
   const [saveTitle, setSaveTitle] = useState(DEFAULT_PROJECT_TITLE);
@@ -44,23 +41,6 @@ export function HomePage() {
   const { user } = useSessionStore();
   const resolvedUserId = user?.id ?? guestUserId;
   const currentProjectTitle = activeProject?.title ?? DEFAULT_PROJECT_TITLE;
-
-  const allowedTabs = useMemo(() => {
-    const keys = ["dev"];
-    if (user?.role === "student" && user.studentMode === "school") {
-      keys.push("class");
-    }
-    if (user?.role === "student" && user.studentMode === "direct") {
-      keys.push("learning");
-    }
-    return keys;
-  }, [user]);
-
-  useEffect(() => {
-    if (!allowedTabs.includes(mainTab)) {
-      setMainTab("dev");
-    }
-  }, [allowedTabs, mainTab]);
 
   const refreshProjects = async (nextUserId: string) => {
     const list = await listProjects(nextUserId.trim());
@@ -121,51 +101,37 @@ export function HomePage() {
     messageApi.success("Черновик нового проекта. Сохрани, когда будет готово.");
   };
 
-  const developmentPanel = (
-    <Space direction="vertical" size="middle" style={{ width: "100%" }}>
-      <Space wrap align="center" style={{ width: "100%" }}>
-        <Text strong style={{ maxWidth: 280 }} ellipsis={{ tooltip: currentProjectTitle }}>
-          {currentProjectTitle}
-        </Text>
-        <Button
-          type="primary"
-          onClick={() => {
-            setSaveTitle(currentProjectTitle);
-            setSaveOpen(true);
-          }}
-        >
-          Сохранить проект
-        </Button>
-        <Button onClick={() => setLibraryOpen(true)}>Мои проекты</Button>
-        <Button onClick={handleNewProject}>Новый проект</Button>
-      </Space>
-      <Paragraph className="placeholder-text" style={{ marginBottom: 0 }}>
-        MVP Модуль A. Запуск только через блок Старт в Blockly.
-      </Paragraph>
-      <Tabs
-        defaultActiveKey="workspace"
-        items={[
-          { key: "workspace", label: "Workspace", children: <BlocklyWorkspace /> },
-          { key: "library", label: "Библиотека", children: <DataLibrary /> }
-        ]}
-      />
-    </Space>
-  );
-
-  const tabItems = [
-    { key: "dev", label: "Разработка", children: developmentPanel },
-    ...(user?.role === "student" && user.studentMode === "school"
-      ? [{ key: "class", label: "Класс", children: <StudentClassPage /> }]
-      : []),
-    ...(user?.role === "student" && user.studentMode === "direct"
-      ? [{ key: "learning", label: "Обучение", children: <StudentLearningPage /> }]
-      : [])
-  ];
-
   return (
     <Content className="app-content">
       {contextHolder}
-      <Tabs activeKey={mainTab} onChange={setMainTab} items={tabItems} />
+      <Space direction="vertical" size="middle" style={{ width: "100%" }}>
+        <Space wrap align="center" style={{ width: "100%" }}>
+          <Text strong style={{ maxWidth: 280 }} ellipsis={{ tooltip: currentProjectTitle }}>
+            {currentProjectTitle}
+          </Text>
+          <Button
+            type="primary"
+            onClick={() => {
+              setSaveTitle(currentProjectTitle);
+              setSaveOpen(true);
+            }}
+          >
+            Сохранить проект
+          </Button>
+          <Button onClick={() => setLibraryOpen(true)}>Мои проекты</Button>
+          <Button onClick={handleNewProject}>Новый проект</Button>
+        </Space>
+        <Paragraph className="placeholder-text" style={{ marginBottom: 0 }}>
+          MVP Модуль A. Запуск только через блок Старт в Blockly.
+        </Paragraph>
+        <Tabs
+          defaultActiveKey="workspace"
+          items={[
+            { key: "workspace", label: "Workspace", children: <BlocklyWorkspace /> },
+            { key: "library", label: "Библиотека", children: <DataLibrary /> }
+          ]}
+        />
+      </Space>
       <Drawer
         title={`Проекты: ${user?.nickname ?? "Черновик"}`}
         open={libraryOpen}

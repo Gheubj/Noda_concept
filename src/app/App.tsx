@@ -11,9 +11,12 @@ import {
   message
 } from "antd";
 import { UserOutlined } from "@ant-design/icons";
-import { Link, Route, Routes } from "react-router-dom";
+import { Link, NavLink, Route, Routes } from "react-router-dom";
 import { AccountPage } from "@/app/AccountPage";
-import { HomePage } from "@/app/HomePage";
+import { LandingPage } from "@/app/LandingPage";
+import { StudioPage } from "@/app/StudioPage";
+import { ClassPage } from "@/app/ClassPage";
+import { LearningPage } from "@/app/LearningPage";
 import { TeacherPage } from "@/app/TeacherPage";
 import { ResetPasswordPage } from "@/app/ResetPasswordPage";
 import { useSessionStore } from "@/store/useSessionStore";
@@ -109,6 +112,9 @@ export function App() {
     }
   };
 
+  const headerNavClass = ({ isActive }: { isActive: boolean }) =>
+    `app-header-nav-link${isActive ? " app-header-nav-link--active" : ""}`;
+
   const handleYandexContinue = () => {
     const api = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:3001";
     const params = new URLSearchParams({
@@ -127,18 +133,34 @@ export function App() {
             Noda PoC - AI в браузере
           </Link>
         </Title>
+        <nav className="app-header-nav" aria-label="Основные разделы">
+          <NavLink to="/" end className={headerNavClass}>
+            Главная
+          </NavLink>
+          <NavLink to="/studio" className={headerNavClass}>
+            Разработка
+          </NavLink>
+          {user?.role === "student" && user.studentMode === "school" ? (
+            <NavLink to="/class" className={headerNavClass}>
+              Класс
+            </NavLink>
+          ) : null}
+          {user?.role === "student" && user.studentMode === "direct" ? (
+            <NavLink to="/learning" className={headerNavClass}>
+              Обучение
+            </NavLink>
+          ) : null}
+          {user?.role === "teacher" ? (
+            <NavLink to="/teacher" className={headerNavClass}>
+              Кабинет учителя
+            </NavLink>
+          ) : null}
+        </nav>
         <div className="app-header-right">
           {!user ? (
             <Button type="primary" onClick={() => setAuthOpen(true)}>
               Войти
             </Button>
-          ) : null}
-          {user?.role === "teacher" ? (
-            <Link to="/teacher">
-              <Button type="default" className="app-header-teacher-btn">
-                Кабинет учителя
-              </Button>
-            </Link>
           ) : null}
         </div>
         {user ? (
@@ -156,7 +178,10 @@ export function App() {
         ) : null}
       </Header>
       <Routes>
-        <Route path="/" element={<HomePage />} />
+        <Route path="/" element={<LandingPage />} />
+        <Route path="/studio" element={<StudioPage />} />
+        <Route path="/class" element={<ClassPage />} />
+        <Route path="/learning" element={<LearningPage />} />
         <Route path="/account" element={<AccountPage />} />
         <Route path="/teacher" element={<TeacherPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
