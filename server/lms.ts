@@ -3,12 +3,37 @@ import { randomBytes } from "crypto";
 import { z } from "zod";
 import { Prisma } from "@prisma/client";
 import { prisma } from "./db.js";
+import { config } from "./config.js";
+import { sendStudentNewAssignmentEmail, sendTeacherSubmissionEmail } from "./email.js";
 import {
   adminRequired,
   authRequired,
   roleGuard,
   type AuthenticatedRequest
 } from "./auth.js";
+
+async function notifyEnrolledStudentsNewAssignment(classroomId: string, assignmentTitle: string) {
+  const classroom = await prisma.classroom.findUnique({
+    where: { id: classroomId },
+    select: {
+      title: true,
+      enrollments: { select: { student: { select: { email: true } } } }
+    }
+  });
+  if (!classroom) {
+    return;
+  }
+  const appUrl = `${config.appBaseUrl.replace(/\/$/, "")}/class`;
+  for (const e of classroom.enrollments) {
+    void sendStudentNewAssignmentEmail(e.student.email, {
+      assignmentTitle,
+      classTitle: classroom.title,
+      appUrl
+    }).catch(() => {
+      /* письмо опционально в PoC */
+    });
+  }
+}
 
 const EMPTY_SNAPSHOT: Prisma.InputJsonValue = {
   imageDatasets: [],
@@ -230,6 +255,9 @@ export function registerLmsRoutes(app: Express) {
           lessonTemplateId
         }
       });
+      if (a.published) {
+        void notifyEnrolledStudentsNewAssignment(classroomId, a.title);
+      }
       res.json({ id: a.id });
     }
   );
@@ -389,6 +417,21 @@ export function registerLmsRoutes(app: Express) {
           }
         });
       }
+      void prisma.analyticsEvent
+        .create({
+          data: {
+            userId: req.session!.sub,
+            name:
+              parsed.data.decision === "grade" ? "lms_submission_graded" : "lms_submission_revision_requested",
+            payload: {
+              submissionId,
+              assignmentId: sub.assignmentId,
+              decision: parsed.data.decision,
+              score: parsed.data.decision === "grade" ? parsed.data.score : null
+            } as Prisma.InputJsonValue
+          }
+        })
+        .catch(() => {});
       res.json({ ok: true });
     }
   );
@@ -512,6 +555,8 @@ export function registerLmsRoutes(app: Express) {
         score: number | null;
         projectId: string | null;
         gradedSeenAt: string | null;
+        teacherNote: string | null;
+        revisionNote: string | null;
       } | null;
     }[] = [];
     for (const en of enrollments) {
@@ -532,7 +577,9 @@ export function registerLmsRoutes(app: Express) {
                 status: sub.status,
                 score: sub.score,
                 projectId: sub.projectId,
-                gradedSeenAt: sub.gradedSeenAt?.toISOString() ?? null
+                gradedSeenAt: sub.gradedSeenAt?.toISOString() ?? null,
+                teacherNote: sub.teacherNote,
+                revisionNote: sub.revisionNote
               }
             : null
         });
@@ -618,6 +665,14 @@ export function registerLmsRoutes(app: Express) {
         res.status(403).json({ error: "Not enrolled" });
         return;
       }
+      if (sub.status === "submitted") {
+        res.status(400).json({ error: "Работа уже сдана. Дождитесь проверки учителя." });
+        return;
+      }
+      if (sub.status !== "draft" && sub.status !== "needs_revision") {
+        res.status(400).json({ error: "Сдать работу сейчас нельзя" });
+        return;
+      }
       const now = new Date();
       await prisma.submission.update({
         where: { id: sub.id },
@@ -627,7 +682,102 @@ export function registerLmsRoutes(app: Express) {
           teacherSeenAt: null
         }
       });
+      void prisma.analyticsEvent
+        .create({
+          data: {
+            userId: studentId,
+            name: "lms_assignment_submitted",
+            payload: {
+              assignmentId,
+              submissionId: sub.id,
+              classroomId: sub.assignment.classroomId
+            } as Prisma.InputJsonValue
+          }
+        })
+        .catch(() => {});
+      const [teacher, studentNick] = await Promise.all([
+        prisma.user.findUnique({ where: { id: sub.assignment.ownerId }, select: { email: true } }),
+        prisma.user.findUnique({ where: { id: studentId }, select: { nickname: true } })
+      ]);
+      if (teacher?.email && studentNick) {
+        const appUrl = `${config.appBaseUrl.replace(/\/$/, "")}/teacher`;
+        void sendTeacherSubmissionEmail(teacher.email, {
+          studentNickname: studentNick.nickname,
+          assignmentTitle: sub.assignment.title,
+          appUrl
+        }).catch(() => {});
+      }
       res.json({ ok: true });
+    }
+  );
+
+  app.get(
+    "/api/student/projects/:projectId/submission-context",
+    authRequired,
+    roleGuard(["student"]),
+    async (req: AuthenticatedRequest, res) => {
+      const projectId = String(req.params.projectId);
+      const studentId = req.session!.sub;
+      const sub = await prisma.submission.findFirst({
+        where: { studentId, projectId },
+        include: {
+          assignment: {
+            select: { id: true, title: true, maxScore: true, classroom: { select: { title: true } } }
+          }
+        }
+      });
+      if (!sub) {
+        res.status(404).json({ error: "Not linked" });
+        return;
+      }
+      res.json({
+        assignmentId: sub.assignmentId,
+        assignmentTitle: sub.assignment.title,
+        classroomTitle: sub.assignment.classroom.title,
+        status: sub.status,
+        canSubmit: sub.status === "draft" || sub.status === "needs_revision",
+        teacherNote: sub.teacherNote,
+        revisionNote: sub.revisionNote,
+        score: sub.score,
+        maxScore: sub.assignment.maxScore
+      });
+    }
+  );
+
+  app.get(
+    "/api/teacher/submissions/:submissionId/work",
+    authRequired,
+    roleGuard(["teacher"]),
+    async (req: AuthenticatedRequest, res) => {
+      const submissionId = String(req.params.submissionId);
+      const sub = await prisma.submission.findFirst({
+        where: { id: submissionId },
+        include: {
+          assignment: true,
+          project: { include: { snapshot: true } },
+          student: { select: { nickname: true, email: true } }
+        }
+      });
+      if (!sub || sub.assignment.ownerId !== req.session!.sub) {
+        res.status(404).json({ error: "Not found" });
+        return;
+      }
+      if (!sub.project?.snapshot) {
+        res.status(404).json({ error: "Нет проекта или снапшота" });
+        return;
+      }
+      res.json({
+        meta: {
+          id: sub.project.id,
+          userId: sub.project.userId,
+          title: `${sub.assignment.title} — ${sub.student.nickname}`,
+          createdAt: sub.project.createdAt.toISOString(),
+          updatedAt: sub.project.updatedAt.toISOString(),
+          readOnly: true,
+          reviewSubmissionId: sub.id
+        },
+        snapshot: sub.project.snapshot.payload
+      });
     }
   );
 

@@ -22,6 +22,8 @@ interface StudentAssignmentRow {
     score: number | null;
     projectId: string | null;
     gradedSeenAt: string | null;
+    teacherNote: string | null;
+    revisionNote: string | null;
   } | null;
 }
 
@@ -246,6 +248,35 @@ export function StudentClassPage() {
       dataSource={assignments}
       pagination={{ pageSize: 10 }}
       locale={{ emptyText: "Пока нет заданий" }}
+      expandable={{
+        expandedRowRender: (row) => {
+          const s = row.submission;
+          if (!s) {
+            return <Paragraph type="secondary">Начни задание, чтобы появился проект и комментарии учителя.</Paragraph>;
+          }
+          const hasText = Boolean(s.teacherNote || s.revisionNote);
+          if (!hasText) {
+            return <Paragraph type="secondary">Пока нет комментария от учителя.</Paragraph>;
+          }
+          return (
+            <Space direction="vertical" size="small" style={{ maxWidth: 560 }}>
+              {s.revisionNote ? (
+                <div>
+                  <Text strong>Доработка: </Text>
+                  <Paragraph style={{ marginBottom: 0, whiteSpace: "pre-wrap" }}>{s.revisionNote}</Paragraph>
+                </div>
+              ) : null}
+              {s.teacherNote ? (
+                <div>
+                  <Text strong>Комментарий учителя: </Text>
+                  <Paragraph style={{ marginBottom: 0, whiteSpace: "pre-wrap" }}>{s.teacherNote}</Paragraph>
+                </div>
+              ) : null}
+            </Space>
+          );
+        },
+        rowExpandable: (row) => Boolean(row.submission)
+      }}
     />
   );
 

@@ -12,6 +12,9 @@ export interface NodaProjectMeta {
   title: string;
   createdAt: string;
   updatedAt: string;
+  /** Просмотр работы ученика: без сохранения в облако этого проекта */
+  readOnly?: boolean;
+  reviewSubmissionId?: string;
 }
 
 export interface NodaProjectSnapshot {

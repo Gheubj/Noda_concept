@@ -509,16 +509,24 @@ export function TeacherPage() {
     {
       title: "",
       key: "go",
-      render: (_, r) =>
-        r.status === "submitted" || r.status === "needs_revision" || r.status === "draft" ? (
-          <Button type="link" size="small" onClick={() => openGrade(r)}>
-            Проверить
-          </Button>
-        ) : r.status === "graded" ? (
-          <Button type="link" size="small" onClick={() => openGrade(r)}>
-            Изменить оценку
-          </Button>
-        ) : null
+      render: (_, r) => (
+        <Space size="small" wrap>
+          {r.projectId ? (
+            <Link to={`/studio?reviewSubmission=${encodeURIComponent(r.id)}`} target="_blank" rel="noreferrer">
+              Открыть работу
+            </Link>
+          ) : null}
+          {r.status === "submitted" || r.status === "needs_revision" || r.status === "draft" ? (
+            <Button type="link" size="small" onClick={() => openGrade(r)}>
+              Оценить
+            </Button>
+          ) : r.status === "graded" ? (
+            <Button type="link" size="small" onClick={() => openGrade(r)}>
+              Изменить оценку
+            </Button>
+          ) : null}
+        </Space>
+      )
     }
   ];
 
@@ -723,6 +731,7 @@ export function TeacherPage() {
               setLmsClassroomId(v);
               void loadGradebook(v);
             }}
+            options={dashboard?.classrooms.map((c) => ({ value: c.id, label: `${c.title} (${c.schoolName})` })) ?? []}
           />
           <Button
             type="default"

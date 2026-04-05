@@ -79,3 +79,23 @@ export async function sendPasswordResetLink(email: string, resetUrl: string) {
   const html = `<p>Перейдите по ссылке, чтобы задать новый пароль (действует ${config.passwordResetTtlMin} мин):</p><p><a href="${resetUrl}">${resetUrl}</a></p><p>Если вы не запрашивали сброс, проигнорируйте письмо.</p>`;
   await deliver(email, subject, html, text);
 }
+
+export async function sendStudentNewAssignmentEmail(
+  studentEmail: string,
+  args: { assignmentTitle: string; classTitle: string; appUrl: string }
+) {
+  const subject = `Новое задание: ${args.assignmentTitle}`;
+  const text = `В классе «${args.classTitle}» опубликовано задание «${args.assignmentTitle}».\n\nОткройте раздел «Класс» на сайте: ${args.appUrl}`;
+  const html = `<p>В классе <strong>${args.classTitle}</strong> опубликовано задание <strong>${args.assignmentTitle}</strong>.</p><p><a href="${args.appUrl}">Открыть кабинет</a></p>`;
+  await deliver(studentEmail, subject, html, text);
+}
+
+export async function sendTeacherSubmissionEmail(
+  teacherEmail: string,
+  args: { studentNickname: string; assignmentTitle: string; appUrl: string }
+) {
+  const subject = `Сдана работа: ${args.assignmentTitle}`;
+  const text = `Ученик ${args.studentNickname} сдал задание «${args.assignmentTitle}».\n\nПроверка: ${args.appUrl}`;
+  const html = `<p>Ученик <strong>${args.studentNickname}</strong> сдал задание <strong>${args.assignmentTitle}</strong>.</p><p><a href="${args.appUrl}">Открыть кабинет учителя</a></p>`;
+  await deliver(teacherEmail, subject, html, text);
+}
