@@ -384,8 +384,7 @@ export function TeacherPage() {
     gradeForm.setFieldsValue({
       decision: "grade",
       score: row.score ?? row.assignment.maxScore,
-      teacherNote: row.teacherNote ?? "",
-      revisionNote: row.revisionNote ?? ""
+      comment: row.revisionNote || row.teacherNote || ""
     });
     setGradeOpen(true);
     if (row.status === "submitted") {
@@ -399,11 +398,13 @@ export function TeacherPage() {
     }
     try {
       const v = await gradeForm.validateFields();
+      const commentRaw = typeof v.comment === "string" ? v.comment.trim() : "";
+      const comment = commentRaw.length > 0 ? commentRaw : null;
       await apiClient.post(`/api/teacher/submissions/${gradingSubmission.id}/grade`, {
         decision: v.decision,
         score: v.decision === "grade" ? v.score : null,
-        teacherNote: v.teacherNote || null,
-        revisionNote: v.decision === "revision" ? v.revisionNote || null : null
+        teacherNote: v.decision === "grade" ? comment : null,
+        revisionNote: v.decision === "revision" ? comment : null
       });
       messageApi.success("Готово");
       setGradeOpen(false);
@@ -992,15 +993,11 @@ export function TeacherPage() {
                   >
                     <InputNumber min={0} max={gradingSubmission.assignment.maxScore} style={{ width: "100%" }} />
                   </Form.Item>
-                ) : (
-                  <Form.Item name="revisionNote" label="Комментарий для доработки">
-                    <TextArea rows={3} />
-                  </Form.Item>
-                )
+                ) : null
               }
             </Form.Item>
-            <Form.Item name="teacherNote" label="Комментарий (виден ученику при оценке)">
-              <TextArea rows={2} />
+            <Form.Item name="comment" label="Комментарий для ученика">
+              <TextArea rows={3} placeholder="Необязательно при оценке, желательно при доработке" />
             </Form.Item>
           </Form>
         ) : null}

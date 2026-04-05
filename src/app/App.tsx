@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   Badge,
   Button,
@@ -48,10 +48,32 @@ export function App() {
     pendingReviewCount?: number;
     assignmentAttentionCount?: number;
   }>({});
+  const prevPathRef = useRef<string | null>(null);
+
+  const fetchSummary = useCallback(async () => {
+    if (!user) {
+      return;
+    }
+    const track =
+      (user.role === "student" && user.studentMode === "school") || user.role === "teacher";
+    if (!track) {
+      return;
+    }
+    try {
+      const data = await apiClient.get<{
+        pendingReviewCount?: number;
+        assignmentAttentionCount?: number;
+      }>("/api/me/summary");
+      setMeSummary(data);
+    } catch {
+      setMeSummary({});
+    }
+  }, [user?.id, user?.role, user?.studentMode]);
 
   useEffect(() => {
     if (!user) {
       setMeSummary({});
+      prevPathRef.current = null;
       return;
     }
     const track =
@@ -60,11 +82,35 @@ export function App() {
       setMeSummary({});
       return;
     }
-    void apiClient
-      .get<{ pendingReviewCount?: number; assignmentAttentionCount?: number }>("/api/me/summary")
-      .then(setMeSummary)
-      .catch(() => setMeSummary({}));
-  }, [user?.id, user?.role, user?.studentMode, location.pathname]);
+    void fetchSummary();
+  }, [user, fetchSummary]);
+
+  useEffect(() => {
+    if (!user) {
+      return;
+    }
+    const track =
+      (user.role === "student" && user.studentMode === "school") || user.role === "teacher";
+    if (!track) {
+      return;
+    }
+    if (prevPathRef.current === null) {
+      prevPathRef.current = location.pathname;
+      return;
+    }
+    const prev = prevPathRef.current;
+    prevPathRef.current = location.pathname;
+    const inZone = (p: string) => p === "/class" || p === "/teacher";
+    if (inZone(prev) && !inZone(location.pathname)) {
+      void fetchSummary();
+    }
+  }, [location.pathname, user, fetchSummary]);
+
+  useEffect(() => {
+    const onRefresh = () => void fetchSummary();
+    window.addEventListener("noda-refresh-header-summary", onRefresh);
+    return () => window.removeEventListener("noda-refresh-header-summary", onRefresh);
+  }, [fetchSummary]);
 
   useLayoutEffect(() => {
     const url = new URL(window.location.href);
@@ -167,7 +213,17 @@ export function App() {
             </NavLink>
             {user?.role === "student" && user.studentMode === "school" ? (
               <Badge count={meSummary.assignmentAttentionCount ?? 0} size="small" offset={[8, 2]}>
-                <NavLink to="/class" className={headerNavClass} style={{ display: "inline-block" }}>
+                <NavLink
+                  to="/class"
+                  className={headerNavClass}
+                  style={{ display: "inline-block" }}
+                  onClick={() =>
+                    setMeSummary((s) => ({
+                      ...s,
+                      assignmentAttentionCount: 0
+                    }))
+                  }
+                >
                   Класс
                 </NavLink>
               </Badge>
@@ -179,7 +235,17 @@ export function App() {
             ) : null}
             {user?.role === "teacher" ? (
               <Badge count={meSummary.pendingReviewCount ?? 0} size="small" offset={[8, 2]}>
-                <NavLink to="/teacher" className={headerNavClass} style={{ display: "inline-block" }}>
+                <NavLink
+                  to="/teacher"
+                  className={headerNavClass}
+                  style={{ display: "inline-block" }}
+                  onClick={() =>
+                    setMeSummary((s) => ({
+                      ...s,
+                      pendingReviewCount: 0
+                    }))
+                  }
+                >
                   Кабинет учителя
                 </NavLink>
               </Badge>

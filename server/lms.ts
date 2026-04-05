@@ -776,7 +776,17 @@ export function registerLmsRoutes(app: Express) {
           readOnly: true,
           reviewSubmissionId: sub.id
         },
-        snapshot: sub.project.snapshot.payload
+        snapshot: sub.project.snapshot.payload,
+        review: {
+          submissionId: sub.id,
+          status: sub.status,
+          score: sub.score,
+          maxScore: sub.assignment.maxScore,
+          studentNickname: sub.student.nickname,
+          assignmentTitle: sub.assignment.title,
+          teacherNote: sub.teacherNote,
+          revisionNote: sub.revisionNote
+        }
       });
     }
   );
