@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Button, Card, Input, Select, Space, Typography, message } from "antd";
 import { Link } from "react-router-dom";
 import { useSessionStore } from "@/store/useSessionStore";
-import { apiClient } from "@/shared/api/client";
+import { apiClient, toUserErrorMessage } from "@/shared/api/client";
 
 const { Title, Paragraph, Text } = Typography;
 
@@ -53,7 +53,7 @@ export function AccountPage() {
       await refreshMe();
       messageApi.success("Класс подключен");
     } catch (e) {
-      messageApi.error(e instanceof Error ? e.message : "Не удалось подключиться");
+      messageApi.error(toUserErrorMessage(e));
     }
   };
 
@@ -63,7 +63,7 @@ export function AccountPage() {
       await refreshMe();
       messageApi.success("Сохранено");
     } catch (e) {
-      messageApi.error(e instanceof Error ? e.message : "Ошибка сохранения");
+      messageApi.error(toUserErrorMessage(e));
     }
   };
 
@@ -73,7 +73,7 @@ export function AccountPage() {
       await refreshMe();
       messageApi.success("Ник обновлен");
     } catch (e) {
-      messageApi.error(e instanceof Error ? e.message : "Ошибка сохранения ника");
+      messageApi.error(toUserErrorMessage(e));
     }
   };
 
@@ -84,6 +84,13 @@ export function AccountPage() {
         <Link to="/studio">
           <Button type="link">← Назад в разработку</Button>
         </Link>
+        <Button
+          type="link"
+          onClick={() => window.dispatchEvent(new Event("noda-open-settings"))}
+          style={{ padding: 0, height: "auto" }}
+        >
+          Настройки (тема и оформление)
+        </Button>
         <Title level={4} style={{ margin: 0 }}>
           Личный кабинет
         </Title>

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactEl
 import {
   Badge,
   Button,
+  Drawer,
   Input,
   Layout,
   Modal,
@@ -11,8 +12,8 @@ import {
   Typography,
   message
 } from "antd";
-import { UserOutlined } from "@ant-design/icons";
-import { Link, NavLink, Navigate, Route, Routes, useLocation } from "react-router-dom";
+import { SettingOutlined, UserOutlined } from "@ant-design/icons";
+import { Link, NavLink, Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import { AccountPage } from "@/app/AccountPage";
 import { LandingPage } from "@/app/LandingPage";
 import { StudioPage } from "@/app/StudioPage";
@@ -21,11 +22,21 @@ import { LearningPage } from "@/app/LearningPage";
 import { TeacherPage } from "@/app/TeacherPage";
 import { ResetPasswordPage } from "@/app/ResetPasswordPage";
 import { ShareImportPage } from "@/app/ShareImportPage";
+import { SettingsPanel } from "@/app/SettingsPanel";
 import { useSessionStore } from "@/store/useSessionStore";
 import { apiClient, setAccessToken, toUserErrorMessage } from "@/shared/api/client";
 
 const { Header } = Layout;
 const { Title, Paragraph } = Typography;
+
+function OpenSettingsDrawerAndHome() {
+  const navigate = useNavigate();
+  useEffect(() => {
+    window.dispatchEvent(new Event("noda-open-settings"));
+    navigate("/", { replace: true });
+  }, [navigate]);
+  return null;
+}
 
 function RequireUser({ children }: { children: ReactElement }) {
   const { user, loading, sessionRestored } = useSessionStore();
@@ -46,6 +57,7 @@ export function App() {
   const location = useLocation();
   const [messageApi, contextHolder] = message.useMessage();
   const [authOpen, setAuthOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [isRegister, setIsRegister] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -147,6 +159,18 @@ export function App() {
     void useSessionStore.getState().restoreSession();
   }, []);
 
+  useEffect(() => {
+    const openAuth = () => setAuthOpen(true);
+    window.addEventListener("noda-open-auth", openAuth);
+    return () => window.removeEventListener("noda-open-auth", openAuth);
+  }, []);
+
+  useEffect(() => {
+    const openSettings = () => setSettingsOpen(true);
+    window.addEventListener("noda-open-settings", openSettings);
+    return () => window.removeEventListener("noda-open-settings", openSettings);
+  }, []);
+
   const handleSendRegistrationCode = async () => {
     const normalized = email.trim();
     if (!normalized) {
@@ -214,17 +238,31 @@ export function App() {
   return (
     <Layout className="app-layout">
       {contextHolder}
-      <Header className={`app-header${user ? " app-header--authed" : ""}`}>
+      <Header className={`app-header app-header--edge${user ? " app-header--authed" : ""}`}>
         <Title level={3} className="app-title">
-          <Link to="/" className="app-title-link">
-            Noda PoC - AI в браузере
+          <Link to="/" className="app-title-link app-brand" aria-label="Noda — на главную">
+            <span className="app-brand-logo-wrap" aria-hidden>
+              <img src="/noda-mark-header.png" alt="" className="app-brand-logo" width={80} height={88} />
+            </span>
+            <span className="app-brand-text">Noda</span>
           </Link>
         </Title>
         <div className="app-header-trailing">
           <nav className="app-header-nav" aria-label="Основные разделы">
-            <NavLink to="/" end className={headerNavClass}>
-              Главная
-            </NavLink>
+            <button
+              type="button"
+              className={`app-header-nav-link app-header-nav-link--button${settingsOpen ? " app-header-nav-link--active" : ""}`}
+              aria-expanded={settingsOpen}
+              onClick={() => setSettingsOpen(true)}
+            >
+              <SettingOutlined aria-hidden />
+              Настройки
+            </button>
+            {user ? (
+              <NavLink to="/" end className={headerNavClass}>
+                Главная
+              </NavLink>
+            ) : null}
             {user ? (
               <NavLink to="/studio" className={headerNavClass}>
                 Разработка
@@ -299,8 +337,20 @@ export function App() {
           </Link>
         ) : null}
       </Header>
+      <Drawer
+        title="Настройки"
+        placement="right"
+        width={360}
+        open={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+        destroyOnClose={false}
+        rootClassName="app-settings-drawer"
+      >
+        <SettingsPanel variant="drawer" onAfterNavigate={() => setSettingsOpen(false)} />
+      </Drawer>
       <Routes>
         <Route path="/" element={<LandingPage />} />
+        <Route path="/settings" element={<OpenSettingsDrawerAndHome />} />
         <Route
           path="/studio"
           element={

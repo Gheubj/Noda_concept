@@ -1,44 +1,73 @@
-import { Button, Card, Layout, Space, Typography } from "antd";
+import { useLayoutEffect, useRef, useState } from "react";
+import { Button, Card, Layout, Typography } from "antd";
+import {
+  CloudOutlined,
+  CodeOutlined,
+  DatabaseOutlined,
+  RocketOutlined
+} from "@ant-design/icons";
 import { Link } from "react-router-dom";
+import { useHtmlDataTheme } from "@/hooks/useHtmlDataTheme";
 import { useSessionStore } from "@/store/useSessionStore";
 
 const { Content } = Layout;
-const { Title, Paragraph } = Typography;
+const { Title, Paragraph, Text } = Typography;
+
+function openAuthModal() {
+  window.dispatchEvent(new Event("noda-open-auth"));
+}
+
+/** Верхний «воздух»: «Платформа Noda» ниже, заголовок у нижнего края лого */
+const LANDING_HEADLINE_TOP_EXTRA_PX = 28;
 
 export function LandingPage() {
   const { user } = useSessionStore();
+  const htmlTheme = useHtmlDataTheme();
+  const headlineMeasureRef = useRef<HTMLDivElement>(null);
+  const [markHeightPx, setMarkHeightPx] = useState<number | null>(null);
+
+  useLayoutEffect(() => {
+    const el = headlineMeasureRef.current;
+    if (!el) {
+      return;
+    }
+    const measure = () => setMarkHeightPx(el.offsetHeight + LANDING_HEADLINE_TOP_EXTRA_PX);
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [htmlTheme]);
 
   const guestBlock = (
-    <Card title="Добро пожаловать">
-      <Paragraph>
-        Noda — платформа, где можно собирать данные, обучать модели и собирать ИИ-проекты в браузере через
-        визуальное программирование (Blockly).
-      </Paragraph>
-      <Paragraph type="secondary" style={{ marginBottom: 0 }}>
+    <Card className="landing-role-card" title="С чего начать">
+      <Paragraph style={{ marginBottom: 12 }}>
         Войди через кнопку «Войти» в шапке — после входа откроется раздел «Разработка» с Blockly и сохранением
         проектов в облаке.
+      </Paragraph>
+      <Paragraph type="secondary" style={{ marginBottom: 0 }}>
+        Регистрация по email с кодом из письма или через Яндекс / ВКонтакте во вкладках входа.
       </Paragraph>
     </Card>
   );
 
   const teacherBlock = (
-    <Card title="Учителю">
+    <Card className="landing-role-card" title="Учителю">
       <Paragraph>
         В разделе <Link to="/studio">Разработка</Link> — та же среда проектов, что и у учеников. В{" "}
         <Link to="/teacher">кабинете учителя</Link> можно создавать школы и классы, выдавать код для входа
         учеников.
       </Paragraph>
       <Paragraph type="secondary" style={{ marginBottom: 0 }}>
-        Дальше по плану: задания, журнал, готовые уроки и материалы.
+        Задания, журнал и готовые уроки — в развитии платформы.
       </Paragraph>
     </Card>
   );
 
   const studentSchoolBlock = (
-    <Card title="Ученику (школа)">
+    <Card className="landing-role-card" title="Ученику (школа)">
       <Paragraph>
-        В <Link to="/class">Классе</Link> — школа, учитель и код класса. В{" "}
-        <Link to="/studio">Разработке</Link> — твои проекты и Blockly.
+        В <Link to="/class">Классе</Link> — школа, учитель и код класса. В <Link to="/studio">Разработке</Link> —
+        твои проекты и Blockly.
       </Paragraph>
       <Paragraph type="secondary" style={{ marginBottom: 0 }}>
         Если ещё не подключился к классу, введи код в личном кабинете.
@@ -47,9 +76,9 @@ export function LandingPage() {
   );
 
   const studentDirectBlock = (
-    <Card title="Ученику (самостоятельно)">
+    <Card className="landing-role-card" title="Ученику (самостоятельно)">
       <Paragraph>
-        В <Link to="/learning">Обучении</Link> появятся уроки и трек по программе. В{" "}
+        В <Link to="/learning">Обучении</Link> — уроки и трек по программе. В{" "}
         <Link to="/studio">Разработке</Link> — свободные эксперименты с проектами.
       </Paragraph>
     </Card>
@@ -66,46 +95,90 @@ export function LandingPage() {
 
   return (
     <Content className="app-content landing-page">
-      <Space direction="vertical" size="large" style={{ width: "100%", maxWidth: 720 }}>
-        <div>
-          <Title level={4} style={{ marginTop: 0 }}>
-            Главная
-          </Title>
-          <Paragraph type="secondary" style={{ marginBottom: 0 }}>
-            Краткий обзор и куда перейти дальше — навигация в шапке.
-          </Paragraph>
-        </div>
-        {roleCard}
-        <Card size="small" title="Быстрые ссылки">
-          <Space wrap>
+      <div className="landing-page__inner">
+        <section className="landing-hero" aria-labelledby="landing-hero-title">
+          <div className="landing-hero__headline">
+            <img
+              src={htmlTheme === "light" ? "/noda-mark-landing.png" : "/noda-mark-header.png"}
+              alt=""
+              className="landing-hero__mark"
+              width={120}
+              height={markHeightPx ?? 72}
+              style={markHeightPx != null ? { height: markHeightPx } : undefined}
+              decoding="async"
+            />
+            <div
+              className="landing-hero__headline-text"
+              style={markHeightPx != null ? { minHeight: markHeightPx } : undefined}
+            >
+              <div ref={headlineMeasureRef} className="landing-hero__headline-text-inner">
+                <p className="landing-hero__eyebrow landing-hero__eyebrow--headline">Платформа Noda</p>
+                <Title level={1} id="landing-hero-title" className="landing-hero__title landing-hero__title--headline">
+                  ИИ и машинное обучение прямо в браузере
+                </Title>
+              </div>
+            </div>
+          </div>
+          <p className="landing-hero__lead">
+            Собирай данные, обучай модели и собирай проекты через визуальное программирование — без установки
+            среды на компьютер. Один аккаунт для учеников и учителей.
+          </p>
+          <div className="landing-hero__actions">
             {user ? (
               <Link to="/studio">
-                <Button type="primary">Разработка</Button>
+                <Button type="primary" size="large" icon={<RocketOutlined />}>
+                  Открыть разработку
+                </Button>
               </Link>
-            ) : null}
-            {user?.role === "student" && user.studentMode === "school" ? (
-              <Link to="/class">
-                <Button>Класс</Button>
-              </Link>
-            ) : null}
-            {user?.role === "student" && user.studentMode === "direct" ? (
-              <Link to="/learning">
-                <Button>Обучение</Button>
-              </Link>
-            ) : null}
-            {user?.role === "teacher" ? (
-              <Link to="/teacher">
-                <Button>Кабинет учителя</Button>
-              </Link>
-            ) : null}
+            ) : (
+              <Button type="primary" size="large" icon={<RocketOutlined />} onClick={openAuthModal}>
+                Войти в аккаунт
+              </Button>
+            )}
             {user ? (
               <Link to="/account">
-                <Button>Личный кабинет</Button>
+                <Button size="large">Личный кабинет</Button>
               </Link>
-            ) : null}
-          </Space>
-        </Card>
-      </Space>
+            ) : (
+              <Text type="secondary" style={{ maxWidth: 280 }}>
+                Уже есть аккаунт? Используй «Войти» в шапке или кнопку выше.
+              </Text>
+            )}
+          </div>
+        </section>
+
+        <div className="landing-features" id="features" role="list">
+          <Card className="landing-feature-card" bordered={false} role="listitem">
+            <div className="landing-feature-card__icon">
+              <CodeOutlined />
+            </div>
+            <div className="landing-feature-card__title">Визуальное программирование</div>
+            <p className="landing-feature-card__text">
+              Blockly-среда: логика, циклы и вызовы моделей без классического кода на старте.
+            </p>
+          </Card>
+          <Card className="landing-feature-card" bordered={false} role="listitem">
+            <div className="landing-feature-card__icon">
+              <DatabaseOutlined />
+            </div>
+            <div className="landing-feature-card__title">Данные и модели</div>
+            <p className="landing-feature-card__text">
+              Наборы изображений и таблиц, обучение и предсказания — в рамках одного проекта.
+            </p>
+          </Card>
+          <Card className="landing-feature-card" bordered={false} role="listitem">
+            <div className="landing-feature-card__icon">
+              <CloudOutlined />
+            </div>
+            <div className="landing-feature-card__title">Облако и класс</div>
+            <p className="landing-feature-card__text">
+              Сохранение черновиков в облаке; для школ — классы, коды и задания от учителя.
+            </p>
+          </Card>
+        </div>
+
+        {roleCard}
+      </div>
     </Content>
   );
 }

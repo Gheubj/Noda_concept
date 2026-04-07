@@ -365,7 +365,7 @@ export function StudioPage() {
     (GRADEABLE_STATUSES as readonly string[]).includes(teacherReview.status);
 
   return (
-    <Content className="app-content">
+    <Content className="app-content app-content--workspace">
       {contextHolder}
       <Space direction="vertical" size="middle" style={{ width: "100%" }}>
         {readOnly && teacherReview ? (
