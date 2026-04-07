@@ -50,6 +50,44 @@ export function setAccessToken(token: string) {
   }
 }
 
+export class ApiError extends Error {
+  status: number;
+  userMessage: string;
+
+  constructor(status: number, userMessage: string, message?: string) {
+    super(message ?? userMessage);
+    this.name = "ApiError";
+    this.status = status;
+    this.userMessage = userMessage;
+  }
+}
+
+function mapStatusToUserMessage(status: number): string {
+  if (status === 401) {
+    return "Нужен вход в аккаунт";
+  }
+  if (status === 403) {
+    return "Нет доступа";
+  }
+  if (status === 404) {
+    return "Объект не найден";
+  }
+  if (status >= 500) {
+    return "Сервис временно недоступен";
+  }
+  return "Не удалось выполнить запрос";
+}
+
+export function toUserErrorMessage(error: unknown): string {
+  if (error instanceof ApiError) {
+    return error.userMessage;
+  }
+  if (error instanceof Error && error.message.trim()) {
+    return error.message;
+  }
+  return "Произошла ошибка";
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const headers = new Headers(init?.headers ?? {});
   if (!headers.has("Content-Type") && init?.body) {
@@ -78,8 +116,16 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     setAccessToken("");
   }
   if (!response.ok) {
-    const text = await response.text();
-    throw new Error(text || `HTTP ${response.status}`);
+    let apiError: string | undefined;
+    let fallbackText = "";
+    try {
+      const data = (await response.json()) as { error?: string; message?: string };
+      apiError = typeof data.error === "string" ? data.error : typeof data.message === "string" ? data.message : "";
+    } catch {
+      fallbackText = await response.text();
+    }
+    const userMessage = apiError?.trim() || fallbackText.trim() || mapStatusToUserMessage(response.status);
+    throw new ApiError(response.status, userMessage, `HTTP ${response.status}`);
   }
   return (await response.json()) as T;
 }

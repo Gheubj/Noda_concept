@@ -31,6 +31,7 @@ export interface SessionUser {
 interface SessionState {
   user: SessionUser | null;
   loading: boolean;
+  sessionRestored: boolean;
   login: (email: string, password: string) => Promise<void>;
   requestRegistrationCode: (email: string) => Promise<void>;
   register: (args: {
@@ -52,6 +53,7 @@ interface SessionState {
 export const useSessionStore = create<SessionState>((set, get) => ({
   user: null,
   loading: false,
+  sessionRestored: false,
   setUser: (user) => set({ user }),
   login: async (email, password) => {
     set({ loading: true });
@@ -128,7 +130,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
         }
       }
     } finally {
-      set({ loading: false });
+      set({ loading: false, sessionRestored: true });
     }
   }
 }));

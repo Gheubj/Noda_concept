@@ -22,14 +22,14 @@ import { TeacherPage } from "@/app/TeacherPage";
 import { ResetPasswordPage } from "@/app/ResetPasswordPage";
 import { ShareImportPage } from "@/app/ShareImportPage";
 import { useSessionStore } from "@/store/useSessionStore";
-import { apiClient, setAccessToken } from "@/shared/api/client";
+import { apiClient, setAccessToken, toUserErrorMessage } from "@/shared/api/client";
 
 const { Header } = Layout;
 const { Title, Paragraph } = Typography;
 
 function RequireUser({ children }: { children: ReactElement }) {
-  const { user, loading } = useSessionStore();
-  if (loading) {
+  const { user, loading, sessionRestored } = useSessionStore();
+  if (loading || !sessionRestored) {
     return (
       <div className="app-content">
         <Paragraph style={{ marginTop: 24 }}>Загрузка…</Paragraph>
@@ -157,7 +157,7 @@ export function App() {
       await requestRegistrationCode(normalized);
       messageApi.success("Код отправлен на почту");
     } catch (error) {
-      messageApi.error(error instanceof Error ? error.message : "Не удалось отправить код");
+      messageApi.error(toUserErrorMessage(error));
     }
   };
 
@@ -180,7 +180,7 @@ export function App() {
       setAuthLoginTab("email");
       messageApi.success(isRegister ? "Регистрация выполнена" : "Вход выполнен");
     } catch (error) {
-      messageApi.error(error instanceof Error ? error.message : "Ошибка авторизации");
+      messageApi.error(toUserErrorMessage(error));
     }
   };
 
@@ -195,7 +195,7 @@ export function App() {
       messageApi.success("Если аккаунт есть, письмо отправлено");
       setForgotOpen(false);
     } catch (error) {
-      messageApi.error(error instanceof Error ? error.message : "Ошибка запроса");
+      messageApi.error(toUserErrorMessage(error));
     }
   };
 
