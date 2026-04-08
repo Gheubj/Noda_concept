@@ -24,6 +24,7 @@ import { ResetPasswordPage } from "@/app/ResetPasswordPage";
 import { ShareImportPage } from "@/app/ShareImportPage";
 import { SettingsPanel } from "@/app/SettingsPanel";
 import { useSessionStore } from "@/store/useSessionStore";
+import { useHtmlDataTheme } from "@/hooks/useHtmlDataTheme";
 import { apiClient, setAccessToken, toUserErrorMessage } from "@/shared/api/client";
 
 const { Header } = Layout;
@@ -54,6 +55,7 @@ function RequireUser({ children }: { children: ReactElement }) {
 }
 
 export function App() {
+  const htmlTheme = useHtmlDataTheme();
   const location = useLocation();
   const [messageApi, contextHolder] = message.useMessage();
   const [authOpen, setAuthOpen] = useState(false);
@@ -242,9 +244,14 @@ export function App() {
         <Title level={3} className="app-title">
           <Link to="/" className="app-title-link app-brand" aria-label="Nodly — на главную">
             <span className="app-brand-logo-wrap" aria-hidden>
-              <img src="/nodly-mark-header.png" alt="" className="app-brand-logo" width={80} height={88} />
+              <img
+                src={htmlTheme === "dark" ? "/nodly-wordmark-light.png" : "/nodly-wordmark.png"}
+                alt=""
+                className="app-brand-logo"
+                width={200}
+                height={50}
+              />
             </span>
-            <span className="app-brand-text">Nodly</span>
           </Link>
         </Title>
         <div className="app-header-trailing">
@@ -272,11 +279,15 @@ export function App() {
               </NavLink>
             ) : null}
             {user?.role === "student" && user.studentMode === "school" ? (
-              <Badge count={meSummary.assignmentAttentionCount ?? 0} size="small" offset={[8, 2]}>
+              <Badge
+                count={meSummary.assignmentAttentionCount ?? 0}
+                size="small"
+                offset={[8, 2]}
+                classNames={{ root: "app-header-nav-badge" }}
+              >
                 <NavLink
                   to="/class"
                   className={headerNavClass}
-                  style={{ display: "inline-block" }}
                   onClick={() =>
                     setMeSummary((s) => ({
                       ...s,
@@ -300,11 +311,11 @@ export function App() {
                 }
                 size="small"
                 offset={[8, 2]}
+                classNames={{ root: "app-header-nav-badge" }}
               >
                 <NavLink
                   to="/teacher"
                   className={headerNavClass}
-                  style={{ display: "inline-block" }}
                   onClick={() =>
                     setMeSummary((s) => ({
                       ...s,
@@ -328,12 +339,14 @@ export function App() {
         </div>
         {user ? (
           <div className="app-header-account-cluster">
-            <div className="app-header-account-slot">
+            <div
+              className={`app-header-account-slot${settingsOpen ? " app-header-account-slot--active" : ""}`}
+            >
               <Button
                 type="text"
                 size="large"
                 icon={<SettingOutlined className="app-header-account-icon" />}
-                className={`header-user-btn app-header-account-btn app-header-settings-btn${settingsOpen ? " app-header-settings-btn--active" : ""}`}
+                className="header-user-btn app-header-account-btn"
                 aria-label="Настройки"
                 aria-expanded={settingsOpen}
                 onClick={() => setSettingsOpen(true)}

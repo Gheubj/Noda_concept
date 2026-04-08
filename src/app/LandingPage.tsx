@@ -1,4 +1,3 @@
-import { useLayoutEffect, useRef, useState } from "react";
 import { Button, Card, Layout, Space, Typography } from "antd";
 import {
   CloudOutlined,
@@ -20,26 +19,9 @@ function openAuthModal() {
   window.dispatchEvent(new Event("nodly-open-auth"));
 }
 
-/** Верхний «воздух»: «Платформа Nodly» ниже, заголовок у нижнего края лого */
-const LANDING_HEADLINE_TOP_EXTRA_PX = 28;
-
 export function LandingPage() {
-  const { user } = useSessionStore();
   const htmlTheme = useHtmlDataTheme();
-  const headlineMeasureRef = useRef<HTMLDivElement>(null);
-  const [markHeightPx, setMarkHeightPx] = useState<number | null>(null);
-
-  useLayoutEffect(() => {
-    const el = headlineMeasureRef.current;
-    if (!el) {
-      return;
-    }
-    const measure = () => setMarkHeightPx(el.offsetHeight + LANDING_HEADLINE_TOP_EXTRA_PX);
-    measure();
-    const ro = new ResizeObserver(measure);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, [htmlTheme]);
+  const { user } = useSessionStore();
 
   const guestBlock = (
     <Card className="landing-role-card" title="С чего начать">
@@ -102,25 +84,16 @@ export function LandingPage() {
         <section className="landing-hero" aria-labelledby="landing-hero-title">
           <div className="landing-hero__headline">
             <img
-              src={htmlTheme === "light" ? "/nodly-mark-landing.png" : "/nodly-mark-header.png"}
-              alt=""
-              className="landing-hero__mark"
-              width={120}
-              height={markHeightPx ?? 72}
-              style={markHeightPx != null ? { height: markHeightPx } : undefined}
+              src={htmlTheme === "dark" ? "/nodly-wordmark-light.png" : "/nodly-wordmark.png"}
+              alt="Nodly"
+              className="landing-hero__wordmark"
+              width={400}
+              height={100}
               decoding="async"
             />
-            <div
-              className="landing-hero__headline-text"
-              style={markHeightPx != null ? { minHeight: markHeightPx } : undefined}
-            >
-              <div ref={headlineMeasureRef} className="landing-hero__headline-text-inner">
-                <p className="landing-hero__eyebrow landing-hero__eyebrow--headline">Платформа Nodly</p>
-                <Title level={1} id="landing-hero-title" className="landing-hero__title landing-hero__title--headline">
-                  ИИ и машинное обучение прямо в браузере
-                </Title>
-              </div>
-            </div>
+            <Title level={1} id="landing-hero-title" className="landing-hero__title landing-hero__title--headline">
+              ИИ и машинное обучение прямо в браузере
+            </Title>
           </div>
           <p className="landing-hero__lead">
             Собирай данные, обучай модели и собирай проекты через визуальное программирование — без установки

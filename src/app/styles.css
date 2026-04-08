@@ -10,11 +10,12 @@ html[data-theme="light"] {
   --app-surface: #ffffff;
   --app-muted: #526077;
   --app-accent: #2563eb;
-  --app-header-bg: #1d4ed8;
-  --app-header-text: #ffffff;
-  --app-header-muted: rgba(255, 255, 255, 0.9);
-  --app-header-active: rgba(255, 255, 255, 0.22);
-  --app-header-hover: rgba(255, 255, 255, 0.12);
+  --app-header-bg: #ffffff;
+  --app-header-text: #0f172a;
+  --app-header-muted: #475569;
+  --app-header-active: rgba(15, 23, 42, 0.1);
+  --app-header-hover: rgba(15, 23, 42, 0.06);
+  --app-header-border: rgba(15, 23, 42, 0.08);
   --landing-hero-border: rgba(15, 23, 42, 0.07);
   --landing-card-shadow: 0 1px 2px rgba(15, 23, 42, 0.05), 0 10px 28px rgba(15, 23, 42, 0.07);
 }
@@ -24,11 +25,12 @@ html[data-theme="dark"] {
   --app-text: #e5e7eb;
   --app-surface: #111827;
   --app-muted: #94a3b8;
-  --app-header-bg: #1e293b;
+  --app-header-bg: #0f172a;
   --app-header-text: #f8fafc;
-  --app-header-muted: rgba(248, 250, 252, 0.9);
-  --app-header-active: rgba(248, 250, 252, 0.18);
-  --app-header-hover: rgba(248, 250, 252, 0.12);
+  --app-header-muted: rgba(248, 250, 252, 0.78);
+  --app-header-active: rgba(248, 250, 252, 0.12);
+  --app-header-hover: rgba(248, 250, 252, 0.08);
+  --app-header-border: rgba(248, 250, 252, 0.1);
   --landing-hero-border: rgba(96, 165, 250, 0.2);
   --landing-card-shadow: 0 1px 2px rgba(0, 0, 0, 0.2), 0 12px 32px rgba(0, 0, 0, 0.25);
 }
@@ -62,6 +64,7 @@ body,
   height: auto;
   min-height: 64px;
   background: var(--app-header-bg);
+  border-bottom: 1px solid var(--app-header-border);
   position: relative;
 }
 
@@ -83,7 +86,7 @@ body,
 }
 
 .app-header--authed .app-header-trailing {
-  padding-right: 190px;
+  padding-right: 252px;
   gap: 4px 8px;
 }
 
@@ -128,6 +131,18 @@ button.app-header-nav-link--button {
   text-align: left;
 }
 
+.app-header-nav .app-header-nav-badge,
+.app-header-nav .app-header-nav-badge.ant-badge {
+  display: inline-flex;
+  align-items: center;
+}
+
+.app-header-nav .app-header-nav-badge .app-header-nav-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+}
+
 .app-settings-drawer .ant-drawer-content-wrapper {
   max-width: min(380px, calc(100vw - 20px));
 }
@@ -141,16 +156,9 @@ button.app-header-nav-link--button {
   color: var(--app-header-text);
 }
 
-/* Ant Typography в шапке подхватывает токен светлой темы — фиксируем цвет бренда */
-html[data-theme="light"] .app-header .app-title.ant-typography,
-html[data-theme="light"] .app-header .app-brand-text {
+/* Ant Typography в шапке: цвет от токенов шапки */
+html[data-theme="light"] .app-header .app-title.ant-typography {
   color: var(--app-header-text) !important;
-}
-
-html[data-theme="light"] .app-header .app-title-link:hover,
-html[data-theme="light"] .app-header .app-title-link:hover .app-brand-text {
-  color: var(--app-header-text) !important;
-  opacity: 0.92;
 }
 
 .app-title-link {
@@ -160,14 +168,14 @@ html[data-theme="light"] .app-header .app-title-link:hover .app-brand-text {
 
 .app-title-link:hover {
   color: var(--app-header-text);
-  opacity: 0.92;
+  opacity: 0.88;
 }
 
 .app-brand {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
-  max-width: min(100%, 320px);
+  gap: 0;
+  max-width: min(100%, 240px);
 }
 
 .app-brand-logo-wrap {
@@ -181,27 +189,16 @@ html[data-theme="light"] .app-header .app-title-link:hover .app-brand-text {
 .app-brand-logo {
   height: 36px;
   width: auto;
-  max-width: 42px;
+  max-width: 148px;
   object-fit: contain;
   object-position: left center;
   display: block;
 }
 
-.app-brand-text {
-  font-weight: 600;
-  font-size: 1.05rem;
-  letter-spacing: -0.02em;
-  white-space: nowrap;
-}
-
 @media (max-width: 480px) {
-  .app-brand-text {
-    display: none;
-  }
-
   .app-brand-logo {
-    max-width: 38px;
-    height: 32px;
+    max-width: 118px;
+    height: 30px;
   }
 }
 
@@ -214,22 +211,39 @@ html[data-theme="light"] .app-header .app-title-link:hover .app-brand-text {
 }
 
 .app-header-theme-segmented.ant-segmented {
-  background: rgba(255, 255, 255, 0.14);
+  background: rgba(15, 23, 42, 0.06);
   border-radius: 8px;
 }
 
 .app-header-theme-segmented.ant-segmented .ant-segmented-item {
-  color: rgba(255, 255, 255, 0.88);
+  color: rgba(15, 23, 42, 0.72);
   font-weight: 500;
 }
 
 .app-header-theme-segmented.ant-segmented .ant-segmented-item-selected {
-  background: rgba(255, 255, 255, 0.28) !important;
-  color: #fff !important;
+  background: rgba(15, 23, 42, 0.1) !important;
+  color: var(--app-header-text) !important;
 }
 
 .app-header-theme-segmented.ant-segmented .ant-segmented-thumb {
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(15, 23, 42, 0.08);
+}
+
+html[data-theme="dark"] .app-header-theme-segmented.ant-segmented {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+html[data-theme="dark"] .app-header-theme-segmented.ant-segmented .ant-segmented-item {
+  color: rgba(248, 250, 252, 0.85);
+}
+
+html[data-theme="dark"] .app-header-theme-segmented.ant-segmented .ant-segmented-item-selected {
+  background: rgba(255, 255, 255, 0.16) !important;
+  color: #fff !important;
+}
+
+html[data-theme="dark"] .app-header-theme-segmented.ant-segmented .ant-segmented-thumb {
+  background: rgba(255, 255, 255, 0.12);
 }
 
 .app-header-teacher-btn.ant-btn {
@@ -262,11 +276,20 @@ html[data-theme="light"] .app-header .app-title-link:hover .app-brand-text {
   align-items: center;
   justify-content: flex-start;
   gap: 0;
-  width: 86px;
-  max-width: 86px;
-  min-width: 86px;
+  box-sizing: border-box;
+  min-width: 92px;
+  max-width: 108px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  cursor: pointer;
   text-decoration: none;
   color: inherit;
+  transition: background 0.15s ease;
+}
+
+.app-header-account-slot:hover,
+.app-header-account-slot:focus-within {
+  background: var(--app-header-hover);
 }
 
 .app-header-account-slot > .app-header-account-btn.ant-btn {
@@ -277,9 +300,27 @@ a.app-header-account-slot {
   color: inherit;
 }
 
-.app-header-settings-btn--active.ant-btn {
-  background: var(--app-header-active) !important;
-  border-radius: 8px;
+.app-header-account-slot--active {
+  background: var(--app-header-active);
+}
+
+.app-header-account-slot--active:hover,
+.app-header-account-slot--active:focus-within {
+  background: var(--app-header-active);
+}
+
+.app-header-account-slot:hover .app-header-account-btn.ant-btn,
+.app-header-account-slot:focus-within .app-header-account-btn.ant-btn {
+  background: transparent !important;
+}
+
+.app-header-account-slot:hover .app-header-account-btn.ant-btn:hover,
+.app-header-account-slot:focus-within .app-header-account-btn.ant-btn:hover {
+  background: transparent !important;
+}
+
+.app-header-account-slot--active .app-header-account-btn.ant-btn {
+  background: transparent !important;
 }
 
 /* Как у ЛК: без белой подложки у text-кнопок на синей шапке */
@@ -298,7 +339,7 @@ a.app-header-account-slot {
   margin-top: 2px;
   font-size: 11px;
   line-height: 1.2;
-  color: rgba(255, 255, 255, 0.92);
+  color: var(--app-header-muted);
   text-align: center;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -313,13 +354,13 @@ a.app-header-account-slot {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  color: #fff;
+  color: var(--app-header-text);
   border-radius: 8px;
 }
 
 .app-header-account-btn.ant-btn:hover {
-  color: #e6f4ff !important;
-  background: rgba(255, 255, 255, 0.12) !important;
+  color: var(--app-header-text) !important;
+  background: transparent !important;
 }
 
 .app-header-account-icon {
@@ -327,11 +368,11 @@ a.app-header-account-slot {
 }
 
 .header-user-btn.ant-btn {
-  color: #fff;
+  color: var(--app-header-text);
 }
 
 .header-user-btn.ant-btn:hover {
-  color: #e6f4ff !important;
+  color: var(--app-header-text) !important;
 }
 
 .account-page {
@@ -393,51 +434,27 @@ html[data-theme="dark"] .app-content--workspace {
   padding: 36px 28px 40px 16px;
   margin-bottom: 40px;
   border: 1px solid var(--landing-hero-border);
-  background: linear-gradient(
-    145deg,
-    rgba(37, 99, 235, 0.07) 0%,
-    #f8fafc 38%,
-    #ffffff 72%,
-    #fafbfc 100%
-  );
+  background: linear-gradient(145deg, #f4f4f5 0%, #f8fafc 42%, #ffffff 100%);
   box-shadow: var(--landing-card-shadow);
   overflow: hidden;
 }
 
 .landing-hero__headline {
   display: flex;
-  flex-direction: row;
-  align-items: flex-end;
-  gap: 14px 16px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 18px;
   margin: 0 0 20px;
 }
 
-.landing-hero__mark {
-  flex-shrink: 0;
-  width: auto;
-  min-height: 48px;
-  object-fit: contain;
-  object-position: left bottom;
+.landing-hero__wordmark {
   display: block;
-}
-
-.landing-hero__headline-text {
-  min-width: 0;
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
-}
-
-.landing-hero__headline-text-inner {
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
-}
-
-.landing-hero__eyebrow--headline {
-  margin-top: 0 !important;
-  margin-bottom: 12px !important;
+  width: auto;
+  max-width: min(100%, 420px);
+  height: auto;
+  max-height: 76px;
+  object-fit: contain;
+  object-position: left center;
 }
 
 .landing-hero__title--headline.ant-typography {
