@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
-import { DatabaseOutlined } from "@ant-design/icons";
+import { DatabaseOutlined, FormOutlined } from "@ant-design/icons";
 import {
   Alert,
   Button,
-  Card,
   Drawer,
+  FloatButton,
   Form,
   Input,
   InputNumber,
@@ -99,6 +99,7 @@ export function StudioPage() {
   const [submittingAssignment, setSubmittingAssignment] = useState(false);
   const [submissionCtx, setSubmissionCtx] = useState<SubmissionContext | null>(null);
   const [teacherReview, setTeacherReview] = useState<TeacherWorkReview | null>(null);
+  const [teacherReviewModalOpen, setTeacherReviewModalOpen] = useState(true);
   const [teacherGrading, setTeacherGrading] = useState(false);
   const [teacherGradeForm] = Form.useForm();
   const { getProjectSnapshot, loadProjectSnapshot, activeProject, setActiveProject } = useAppStore();
@@ -122,6 +123,12 @@ export function StudioPage() {
       teacherGradeForm.resetFields();
     }
   }, [readOnly, teacherGradeForm]);
+
+  useEffect(() => {
+    if (readOnly && teacherReview) {
+      setTeacherReviewModalOpen(true);
+    }
+  }, [readOnly, teacherReview?.submissionId]);
 
   useEffect(() => {
     if (!teacherReview) {
@@ -377,69 +384,6 @@ export function StudioPage() {
       {contextHolder}
       <div className="studio-page">
         <div className="studio-page__chrome">
-          {readOnly && teacherReview ? (
-            <Space direction="vertical" size="middle" style={{ width: "100%", marginBottom: 8 }}>
-            <Alert
-              type="info"
-              showIcon
-              message="Работа ученика"
-              description={
-                <span>
-                  Проект ученика только для просмотра. Оценку и доработку можно оформить ниже. Раздел{" "}
-                  <Link to="/teacher">кабинет учителя</Link> — для списка всех сдач.
-                </span>
-              }
-            />
-            {showTeacherGradePanel ? (
-              <Card size="small" title={`Проверка: ${teacherReview.assignmentTitle} (${teacherReview.studentNickname})`}>
-                <Paragraph type="secondary" style={{ marginTop: 0 }}>
-                  Статус сдачи:{" "}
-                  <Text strong>
-                    {teacherReview.status === "submitted"
-                      ? "сдано"
-                      : teacherReview.status === "needs_revision"
-                        ? "доработка"
-                        : teacherReview.status === "graded"
-                          ? `оценено (${teacherReview.score ?? "—"}/${teacherReview.maxScore})`
-                          : teacherReview.status}
-                  </Text>
-                </Paragraph>
-                <Form form={teacherGradeForm} layout="vertical">
-                  <Form.Item name="decision" label="Решение">
-                    <Select
-                      options={[
-                        { value: "grade", label: "Поставить оценку" },
-                        { value: "revision", label: "Вернуть на доработку" }
-                      ]}
-                    />
-                  </Form.Item>
-                  <Form.Item noStyle shouldUpdate={(p, c) => p.decision !== c.decision}>
-                    {({ getFieldValue }) =>
-                      getFieldValue("decision") === "grade" ? (
-                        <Form.Item
-                          name="score"
-                          label="Балл"
-                          rules={[{ required: true }]}
-                          extra={`0…${teacherReview.maxScore}`}
-                        >
-                          <InputNumber min={0} max={teacherReview.maxScore} style={{ width: "100%" }} />
-                        </Form.Item>
-                      ) : null
-                    }
-                  </Form.Item>
-                  <Form.Item name="comment" label="Комментарий для ученика">
-                    <TextArea rows={3} placeholder="Необязательно при оценке, желательно при доработке" />
-                  </Form.Item>
-                  <Button type="primary" loading={teacherGrading} onClick={() => void submitTeacherGradeFromStudio()}>
-                    Сохранить решение
-                  </Button>
-                </Form>
-              </Card>
-            ) : (
-              <Paragraph type="secondary">Ученик ещё не отправил работу на проверку (черновик).</Paragraph>
-            )}
-            </Space>
-          ) : null}
           {!readOnly && submissionCtx ? (
           <Alert
             type={submissionCtx.status === "needs_revision" ? "warning" : "info"}
@@ -576,6 +520,96 @@ export function StudioPage() {
           <Input value={saveTitle} onChange={(e) => setSaveTitle(e.target.value)} placeholder="Название проекта" />
         </Space>
       </Modal>
+      <Modal
+        open={Boolean(readOnly && teacherReview && teacherReviewModalOpen)}
+        title={
+          showTeacherGradePanel && teacherReview
+            ? `Проверка: ${teacherReview.assignmentTitle} (${teacherReview.studentNickname})`
+            : "Работа ученика"
+        }
+        onCancel={() => setTeacherReviewModalOpen(false)}
+        footer={null}
+        width={560}
+        destroyOnClose={false}
+        centered
+        zIndex={1100}
+        maskClosable
+        rootClassName="studio-teacher-review-modal"
+      >
+        {teacherReview ? (
+          <Space direction="vertical" size="middle" style={{ width: "100%" }}>
+            <Alert
+              type="info"
+              showIcon
+              message="Работа ученика"
+              description={
+                <span>
+                  Проект только для просмотра. Оценку и доработку оформляйте в этом окне. Раздел{" "}
+                  <Link to="/teacher">кабинет учителя</Link> — список всех сдач.
+                </span>
+              }
+            />
+            {showTeacherGradePanel ? (
+              <>
+                <Paragraph type="secondary" style={{ marginTop: 0 }}>
+                  Статус сдачи:{" "}
+                  <Text strong>
+                    {teacherReview.status === "submitted"
+                      ? "сдано"
+                      : teacherReview.status === "needs_revision"
+                        ? "доработка"
+                        : teacherReview.status === "graded"
+                          ? `оценено (${teacherReview.score ?? "—"}/${teacherReview.maxScore})`
+                          : teacherReview.status}
+                  </Text>
+                </Paragraph>
+                <Form form={teacherGradeForm} layout="vertical">
+                  <Form.Item name="decision" label="Решение">
+                    <Select
+                      options={[
+                        { value: "grade", label: "Поставить оценку" },
+                        { value: "revision", label: "Вернуть на доработку" }
+                      ]}
+                    />
+                  </Form.Item>
+                  <Form.Item noStyle shouldUpdate={(p, c) => p.decision !== c.decision}>
+                    {({ getFieldValue }) =>
+                      getFieldValue("decision") === "grade" ? (
+                        <Form.Item
+                          name="score"
+                          label="Балл"
+                          rules={[{ required: true }]}
+                          extra={`0…${teacherReview.maxScore}`}
+                        >
+                          <InputNumber min={0} max={teacherReview.maxScore} style={{ width: "100%" }} />
+                        </Form.Item>
+                      ) : null
+                    }
+                  </Form.Item>
+                  <Form.Item name="comment" label="Комментарий для ученика">
+                    <TextArea rows={3} placeholder="Необязательно при оценке, желательно при доработке" />
+                  </Form.Item>
+                  <Button type="primary" loading={teacherGrading} onClick={() => void submitTeacherGradeFromStudio()}>
+                    Сохранить решение
+                  </Button>
+                </Form>
+              </>
+            ) : (
+              <Paragraph type="secondary" style={{ marginBottom: 0 }}>
+                Ученик ещё не отправил работу на проверку (черновик).
+              </Paragraph>
+            )}
+          </Space>
+        ) : null}
+      </Modal>
+      {readOnly && teacherReview && !teacherReviewModalOpen ? (
+        <FloatButton
+          type="primary"
+          icon={<FormOutlined />}
+          tooltip="Проверка работы"
+          onClick={() => setTeacherReviewModalOpen(true)}
+        />
+      ) : null}
     </Content>
   );
 }
