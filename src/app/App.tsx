@@ -249,15 +249,18 @@ export function App() {
         </Title>
         <div className="app-header-trailing">
           <nav className="app-header-nav" aria-label="Основные разделы">
-            <button
-              type="button"
-              className={`app-header-nav-link app-header-nav-link--button${settingsOpen ? " app-header-nav-link--active" : ""}`}
-              aria-expanded={settingsOpen}
-              onClick={() => setSettingsOpen(true)}
-            >
-              <SettingOutlined aria-hidden />
-              Настройки
-            </button>
+            {!user ? (
+              <button
+                type="button"
+                className={`app-header-nav-link app-header-nav-link--button${settingsOpen ? " app-header-nav-link--active" : ""}`}
+                aria-expanded={settingsOpen}
+                aria-label="Настройки"
+                onClick={() => setSettingsOpen(true)}
+              >
+                <SettingOutlined aria-hidden />
+                Настройки
+              </button>
+            ) : null}
             {user ? (
               <NavLink to="/" end className={headerNavClass}>
                 Главная
@@ -324,17 +327,31 @@ export function App() {
           </div>
         </div>
         {user ? (
-          <Link to="/account" className="app-header-account" aria-label="Личный кабинет">
-            <Button
-              type="text"
-              size="large"
-              icon={<UserOutlined className="app-header-account-icon" />}
-              className="header-user-btn app-header-account-btn"
-            />
-            <span className="app-header-nickname" title={user.nickname}>
-              {user.nickname}
-            </span>
-          </Link>
+          <div className="app-header-account-cluster">
+            <div className="app-header-account-slot">
+              <button
+                type="button"
+                className={`header-user-btn app-header-account-btn app-header-settings-btn${settingsOpen ? " app-header-settings-btn--active" : ""}`}
+                aria-label="Настройки"
+                aria-expanded={settingsOpen}
+                onClick={() => setSettingsOpen(true)}
+              >
+                <SettingOutlined className="app-header-account-icon" />
+              </button>
+              <span className="app-header-nickname">Настройки</span>
+            </div>
+            <Link to="/account" className="app-header-account-slot" aria-label="Личный кабинет">
+              <Button
+                type="text"
+                size="large"
+                icon={<UserOutlined className="app-header-account-icon" />}
+                className="header-user-btn app-header-account-btn"
+              />
+              <span className="app-header-nickname" title={user.nickname}>
+                {user.nickname}
+              </span>
+            </Link>
+          </div>
         ) : null}
       </Header>
       <Drawer

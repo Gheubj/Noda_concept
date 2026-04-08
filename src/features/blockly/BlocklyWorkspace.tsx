@@ -12,8 +12,23 @@ import {
 } from "@/features/model/mlEngine";
 import type { ModelEvaluation, ModelType, SavedModelEntry } from "@/shared/types/ai";
 import { trackEvent } from "@/features/analytics/analytics";
+import { useHtmlDataTheme } from "@/hooks/useHtmlDataTheme";
 
 const { Paragraph, Text } = Typography;
+
+const NODA_BLOCKLY_DARK = Blockly.Theme.defineTheme("noda_dark", {
+  name: "noda_dark",
+  base: Blockly.Themes.Classic,
+  componentStyles: {
+    workspaceBackgroundColour: "#1e293b",
+    toolboxBackgroundColour: "#111827",
+    toolboxForegroundColour: "#e5e7eb",
+    flyoutBackgroundColour: "#1e293b",
+    flyoutForegroundColour: "#cbd5e1",
+    scrollbarColour: "#64748b",
+    insertionMarkerColour: "#60a5fa"
+  }
+});
 
 const BLOCK_COLOR = {
   events: 20,
@@ -643,6 +658,7 @@ function getDefaultWorkspaceJson(trainBlockType: "noda_train_model_simple" | "no
 }
 
 export function BlocklyWorkspace() {
+  const htmlTheme = useHtmlDataTheme();
   const containerRef = useRef<HTMLDivElement | null>(null);
   const workspaceRef = useRef<Blockly.WorkspaceSvg | null>(null);
   const isRunningRef = useRef(false);
@@ -1144,12 +1160,14 @@ export function BlocklyWorkspace() {
     if (!containerRef.current) {
       return;
     }
+    const initialDark = document.documentElement.getAttribute("data-theme") === "dark";
     workspaceRef.current = Blockly.inject(containerRef.current, {
       trashcan: true,
+      theme: initialDark ? NODA_BLOCKLY_DARK : Blockly.Themes.Classic,
       grid: {
         spacing: 20,
         length: 3,
-        colour: "#e0e0e0",
+        colour: initialDark ? "#334155" : "#e0e0e0",
         snap: false
       },
       move: {
@@ -1240,6 +1258,16 @@ export function BlocklyWorkspace() {
       workspaceRef.current = null;
     };
   }, []);
+
+  useEffect(() => {
+    const ws = workspaceRef.current;
+    if (!ws) {
+      return;
+    }
+    const isDark = htmlTheme === "dark";
+    ws.setTheme(isDark ? NODA_BLOCKLY_DARK : Blockly.Themes.Classic);
+    Blockly.svgResize(ws);
+  }, [htmlTheme]);
 
   useEffect(() => {
     if (!workspaceRef.current || !blocklyState) {

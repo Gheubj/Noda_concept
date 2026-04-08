@@ -901,9 +901,6 @@ export function TeacherPage() {
     <div className="app-content account-page">
       {contextHolder}
       <Space direction="vertical" size="large" style={{ width: "100%", maxWidth: 960 }}>
-        <Link to="/studio">
-          <Button type="link">← Назад в разработку</Button>
-        </Link>
         <Title level={4} style={{ margin: 0 }}>
           Кабинет учителя
         </Title>

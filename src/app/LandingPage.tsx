@@ -1,10 +1,13 @@
 import { useLayoutEffect, useRef, useState } from "react";
-import { Button, Card, Layout, Typography } from "antd";
+import { Button, Card, Layout, Space, Typography } from "antd";
 import {
   CloudOutlined,
   CodeOutlined,
   DatabaseOutlined,
-  RocketOutlined
+  RocketOutlined,
+  SettingOutlined,
+  TeamOutlined,
+  UserOutlined
 } from "@ant-design/icons";
 import { Link } from "react-router-dom";
 import { useHtmlDataTheme } from "@/hooks/useHtmlDataTheme";
@@ -146,6 +149,42 @@ export function LandingPage() {
             )}
           </div>
         </section>
+
+        {user ? (
+          <Card className="landing-quick-actions-card" title="С чего начать сегодня">
+            <Space wrap size="middle">
+              <Link to="/studio">
+                <Button type="primary" icon={<RocketOutlined />}>
+                  Разработка
+                </Button>
+              </Link>
+              {user.role === "teacher" ? (
+                <Link to="/teacher">
+                  <Button icon={<TeamOutlined />}>Кабинет учителя</Button>
+                </Link>
+              ) : null}
+              {user.role === "student" && user.studentMode === "school" ? (
+                <Link to="/class">
+                  <Button>Класс</Button>
+                </Link>
+              ) : null}
+              {user.role === "student" && user.studentMode === "direct" ? (
+                <Link to="/learning">
+                  <Button>Обучение</Button>
+                </Link>
+              ) : null}
+              <Link to="/account">
+                <Button icon={<UserOutlined />}>Личный кабинет</Button>
+              </Link>
+              <Button
+                icon={<SettingOutlined />}
+                onClick={() => window.dispatchEvent(new Event("noda-open-settings"))}
+              >
+                Настройки
+              </Button>
+            </Space>
+          </Card>
+        ) : null}
 
         <div className="landing-features" id="features" role="list">
           <Card className="landing-feature-card" bordered={false} role="listitem">
