@@ -73,6 +73,7 @@ model User {
   refreshTokens     RefreshToken[]
   passwordResetTokens PasswordResetToken[]
   projectSharesCreated ProjectShare[]
+  scheduleSlotAttendances ScheduleSlotAttendance[]
 }
 
 // Одноразовый код подтверждения email перед регистрацией
@@ -234,14 +235,32 @@ model ClassScheduleSlot {
   lessonTemplateId String?
   startsAt         DateTime
   endsAt           DateTime?
+  durationMinutes  Int      @default(90)
   notes            String?
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
   classroom      Classroom       @relation(fields: [classroomId], references: [id], onDelete: Cascade)
   lessonTemplate LessonTemplate? @relation(fields: [lessonTemplateId], references: [id], onDelete: SetNull)
+  attendances      ScheduleSlotAttendance[]
 
   @@index([classroomId, startsAt])
+}
+
+// Необязательная отметка ученика: планирует прийти на занятие (для учителя не редактируется здесь)
+model ScheduleSlotAttendance {
+  id            String   @id @default(cuid())
+  slotId        String
+  studentId     String
+  plansToAttend Boolean?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  slot    ClassScheduleSlot @relation(fields: [slotId], references: [id], onDelete: Cascade)
+  student User              @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([slotId, studentId])
+  @@index([studentId])
 }
 
 model Assignment {

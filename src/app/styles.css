@@ -1037,6 +1037,40 @@ html[data-theme="dark"] .blockly-palette-btn {
   }
 }
 
+.week-schedule-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 10px;
+  width: 100%;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.week-schedule-day .ant-card-head-title {
+  font-size: 13px;
+  padding: 8px 0;
+}
+
+.week-schedule-slot .ant-card-body {
+  padding: 10px !important;
+}
+
+@media (max-width: 1100px) {
+  .week-schedule-grid {
+    grid-template-columns: repeat(7, minmax(140px, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  .week-schedule-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .week-schedule-toolbar {
+    justify-content: center;
+  }
+}
+
 /* Телефоны: полноэкранное сообщение (основной UI скрыт NarrowScreenGate при width < 768px) */
 .narrow-viewport-block {
   position: fixed;

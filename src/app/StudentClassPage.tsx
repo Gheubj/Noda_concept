@@ -4,6 +4,8 @@ import type { ColumnsType } from "antd/es/table";
 import { Link, useNavigate } from "react-router-dom";
 import { useSessionStore } from "@/store/useSessionStore";
 import { apiClient } from "@/shared/api/client";
+import { WeekScheduleCalendar } from "@/app/WeekScheduleCalendar";
+import dayjs from "dayjs";
 
 const { Title, Paragraph, Text } = Typography;
 
@@ -45,8 +47,10 @@ interface ScheduleSlotRow {
   id: string;
   startsAt: string;
   endsAt: string | null;
+  durationMinutes?: number;
   notes: string | null;
   lessonTitle: string | null;
+  myPlansToAttend?: boolean | null;
 }
 
 const STATUS_RU: Record<string, string> = {
@@ -92,6 +96,7 @@ export function StudentClassPage() {
   const [courseData, setCourseData] = useState<StudentCourseResponse | null>(null);
   const [scheduleRows, setScheduleRows] = useState<ScheduleSlotRow[]>([]);
   const [courseScheduleLoading, setCourseScheduleLoading] = useState(false);
+  const [scheduleWeekAnchor, setScheduleWeekAnchor] = useState(() => dayjs());
 
   const loadAssignments = useCallback(async () => {
     setLoading(true);
@@ -207,6 +212,20 @@ export function StudentClassPage() {
       messageApi.error("Не удалось отметить просмотр");
     }
   };
+
+  const updateSlotAttendance = useCallback(
+    async (slotId: string, plansToAttend: boolean | null) => {
+      try {
+        await apiClient.patch(`/api/student/schedule-slots/${slotId}/attendance`, { plansToAttend });
+        setScheduleRows((rows) =>
+          rows.map((r) => (r.id === slotId ? { ...r, myPlansToAttend: plansToAttend } : r))
+        );
+      } catch (e) {
+        messageApi.error(e instanceof Error ? e.message : "Не удалось сохранить отметку");
+      }
+    },
+    [messageApi]
+  );
 
   const assignmentColumns: ColumnsType<StudentAssignmentRow> = [
     {
@@ -399,28 +418,21 @@ export function StudentClassPage() {
 
   const scheduleTab = (
     <Spin spinning={courseScheduleLoading}>
-      <Table<ScheduleSlotRow>
-        size="small"
-        rowKey="id"
-        dataSource={scheduleRows}
-        pagination={false}
-        locale={{ emptyText: "Расписание пока не задано" }}
-        columns={[
-          {
-            title: "Начало",
-            dataIndex: "startsAt",
-            key: "startsAt",
-            render: (d: string) => new Date(d).toLocaleString("ru-RU")
-          },
-          {
-            title: "Конец",
-            dataIndex: "endsAt",
-            key: "endsAt",
-            render: (d: string | null) => (d ? new Date(d).toLocaleString("ru-RU") : "—")
-          },
-          { title: "Урок", dataIndex: "lessonTitle", key: "lessonTitle", render: (t: string | null) => t ?? "—" },
-          { title: "Заметка", dataIndex: "notes", key: "notes", ellipsis: true }
-        ]}
+      <WeekScheduleCalendar
+        weekAnchor={scheduleWeekAnchor}
+        onPrevWeek={() => setScheduleWeekAnchor((w) => w.subtract(1, "week"))}
+        onNextWeek={() => setScheduleWeekAnchor((w) => w.add(1, "week"))}
+        onThisWeek={() => setScheduleWeekAnchor(dayjs())}
+        slots={scheduleRows.map((r) => ({
+          id: r.id,
+          startsAt: r.startsAt,
+          durationMinutes: r.durationMinutes ?? 90,
+          lessonTitle: r.lessonTitle,
+          notes: r.notes,
+          myPlansToAttend: r.myPlansToAttend
+        }))}
+        variant="student"
+        onAttendanceChange={(slotId, value) => void updateSlotAttendance(slotId, value)}
       />
     </Spin>
   );

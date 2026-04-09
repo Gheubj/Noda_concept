@@ -4,6 +4,7 @@ import {
   Button,
   Card,
   DatePicker,
+  TimePicker,
   Drawer,
   Empty,
   Form,
@@ -27,6 +28,7 @@ import { CopyOutlined, TeamOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import { useSessionStore } from "@/store/useSessionStore";
 import { apiClient } from "@/shared/api/client";
+import { WeekScheduleCalendar } from "@/app/WeekScheduleCalendar";
 
 const { Title, Paragraph, Text } = Typography;
 const { TextArea } = Input;
@@ -76,6 +78,7 @@ interface ScheduleSlotRow {
   id: string;
   startsAt: string;
   endsAt: string | null;
+  durationMinutes: number;
   notes: string | null;
   lessonTemplateId: string | null;
   lessonTitle: string | null;
@@ -166,9 +169,11 @@ export function TeacherPage() {
   const [guideMd, setGuideMd] = useState("");
   const [scheduleModalOpen, setScheduleModalOpen] = useState(false);
   const [newSlotLessonId, setNewSlotLessonId] = useState<string | undefined>(undefined);
-  const [newSlotStart, setNewSlotStart] = useState<dayjs.Dayjs | null>(null);
-  const [newSlotEnd, setNewSlotEnd] = useState<dayjs.Dayjs | null>(null);
+  const [newSlotDate, setNewSlotDate] = useState<dayjs.Dayjs | null>(null);
+  const [newSlotTime, setNewSlotTime] = useState<dayjs.Dayjs | null>(null);
+  const [newSlotDurationMinutes, setNewSlotDurationMinutes] = useState<number>(90);
   const [newSlotNotes, setNewSlotNotes] = useState("");
+  const [scheduleWeekAnchor, setScheduleWeekAnchor] = useState(() => dayjs());
   const [addingSlot, setAddingSlot] = useState(false);
   const [assignments, setAssignments] = useState<TeacherAssignmentRow[]>([]);
   const [assignmentsLoading, setAssignmentsLoading] = useState(false);
@@ -489,23 +494,28 @@ export function TeacherPage() {
   };
 
   const submitNewScheduleSlot = async () => {
-    if (!lmsClassroomId || !newSlotStart) {
+    if (!lmsClassroomId || !newSlotDate || !newSlotTime) {
       messageApi.error("Укажи дату и время начала");
       return;
     }
+    if (newSlotDurationMinutes < 5 || newSlotDurationMinutes > 720) {
+      messageApi.error("Длительность: от 5 до 720 минут");
+      return;
+    }
+    const start = newSlotDate.hour(newSlotTime.hour()).minute(newSlotTime.minute()).second(0).millisecond(0);
     setAddingSlot(true);
     try {
       await apiClient.post(`/api/teacher/classrooms/${lmsClassroomId}/schedule`, {
-        startsAt: newSlotStart.toISOString(),
-        endsAt: newSlotEnd ? newSlotEnd.toISOString() : null,
+        startsAt: start.toISOString(),
+        durationMinutes: newSlotDurationMinutes,
         lessonTemplateId: newSlotLessonId ?? null,
         notes: newSlotNotes.trim() || null
       });
-      messageApi.success("Слот добавлен");
+      messageApi.success("Занятие добавлено");
       setScheduleModalOpen(false);
       setNewSlotLessonId(undefined);
       setNewSlotNotes("");
-      setNewSlotEnd(null);
+      setScheduleWeekAnchor(start);
       await reloadSchedule();
     } catch (e) {
       messageApi.error(e instanceof Error ? e.message : "Ошибка");
@@ -1021,73 +1031,6 @@ export function TeacherPage() {
                 </Spin>
               )
             },
-            {
-              key: "schedule",
-              label: "Расписание",
-              children: (
-                <Spin spinning={courseScheduleLoading}>
-                  <Space direction="vertical" style={{ width: "100%" }} size="middle">
-                    <Button
-                      type="primary"
-                      onClick={() => {
-                        setNewSlotStart(dayjs());
-                        setNewSlotEnd(null);
-                        setNewSlotLessonId(undefined);
-                        setNewSlotNotes("");
-                        setScheduleModalOpen(true);
-                      }}
-                    >
-                      Добавить занятие
-                    </Button>
-                    <Table<ScheduleSlotRow>
-                      size="small"
-                      rowKey="id"
-                      dataSource={scheduleSlots}
-                      pagination={false}
-                      locale={{ emptyText: "Расписание пустое" }}
-                      columns={[
-                        {
-                          title: "Начало",
-                          dataIndex: "startsAt",
-                          key: "startsAt",
-                          render: (d: string) => new Date(d).toLocaleString("ru-RU")
-                        },
-                        {
-                          title: "Конец",
-                          dataIndex: "endsAt",
-                          key: "endsAt",
-                          render: (d: string | null) => (d ? new Date(d).toLocaleString("ru-RU") : "—")
-                        },
-                        {
-                          title: "Урок",
-                          dataIndex: "lessonTitle",
-                          key: "lessonTitle",
-                          render: (t: string | null) => t ?? "—"
-                        },
-                        { title: "Заметка", dataIndex: "notes", key: "notes", ellipsis: true },
-                        {
-                          title: "",
-                          key: "del",
-                          width: 100,
-                          render: (_, row) => (
-                            <Popconfirm
-                              title="Удалить слот?"
-                              onConfirm={() => void deleteScheduleSlot(row.id)}
-                              okText="Удалить"
-                              cancelText="Отмена"
-                            >
-                              <Button danger type="link" size="small">
-                                Удалить
-                              </Button>
-                            </Popconfirm>
-                          )
-                        }
-                      ]}
-                    />
-                  </Space>
-                </Spin>
-              )
-            }
           ]}
         />
       )}
@@ -1171,6 +1114,50 @@ export function TeacherPage() {
       </Card>
     );
 
+  const scheduleCabinetTab = (
+    <Space direction="vertical" size="large" style={{ width: "100%" }}>
+      <Card size="small" title="Класс">
+        <Select
+          style={{ minWidth: 280 }}
+          placeholder="Выберите класс"
+          value={lmsClassroomId || undefined}
+          onChange={(v) => setLmsClassroomId(v)}
+          options={dashboard?.classrooms.map((c) => ({ value: c.id, label: `${c.title} (${c.schoolName})` })) ?? []}
+        />
+      </Card>
+      {!lmsClassroomId ? (
+        <Paragraph type="secondary">Сначала создайте класс на вкладке «Классы и ученики».</Paragraph>
+      ) : (
+        <Spin spinning={courseScheduleLoading}>
+          <Space direction="vertical" size="middle" style={{ width: "100%" }}>
+            <Button
+              type="primary"
+              onClick={() => {
+                setNewSlotDate(dayjs());
+                setNewSlotTime(dayjs().hour(9).minute(0).second(0));
+                setNewSlotDurationMinutes(90);
+                setNewSlotLessonId(undefined);
+                setNewSlotNotes("");
+                setScheduleModalOpen(true);
+              }}
+            >
+              Добавить занятие
+            </Button>
+            <WeekScheduleCalendar
+              weekAnchor={scheduleWeekAnchor}
+              onPrevWeek={() => setScheduleWeekAnchor((w) => w.subtract(1, "week"))}
+              onNextWeek={() => setScheduleWeekAnchor((w) => w.add(1, "week"))}
+              onThisWeek={() => setScheduleWeekAnchor(dayjs())}
+              slots={scheduleSlots}
+              variant="teacher"
+              onDeleteSlot={(id) => void deleteScheduleSlot(id)}
+            />
+          </Space>
+        </Spin>
+      )}
+    </Space>
+  );
+
   const roadmapTab = (
     <Card>
       <Title level={5}>Куда развивается кабинет учителя</Title>
@@ -1211,6 +1198,7 @@ export function TeacherPage() {
       ),
       children: assignmentsTab
     },
+    { key: "schedule", label: "Расписание", children: scheduleCabinetTab },
     { key: "gradebook", label: "Журнал", children: gradebookTab },
     { key: "roadmap", label: "Планы развития", children: roadmapTab }
   ];
@@ -1328,7 +1316,7 @@ export function TeacherPage() {
       </Modal>
 
       <Modal
-        title="Слот в расписании"
+        title="Занятие в расписании"
         open={scheduleModalOpen}
         okText="Добавить"
         confirmLoading={addingSlot}
@@ -1337,21 +1325,33 @@ export function TeacherPage() {
       >
         <Space direction="vertical" style={{ width: "100%" }} size="middle">
           <div>
-            <Text type="secondary">Начало</Text>
+            <Text type="secondary">Дата</Text>
             <DatePicker
-              showTime
               style={{ width: "100%", marginTop: 4 }}
-              value={newSlotStart}
-              onChange={(d) => setNewSlotStart(d)}
+              value={newSlotDate}
+              onChange={(d) => setNewSlotDate(d)}
+              format="DD.MM.YYYY"
             />
           </div>
           <div>
-            <Text type="secondary">Конец (необязательно)</Text>
-            <DatePicker
-              showTime
+            <Text type="secondary">Время начала</Text>
+            <TimePicker
               style={{ width: "100%", marginTop: 4 }}
-              value={newSlotEnd}
-              onChange={(d) => setNewSlotEnd(d)}
+              value={newSlotTime}
+              onChange={(d) => setNewSlotTime(d)}
+              format="HH:mm"
+              minuteStep={5}
+              needConfirm={false}
+            />
+          </div>
+          <div>
+            <Text type="secondary">Длительность (минуты)</Text>
+            <InputNumber
+              style={{ width: "100%", marginTop: 4 }}
+              min={5}
+              max={720}
+              value={newSlotDurationMinutes}
+              onChange={(v) => setNewSlotDurationMinutes(typeof v === "number" ? v : 90)}
             />
           </div>
           <div>

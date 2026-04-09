@@ -48,6 +48,39 @@ const EMPTY_SNAPSHOT: Prisma.InputJsonValue = {
   blocklyState: ""
 };
 
+function toMinutePrecisionStart(iso: string): Date {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) {
+    throw new Error("invalid startsAt");
+  }
+  d.setSeconds(0, 0);
+  return d;
+}
+
+function computeEndsAtFromDuration(start: Date, durationMinutes: number): Date {
+  return new Date(start.getTime() + durationMinutes * 60 * 1000);
+}
+
+function clampDurationMinutes(raw: number): number {
+  return Math.max(5, Math.min(12 * 60, Math.round(raw)));
+}
+
+function resolveDurationMinutes(
+  startsAt: Date,
+  body: { durationMinutes?: number | null; endsAt?: string | null }
+): number {
+  if (body.durationMinutes != null && !Number.isNaN(body.durationMinutes)) {
+    return clampDurationMinutes(body.durationMinutes);
+  }
+  if (body.endsAt) {
+    const end = new Date(body.endsAt);
+    if (!Number.isNaN(end.getTime())) {
+      return clampDurationMinutes((end.getTime() - startsAt.getTime()) / 60_000);
+    }
+  }
+  return 90;
+}
+
 export const COURSE_MODULE_HOURS: Record<CourseModule, number> = {
   A: 8,
   B: 24,
@@ -253,14 +286,18 @@ export function registerLmsRoutes(app: Express) {
         }
       });
       res.json(
-        slots.map((s) => ({
-          id: s.id,
-          startsAt: s.startsAt.toISOString(),
-          endsAt: s.endsAt?.toISOString() ?? null,
-          notes: s.notes,
-          lessonTemplateId: s.lessonTemplateId,
-          lessonTitle: s.lessonTemplate?.title ?? null
-        }))
+        slots.map((s) => {
+          const endsAt = s.endsAt ?? computeEndsAtFromDuration(s.startsAt, s.durationMinutes);
+          return {
+            id: s.id,
+            startsAt: s.startsAt.toISOString(),
+            endsAt: endsAt.toISOString(),
+            durationMinutes: s.durationMinutes,
+            notes: s.notes,
+            lessonTemplateId: s.lessonTemplateId,
+            lessonTitle: s.lessonTemplate?.title ?? null
+          };
+        })
       );
     }
   );
@@ -279,6 +316,7 @@ export function registerLmsRoutes(app: Express) {
       const parsed = z
         .object({
           startsAt: z.string().datetime(),
+          durationMinutes: z.coerce.number().int().optional().nullable(),
           endsAt: z.string().datetime().optional().nullable(),
           lessonTemplateId: z.string().optional().nullable(),
           notes: z.string().optional().nullable()
@@ -288,6 +326,14 @@ export function registerLmsRoutes(app: Express) {
         res.status(400).json({ error: parsed.error.message });
         return;
       }
+      let startsAt: Date;
+      try {
+        startsAt = toMinutePrecisionStart(parsed.data.startsAt);
+      } catch {
+        res.status(400).json({ error: "Некорректное время начала" });
+        return;
+      }
+      const durationMinutes = resolveDurationMinutes(startsAt, parsed.data);
       const moduleKey = courseModuleToModuleKey(c.courseModule);
       if (parsed.data.lessonTemplateId) {
         const lt = await prisma.lessonTemplate.findFirst({
@@ -298,11 +344,13 @@ export function registerLmsRoutes(app: Express) {
           return;
         }
       }
+      const endsAt = computeEndsAtFromDuration(startsAt, durationMinutes);
       const row = await prisma.classScheduleSlot.create({
         data: {
           classroomId,
-          startsAt: new Date(parsed.data.startsAt),
-          endsAt: parsed.data.endsAt ? new Date(parsed.data.endsAt) : null,
+          startsAt,
+          endsAt,
+          durationMinutes,
           lessonTemplateId: parsed.data.lessonTemplateId ?? null,
           notes: parsed.data.notes ?? null
         }
@@ -328,6 +376,7 @@ export function registerLmsRoutes(app: Express) {
       const parsed = z
         .object({
           startsAt: z.string().datetime().optional(),
+          durationMinutes: z.coerce.number().int().optional().nullable(),
           endsAt: z.string().datetime().optional().nullable(),
           lessonTemplateId: z.string().optional().nullable(),
           notes: z.string().optional().nullable()
@@ -347,13 +396,34 @@ export function registerLmsRoutes(app: Express) {
           return;
         }
       }
+      let nextStart = slot.startsAt;
+      if (parsed.data.startsAt !== undefined) {
+        try {
+          nextStart = toMinutePrecisionStart(parsed.data.startsAt);
+        } catch {
+          res.status(400).json({ error: "Некорректное время начала" });
+          return;
+        }
+      }
+      let durationMinutes = slot.durationMinutes;
+      if (parsed.data.durationMinutes != null && !Number.isNaN(parsed.data.durationMinutes)) {
+        durationMinutes = clampDurationMinutes(parsed.data.durationMinutes);
+      } else if (parsed.data.endsAt) {
+        const end = new Date(parsed.data.endsAt);
+        if (!Number.isNaN(end.getTime())) {
+          durationMinutes = clampDurationMinutes((end.getTime() - nextStart.getTime()) / 60_000);
+        }
+      }
+      const timeFieldsChanged =
+        parsed.data.startsAt !== undefined ||
+        (parsed.data.durationMinutes != null && !Number.isNaN(parsed.data.durationMinutes)) ||
+        Boolean(parsed.data.endsAt);
+      const endsAt = computeEndsAtFromDuration(nextStart, durationMinutes);
       const updated = await prisma.classScheduleSlot.update({
         where: { id: slotId },
         data: {
-          ...(parsed.data.startsAt !== undefined ? { startsAt: new Date(parsed.data.startsAt) } : {}),
-          ...(parsed.data.endsAt !== undefined
-            ? { endsAt: parsed.data.endsAt ? new Date(parsed.data.endsAt) : null }
-            : {}),
+          ...(parsed.data.startsAt !== undefined ? { startsAt: nextStart } : {}),
+          ...(timeFieldsChanged ? { durationMinutes, endsAt } : {}),
           ...(parsed.data.lessonTemplateId !== undefined
             ? { lessonTemplateId: parsed.data.lessonTemplateId }
             : {}),
@@ -401,16 +471,70 @@ export function registerLmsRoutes(app: Express) {
           lessonTemplate: { select: { id: true, title: true } }
         }
       });
+      const studentId = req.session!.sub;
+      const attendances = await prisma.scheduleSlotAttendance.findMany({
+        where: { studentId, slotId: { in: slots.map((s) => s.id) } }
+      });
+      const attBySlot = new Map(attendances.map((a) => [a.slotId, a.plansToAttend]));
       res.json(
-        slots.map((s) => ({
-          id: s.id,
-          startsAt: s.startsAt.toISOString(),
-          endsAt: s.endsAt?.toISOString() ?? null,
-          notes: s.notes,
-          lessonTemplateId: s.lessonTemplateId,
-          lessonTitle: s.lessonTemplate?.title ?? null
-        }))
+        slots.map((s) => {
+          const endsAt = s.endsAt ?? computeEndsAtFromDuration(s.startsAt, s.durationMinutes);
+          return {
+            id: s.id,
+            startsAt: s.startsAt.toISOString(),
+            endsAt: endsAt.toISOString(),
+            durationMinutes: s.durationMinutes,
+            notes: s.notes,
+            lessonTemplateId: s.lessonTemplateId,
+            lessonTitle: s.lessonTemplate?.title ?? null,
+            myPlansToAttend: attBySlot.get(s.id) ?? null
+          };
+        })
       );
+    }
+  );
+
+  app.patch(
+    "/api/student/schedule-slots/:slotId/attendance",
+    authRequired,
+    roleGuard(["student"]),
+    async (req: AuthenticatedRequest, res) => {
+      const slotId = String(req.params.slotId);
+      const parsed = z
+        .object({
+          plansToAttend: z.boolean().nullable()
+        })
+        .safeParse(req.body);
+      if (!parsed.success) {
+        res.status(400).json({ error: parsed.error.message });
+        return;
+      }
+      const slot = await prisma.classScheduleSlot.findUnique({
+        where: { id: slotId },
+        select: { id: true, classroomId: true }
+      });
+      if (!slot) {
+        res.status(404).json({ error: "Not found" });
+        return;
+      }
+      const ok = await assertStudentInClassroom(req.session!.sub, slot.classroomId);
+      if (!ok) {
+        res.status(404).json({ error: "Not found" });
+        return;
+      }
+      const studentId = req.session!.sub;
+      const value = parsed.data.plansToAttend;
+      if (value === null) {
+        await prisma.scheduleSlotAttendance.deleteMany({ where: { slotId, studentId } });
+        res.json({ ok: true, myPlansToAttend: null });
+        return;
+      }
+      const row = await prisma.scheduleSlotAttendance.upsert({
+        where: { slotId_studentId: { slotId, studentId } },
+        create: { slotId, studentId, plansToAttend: value },
+        update: { plansToAttend: value }
+      });
+      res.json({ ok: true, myPlansToAttend: row.plansToAttend });
     }
   );
 
