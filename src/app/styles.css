@@ -80,13 +80,13 @@ body,
   overflow: auto;
 }
 
-/* Сетка 1fr | лого (auto) | 1fr — геометрический центр логотипа совпадает с центром шапки */
+/* Лого слева; align-items: center — по вертикали относительно строки шапки */
 .app-header {
-  display: grid;
-  grid-template-columns: 1fr auto 1fr;
+  display: flex;
   align-items: center;
-  column-gap: 12px;
-  row-gap: 8px;
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  gap: 8px 12px;
   padding: 6px 12px;
   padding-right: 12px;
   height: auto;
@@ -99,24 +99,15 @@ body,
   padding-left: 8px;
 }
 
-.app-header-spacer {
-  min-width: 0;
-  grid-column: 1;
-}
-
-.app-header-center {
-  grid-column: 2;
-  justify-self: center;
-  min-width: 0;
-}
-
 .app-header .app-title {
   margin: 0;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
 }
 
 .app-header-end {
-  grid-column: 3;
-  justify-self: end;
+  margin-left: auto;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -242,18 +233,18 @@ html[data-theme="light"] .app-header .app-title-link:hover {
 
 /* Шапка: файл nodly-wordmark-white.png — белый вордмарк на прозрачном */
 .app-brand-wordmark {
-  height: 26px;
+  height: 32px;
   width: auto;
-  max-width: 120px;
+  max-width: 152px;
   object-fit: contain;
-  object-position: center center;
+  object-position: left center;
   display: block;
 }
 
 @media (max-width: 480px) {
   .app-brand-wordmark {
-    max-width: 112px;
-    height: 26px;
+    max-width: 136px;
+    height: 30px;
   }
 }
 
@@ -968,18 +959,12 @@ html[data-theme="dark"] .blockly-palette-btn {
     padding-right: 16px;
   }
 
-  .app-header-spacer {
-    display: none;
-  }
-
-  .app-header-center {
-    align-self: center;
-    width: 100%;
-    display: flex;
-    justify-content: center;
+  .app-header > .app-title {
+    align-self: flex-start;
   }
 
   .app-header-end {
+    margin-left: 0;
     width: 100%;
     flex-direction: column;
     align-items: stretch;

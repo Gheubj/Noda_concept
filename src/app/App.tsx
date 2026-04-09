@@ -239,22 +239,19 @@ export function App() {
     <Layout className="app-layout">
       {contextHolder}
       <Header className={`app-header app-header--edge${user ? " app-header--authed" : ""}`}>
-        <div className="app-header-spacer" aria-hidden />
-        <div className="app-header-center">
-          <Title level={3} className="app-title">
-            <Link to="/" className="app-title-link app-brand" aria-label="Nodly — на главную">
-              <span className="app-brand-logo-wrap" aria-hidden>
-                <img
-                  src="/nodly-wordmark-white.png"
-                  alt=""
-                  className="app-brand-wordmark"
-                  width={132}
-                  height={32}
-                />
-              </span>
-            </Link>
-          </Title>
-        </div>
+        <Title level={3} className="app-title">
+          <Link to="/" className="app-title-link app-brand" aria-label="Nodly — на главную">
+            <span className="app-brand-logo-wrap" aria-hidden>
+              <img
+                src="/nodly-wordmark-white.png"
+                alt=""
+                className="app-brand-wordmark"
+                width={165}
+                height={40}
+              />
+            </span>
+          </Link>
+        </Title>
         <div className="app-header-end">
           <nav className="app-header-nav" aria-label="Основные разделы">
             {!user ? (
