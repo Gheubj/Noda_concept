@@ -113,7 +113,7 @@ interface TeacherSubmissionRow {
   gradedAt: string | null;
   projectId: string | null;
   student: { id: string; nickname: string; email: string };
-  assignment: { id: string; title: string; maxScore: number };
+  assignment: { id: string; title: string; maxScore: number; kind: string };
 }
 
 interface LessonTemplateListItem {
@@ -808,6 +808,12 @@ export function TeacherPage() {
     { title: "Ученик", key: "st", render: (_, r) => r.student.nickname },
     { title: "Задание", key: "as", render: (_, r) => r.assignment.title },
     {
+      title: "Тип",
+      key: "kind",
+      width: 110,
+      render: (_, r) => KIND_RU[r.assignment.kind] ?? r.assignment.kind
+    },
+    {
       title: "Статус",
       dataIndex: "status",
       key: "status",
@@ -829,9 +835,12 @@ export function TeacherPage() {
               Открыть работу
             </Link>
           ) : null}
-          {r.status === "submitted" || r.status === "needs_revision" || r.status === "draft" ? (
+          {r.status === "submitted" ||
+          r.status === "needs_revision" ||
+          r.status === "draft" ||
+          (r.status === "not_started" && r.assignment.kind === "classwork") ? (
             <Button type="link" size="small" onClick={() => openGrade(r)}>
-              Оценить
+              {r.status === "not_started" ? "Оценить работу" : "Оценить"}
             </Button>
           ) : r.status === "graded" ? (
             <Button type="link" size="small" onClick={() => openGrade(r)}>
@@ -1286,9 +1295,9 @@ export function TeacherPage() {
   }
 
   return (
-    <div className="app-content account-page">
+    <div className="app-content account-page lms-shell-wide">
       {contextHolder}
-      <Space direction="vertical" size="large" style={{ width: "100%", maxWidth: 960 }}>
+      <Space direction="vertical" size="large" style={{ width: "100%", maxWidth: "none" }}>
         <Title level={4} style={{ margin: 0 }}>
           Кабинет учителя
         </Title>
@@ -1437,7 +1446,15 @@ export function TeacherPage() {
           <div>
             <Text type="secondary">Повторять каждую неделю</Text>
             <div style={{ marginTop: 6 }}>
-              <Switch checked={newSlotRepeatWeekly} onChange={setNewSlotRepeatWeekly} />
+              <Switch
+                checked={newSlotRepeatWeekly}
+                onChange={(v) => {
+                  setNewSlotRepeatWeekly(v);
+                  if (v) {
+                    setNewSlotLessonId(undefined);
+                  }
+                }}
+              />
             </div>
           </div>
           {newSlotRepeatWeekly ? (
@@ -1456,15 +1473,23 @@ export function TeacherPage() {
             <Text type="secondary">Урок из курса (необязательно)</Text>
             <Select
               allowClear
+              disabled={newSlotRepeatWeekly}
               style={{ width: "100%", marginTop: 4 }}
               placeholder="Без привязки к уроку"
               value={newSlotLessonId}
               onChange={(v) => setNewSlotLessonId(v)}
               options={courseBundle?.lessons.map((l) => ({ value: l.id, label: l.title })) ?? []}
             />
+            {newSlotRepeatWeekly ? (
+              <Paragraph type="secondary" style={{ marginTop: 6, marginBottom: 0, fontSize: 12 }}>
+                При серии занятий тема урока в календаре для каждой даты задаётся отдельно: после создания откройте
+                нужное занятие и привяжите урок (правка слота в расписании).
+              </Paragraph>
+            ) : null}
           </div>
           <Paragraph type="secondary" style={{ marginBottom: 0, fontSize: 12 }}>
-            Для классной работы и ДЗ стартовый проект подставляется из урока программы; если урок не выбран — пустой шаблон.
+            Для классной работы и ДЗ стартовый проект подставляется из выбранного урока; если урок не выбран — пустой
+            шаблон. Для серии без выбора урока — пустой шаблон и свои названия ниже.
           </Paragraph>
           <div>
             <Text type="secondary">Классная работа на этом занятии</Text>

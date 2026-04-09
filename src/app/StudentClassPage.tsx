@@ -80,13 +80,6 @@ function needsAttention(row: StudentAssignmentRow): boolean {
   return false;
 }
 
-function dueSortKey(dueAt: string | null): number {
-  if (!dueAt) {
-    return Number.MAX_SAFE_INTEGER;
-  }
-  return new Date(dueAt).getTime();
-}
-
 export function StudentClassPage() {
   const { user } = useSessionStore();
   const [messageApi, contextHolder] = message.useMessage();
@@ -196,29 +189,6 @@ export function StudentClassPage() {
       };
     },
     [assignmentById, classFocusId, focusEnrollment?.classroomTitle, focusEnrollment?.schoolName]
-  );
-
-  const upcomingRows = useMemo(() => {
-    const rows = assignmentsForClass.filter((row) => (row.submission?.status ?? "not_started") !== "graded");
-    return [...rows].sort((a, b) => dueSortKey(a.dueAt) - dueSortKey(b.dueAt));
-  }, [assignmentsForClass]);
-
-  const archiveRows = useMemo(() => {
-    const rows = assignmentsForClass.filter((row) => {
-      const st = row.submission?.status ?? "not_started";
-      return st === "graded" || st === "submitted";
-    });
-    return [...rows].sort((a, b) => dueSortKey(b.dueAt) - dueSortKey(a.dueAt));
-  }, [assignmentsForClass]);
-
-  const otherUpcomingRows = useMemo(
-    () => upcomingRows.filter((row) => !row.scheduleSlotId),
-    [upcomingRows]
-  );
-
-  const otherArchiveRows = useMemo(
-    () => archiveRows.filter((row) => !row.scheduleSlotId),
-    [archiveRows]
   );
 
   const startOrOpen = async (row: StudentAssignmentRow) => {
@@ -459,6 +429,76 @@ export function StudentClassPage() {
     </Spin>
   );
 
+  const gradesSorted = useMemo(
+    () => [...assignmentsForClass].sort((a, b) => a.title.localeCompare(b.title, "ru")),
+    [assignmentsForClass]
+  );
+
+  const gradesColumns: ColumnsType<StudentAssignmentRow> = [
+    {
+      title: "Задание",
+      key: "title",
+      render: (_, row) => {
+        const scoreSuffix =
+          row.submission?.status === "graded" && row.submission.score != null
+            ? ` (${row.submission.score}/${row.maxScore})`
+            : "";
+        return (
+          <span>
+            {row.title}
+            {scoreSuffix}
+          </span>
+        );
+      }
+    },
+    {
+      title: "Тип",
+      dataIndex: "kind",
+      key: "kind",
+      width: 120,
+      render: (k: string) => KIND_RU[k] ?? k
+    },
+    {
+      title: "Статус",
+      key: "st",
+      render: (_, row) => {
+        const st = row.submission?.status ?? "not_started";
+        const color =
+          st === "needs_revision" ? "orange" : st === "graded" ? "green" : st === "submitted" ? "blue" : "default";
+        return <Tag color={color}>{STATUS_RU[st] ?? st}</Tag>;
+      }
+    },
+    {
+      title: "Балл",
+      key: "ball",
+      width: 88,
+      render: (_, row) =>
+        row.submission?.status === "graded" && row.submission.score != null
+          ? `${row.submission.score}/${row.maxScore}`
+          : "—"
+    },
+    {
+      title: "Срок",
+      dataIndex: "dueAt",
+      key: "dueAt",
+      width: 120,
+      render: (d: string | null) => (d ? new Date(d).toLocaleDateString("ru-RU") : "—")
+    }
+  ];
+
+  const gradesTab = (
+    <Table<StudentAssignmentRow>
+      size="small"
+      rowKey="assignmentId"
+      loading={loading}
+      columns={gradesColumns}
+      dataSource={gradesSorted}
+      pagination={{ pageSize: 12 }}
+      locale={{ emptyText: "Пока нет заданий в этом классе" }}
+      expandable={expandableConfig}
+    />
+  );
+
   const diaryTab = (
     <Space direction="vertical" size="large" style={{ width: "100%" }}>
       <div>
@@ -466,8 +506,8 @@ export function StudentClassPage() {
           Расписание и работы на занятиях
         </Title>
         <Paragraph type="secondary" style={{ marginBottom: 8 }}>
-          Здесь видно время урока, классная работа и домашка с дедлайном (если учитель добавил их к занятию).
-          Ниже — задания, выданные отдельно от расписания.
+          Время урока, классная работа и домашнее задание с дедлайном — в карточках по дням. Оценки и статусы по всем
+          заданиям — во вкладке «Успеваемость».
         </Paragraph>
         <Spin spinning={courseScheduleLoading}>
           <WeekScheduleCalendar
@@ -498,36 +538,6 @@ export function StudentClassPage() {
           />
         </Spin>
       </div>
-      <div>
-        <Title level={5} style={{ marginTop: 0 }}>
-          Другие задания (вне расписания)
-        </Title>
-        <Table<StudentAssignmentRow>
-          size="small"
-          rowKey="assignmentId"
-          loading={loading}
-          columns={assignmentColumns}
-          dataSource={otherUpcomingRows}
-          pagination={{ pageSize: 8 }}
-          locale={{ emptyText: "Нет других активных заданий" }}
-          expandable={expandableConfig}
-        />
-      </div>
-      <div>
-        <Title level={5} style={{ marginTop: 0 }}>
-          Сдано и оценки (вне расписания)
-        </Title>
-        <Table<StudentAssignmentRow>
-          size="small"
-          rowKey="assignmentId"
-          loading={loading}
-          columns={assignmentColumns}
-          dataSource={otherArchiveRows}
-          pagination={{ pageSize: 8 }}
-          locale={{ emptyText: "Пока нет сданных работ в этом списке" }}
-          expandable={expandableConfig}
-        />
-      </div>
     </Space>
   );
 
@@ -557,6 +567,7 @@ export function StudentClassPage() {
         items={[
           { key: "course", label: "Курс", children: courseTab },
           { key: "diary", label: "Дневник", children: diaryTab },
+          { key: "grades", label: "Успеваемость", children: gradesTab },
           { key: "all", label: "Все задания", children: allAssignmentsTab },
           { key: "info", label: "Мой класс", children: infoTab }
         ]}

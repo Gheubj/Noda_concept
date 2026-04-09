@@ -105,9 +105,6 @@ export function AccountPage() {
     <div className="app-content account-page">
       {contextHolder}
       <Space direction="vertical" size="large" style={{ width: "100%", maxWidth: 560 }}>
-        <Link to="/studio">
-          <Button type="link">← Назад в разработку</Button>
-        </Link>
         <Button
           type="link"
           onClick={() => window.dispatchEvent(new Event("nodly-open-settings"))}

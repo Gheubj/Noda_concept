@@ -36,7 +36,7 @@ export function ClassPage() {
   }
 
   return (
-    <Content className="app-content">
+    <Content className="app-content lms-shell-wide">
       <StudentClassPage />
     </Content>
   );

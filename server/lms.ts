@@ -476,7 +476,8 @@ export function registerLmsRoutes(app: Express) {
       }
       const homeworkDaysAfter = parsed.data.homeworkDueDaysAfterLesson ?? 7;
       const weeklySeriesId = repeatWeeks > 1 ? randomUUID() : null;
-      const lessonTemplateId = parsed.data.lessonTemplateId ?? null;
+      const catalogLessonId = parsed.data.lessonTemplateId ?? null;
+      const slotLessonTemplateId = repeatWeeks > 1 ? null : catalogLessonId;
       const notes = parsed.data.notes ?? null;
       const weekMs = 7 * 24 * 60 * 60 * 1000;
       const batch: {
@@ -502,7 +503,7 @@ export function registerLmsRoutes(app: Express) {
           startsAt: wStart,
           endsAt: computeEndsAtFromDuration(wStart, durationMinutes),
           durationMinutes,
-          lessonTemplateId,
+          lessonTemplateId: slotLessonTemplateId,
           notes,
           weeklySeriesId
         });
@@ -527,9 +528,9 @@ export function registerLmsRoutes(app: Express) {
       }
       let lessonTitleForAuto: string | null = null;
       let templateSnapshot: Prisma.InputJsonValue = EMPTY_SNAPSHOT;
-      if (lessonTemplateId) {
+      if (catalogLessonId) {
         const ltMeta = await prisma.lessonTemplate.findFirst({
-          where: { id: lessonTemplateId, published: true, moduleKey },
+          where: { id: catalogLessonId, published: true, moduleKey },
           select: { title: true, starterPayload: true }
         });
         if (ltMeta) {
@@ -559,7 +560,7 @@ export function registerLmsRoutes(app: Express) {
                 maxScore: 10,
                 published: true,
                 templateSnapshot,
-                lessonTemplateId,
+                lessonTemplateId: catalogLessonId,
                 dueAt: null
               }
             });
@@ -584,7 +585,7 @@ export function registerLmsRoutes(app: Express) {
                 maxScore: 10,
                 published: true,
                 templateSnapshot,
-                lessonTemplateId,
+                lessonTemplateId: catalogLessonId,
                 dueAt: due
               }
             });
@@ -1048,6 +1049,24 @@ export function registerLmsRoutes(app: Express) {
         return;
       }
       const assignmentId = typeof req.query.assignmentId === "string" ? req.query.assignmentId : undefined;
+      const classworkAssignments = await prisma.assignment.findMany({
+        where: { classroomId, kind: "classwork", published: true },
+        select: { id: true }
+      });
+      const enrollRows = await prisma.enrollment.findMany({
+        where: { classroomId },
+        select: { studentId: true }
+      });
+      if (classworkAssignments.length > 0 && enrollRows.length > 0) {
+        const draftSubs = enrollRows.flatMap((e) =>
+          classworkAssignments.map((a) => ({
+            assignmentId: a.id,
+            studentId: e.studentId,
+            status: "not_started" as const
+          }))
+        );
+        await prisma.submission.createMany({ data: draftSubs, skipDuplicates: true });
+      }
       const where: Prisma.SubmissionWhereInput = {
         assignment: { classroomId }
       };
@@ -1058,7 +1077,7 @@ export function registerLmsRoutes(app: Express) {
         where,
         include: {
           student: { select: { id: true, nickname: true, email: true } },
-          assignment: { select: { id: true, title: true, maxScore: true } }
+          assignment: { select: { id: true, title: true, maxScore: true, kind: true } }
         },
         orderBy: { updatedAt: "desc" }
       });
