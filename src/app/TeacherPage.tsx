@@ -4,13 +4,16 @@ import {
   Button,
   Card,
   DatePicker,
+  Drawer,
   Empty,
   Form,
   Input,
   InputNumber,
   Modal,
+  Popconfirm,
   Select,
   Space,
+  Spin,
   Switch,
   Table,
   Tabs,
@@ -47,8 +50,35 @@ interface DashboardClassroom {
   code: string;
   schoolId: string;
   schoolName: string;
+  courseModule: string;
+  courseHours: number;
   createdAt: string;
   students: DashboardStudent[];
+}
+
+interface TeacherCourseLesson {
+  id: string;
+  title: string;
+  description: string | null;
+  moduleKey: string;
+  sortOrder: number;
+  teacherGuideMd: string | null;
+  studentSummary: string | null;
+}
+
+interface TeacherCourseResponse {
+  courseModule: string;
+  courseHours: number;
+  lessons: TeacherCourseLesson[];
+}
+
+interface ScheduleSlotRow {
+  id: string;
+  startsAt: string;
+  endsAt: string | null;
+  notes: string | null;
+  lessonTemplateId: string | null;
+  lessonTitle: string | null;
 }
 
 interface TeacherDashboard {
@@ -122,8 +152,24 @@ export function TeacherPage() {
   const [classModalOpen, setClassModalOpen] = useState(false);
   const [classTitle, setClassTitle] = useState("");
   const [classSchoolId, setClassSchoolId] = useState<string>("");
+  const [classCourseModule, setClassCourseModule] = useState<"A" | "B" | "C" | "D">("A");
+  const [deleteClassTarget, setDeleteClassTarget] = useState<DashboardClassroom | null>(null);
+  const [deleteClassConfirmTitle, setDeleteClassConfirmTitle] = useState("");
 
   const [lmsClassroomId, setLmsClassroomId] = useState<string>("");
+  const [lmsInnerTab, setLmsInnerTab] = useState("assignments");
+  const [courseBundle, setCourseBundle] = useState<TeacherCourseResponse | null>(null);
+  const [courseScheduleLoading, setCourseScheduleLoading] = useState(false);
+  const [scheduleSlots, setScheduleSlots] = useState<ScheduleSlotRow[]>([]);
+  const [guideOpen, setGuideOpen] = useState(false);
+  const [guideTitle, setGuideTitle] = useState("");
+  const [guideMd, setGuideMd] = useState("");
+  const [scheduleModalOpen, setScheduleModalOpen] = useState(false);
+  const [newSlotLessonId, setNewSlotLessonId] = useState<string | undefined>(undefined);
+  const [newSlotStart, setNewSlotStart] = useState<dayjs.Dayjs | null>(null);
+  const [newSlotEnd, setNewSlotEnd] = useState<dayjs.Dayjs | null>(null);
+  const [newSlotNotes, setNewSlotNotes] = useState("");
+  const [addingSlot, setAddingSlot] = useState(false);
   const [assignments, setAssignments] = useState<TeacherAssignmentRow[]>([]);
   const [assignmentsLoading, setAssignmentsLoading] = useState(false);
   const [submissions, setSubmissions] = useState<TeacherSubmissionRow[]>([]);
@@ -315,6 +361,40 @@ export function TeacherPage() {
     }
   }, [lmsClassroomId, filterAssignmentId, loadAssignments, loadSubmissions, loadGradebook]);
 
+  useEffect(() => {
+    if (!lmsClassroomId) {
+      setCourseBundle(null);
+      setScheduleSlots([]);
+      return;
+    }
+    let cancelled = false;
+    setCourseScheduleLoading(true);
+    void (async () => {
+      try {
+        const [c, s] = await Promise.all([
+          apiClient.get<TeacherCourseResponse>(`/api/teacher/classrooms/${lmsClassroomId}/course`),
+          apiClient.get<ScheduleSlotRow[]>(`/api/teacher/classrooms/${lmsClassroomId}/schedule`)
+        ]);
+        if (!cancelled) {
+          setCourseBundle(c);
+          setScheduleSlots(s);
+        }
+      } catch {
+        if (!cancelled) {
+          setCourseBundle(null);
+          setScheduleSlots([]);
+        }
+      } finally {
+        if (!cancelled) {
+          setCourseScheduleLoading(false);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [lmsClassroomId]);
+
   const handleCreateSchool = async () => {
     const name = schoolName.trim();
     if (name.length < 2) {
@@ -343,11 +423,102 @@ export function TeacherPage() {
       return;
     }
     try {
-      await apiClient.post("/api/classrooms", { schoolId: classSchoolId, title: titleTrim });
+      await apiClient.post("/api/classrooms", {
+        schoolId: classSchoolId,
+        title: titleTrim,
+        courseModule: classCourseModule
+      });
       messageApi.success("Класс создан, код для учеников сгенерирован");
       setClassModalOpen(false);
       setClassTitle("");
+      setClassCourseModule("A");
       await loadDashboard();
+    } catch (e) {
+      messageApi.error(e instanceof Error ? e.message : "Ошибка");
+    }
+  };
+
+  const handleRemoveStudent = async (classroomId: string, enrollmentId: string) => {
+    try {
+      await apiClient.delete(`/api/teacher/classrooms/${classroomId}/enrollments/${enrollmentId}`);
+      messageApi.success("Ученик исключён из класса");
+      await loadDashboard();
+      if (lmsClassroomId === classroomId) {
+        void loadSubmissions(lmsClassroomId, filterAssignmentId);
+        void loadAssignments(lmsClassroomId);
+        void loadGradebook(lmsClassroomId);
+      }
+    } catch (e) {
+      messageApi.error(e instanceof Error ? e.message : "Ошибка");
+    }
+  };
+
+  const handleDeleteClassroomSubmit = async () => {
+    if (!deleteClassTarget) {
+      return;
+    }
+    if (deleteClassConfirmTitle.trim() !== deleteClassTarget.title.trim()) {
+      messageApi.error("Введите название класса точно, как в карточке");
+      return;
+    }
+    const id = deleteClassTarget.id;
+    try {
+      await apiClient.delete(`/api/teacher/classrooms/${id}`);
+      messageApi.success("Класс удалён");
+      setDeleteClassTarget(null);
+      setDeleteClassConfirmTitle("");
+      if (lmsClassroomId === id) {
+        setLmsClassroomId("");
+      }
+      await loadDashboard();
+    } catch (e) {
+      messageApi.error(e instanceof Error ? e.message : "Ошибка");
+    }
+  };
+
+  const reloadSchedule = async () => {
+    if (!lmsClassroomId) {
+      return;
+    }
+    try {
+      const s = await apiClient.get<ScheduleSlotRow[]>(`/api/teacher/classrooms/${lmsClassroomId}/schedule`);
+      setScheduleSlots(s);
+    } catch {
+      setScheduleSlots([]);
+    }
+  };
+
+  const submitNewScheduleSlot = async () => {
+    if (!lmsClassroomId || !newSlotStart) {
+      messageApi.error("Укажи дату и время начала");
+      return;
+    }
+    setAddingSlot(true);
+    try {
+      await apiClient.post(`/api/teacher/classrooms/${lmsClassroomId}/schedule`, {
+        startsAt: newSlotStart.toISOString(),
+        endsAt: newSlotEnd ? newSlotEnd.toISOString() : null,
+        lessonTemplateId: newSlotLessonId ?? null,
+        notes: newSlotNotes.trim() || null
+      });
+      messageApi.success("Слот добавлен");
+      setScheduleModalOpen(false);
+      setNewSlotLessonId(undefined);
+      setNewSlotNotes("");
+      setNewSlotEnd(null);
+      await reloadSchedule();
+    } catch (e) {
+      messageApi.error(e instanceof Error ? e.message : "Ошибка");
+    } finally {
+      setAddingSlot(false);
+    }
+  };
+
+  const deleteScheduleSlot = async (slotId: string) => {
+    try {
+      await apiClient.delete(`/api/teacher/schedule-slots/${slotId}`);
+      messageApi.success("Удалено");
+      await reloadSchedule();
     } catch (e) {
       messageApi.error(e instanceof Error ? e.message : "Ошибка");
     }
@@ -504,7 +675,7 @@ export function TeacherPage() {
     }
   };
 
-  const studentColumns: ColumnsType<DashboardStudent> = [
+  const getStudentColumns = (classroomId: string): ColumnsType<DashboardStudent> => [
     { title: "Ник", dataIndex: "nickname", key: "nickname" },
     { title: "Email", dataIndex: "email", key: "email" },
     {
@@ -512,6 +683,24 @@ export function TeacherPage() {
       dataIndex: "joinedAt",
       key: "joinedAt",
       render: (v: string) => new Date(v).toLocaleString("ru-RU")
+    },
+    {
+      title: "",
+      key: "remove",
+      width: 120,
+      render: (_, row) => (
+        <Popconfirm
+          title="Исключить ученика из класса?"
+          description="Сдачи по заданиям этого класса будут удалены."
+          onConfirm={() => void handleRemoveStudent(classroomId, row.enrollmentId)}
+          okText="Исключить"
+          cancelText="Отмена"
+        >
+          <Button danger type="link" size="small">
+            Исключить
+          </Button>
+        </Popconfirm>
+      )
     }
   ];
 
@@ -686,13 +875,19 @@ export function TeacherPage() {
               </Space>
             }
             extra={
-              <Space>
-                <Text type="secondary">Код для входа учеников:</Text>
+              <Space wrap>
+                <Tag color="geekblue">
+                  Модуль {c.courseModule} · {c.courseHours} ч.
+                </Tag>
+                <Text type="secondary">Код:</Text>
                 <Tag style={{ fontFamily: "monospace", fontSize: 14 }} color="blue">
                   {c.code}
                 </Tag>
                 <Button size="small" icon={<CopyOutlined />} onClick={() => copyCode(c.code)}>
                   Копировать
+                </Button>
+                <Button size="small" danger onClick={() => setDeleteClassTarget(c)}>
+                  Удалить класс
                 </Button>
               </Space>
             }
@@ -703,7 +898,7 @@ export function TeacherPage() {
             <Table<DashboardStudent>
               size="small"
               rowKey="enrollmentId"
-              columns={studentColumns}
+              columns={getStudentColumns(c.id)}
               dataSource={c.students}
               pagination={false}
               locale={{ emptyText: "В классе пока никого нет" }}
@@ -728,47 +923,173 @@ export function TeacherPage() {
       {!lmsClassroomId ? (
         <Paragraph type="secondary">Сначала создайте класс на вкладке «Классы и ученики».</Paragraph>
       ) : (
-        <>
-          <Card
-            title="Задания"
-            extra={
-              <Button type="primary" onClick={openCreateModal}>
-                Новое задание
-              </Button>
+        <Tabs
+          activeKey={lmsInnerTab}
+          onChange={setLmsInnerTab}
+          items={[
+            {
+              key: "assignments",
+              label: "Задания и сдачи",
+              children: (
+                <Space direction="vertical" size="large" style={{ width: "100%" }}>
+                  <Card
+                    title="Задания"
+                    extra={
+                      <Button type="primary" onClick={openCreateModal}>
+                        Новое задание
+                      </Button>
+                    }
+                  >
+                    <Table<TeacherAssignmentRow>
+                      size="small"
+                      rowKey="id"
+                      loading={assignmentsLoading}
+                      columns={assignmentColumns}
+                      dataSource={assignments}
+                      pagination={false}
+                      locale={{ emptyText: "Пока нет заданий" }}
+                    />
+                  </Card>
+                  <Card title="Сдачи">
+                    <Space style={{ marginBottom: 12 }} wrap>
+                      <Text type="secondary">Фильтр по заданию:</Text>
+                      <Select
+                        allowClear
+                        placeholder="Все"
+                        style={{ minWidth: 220 }}
+                        value={filterAssignmentId}
+                        onChange={(v) => setFilterAssignmentId(v)}
+                        options={assignments.map((a) => ({ value: a.id, label: a.title }))}
+                      />
+                    </Space>
+                    <Table<TeacherSubmissionRow>
+                      size="small"
+                      rowKey="id"
+                      loading={submissionsLoading}
+                      columns={submissionColumns}
+                      dataSource={submissions}
+                      pagination={{ pageSize: 12 }}
+                    />
+                  </Card>
+                </Space>
+              )
+            },
+            {
+              key: "course",
+              label: "Курс и методички",
+              children: (
+                <Spin spinning={courseScheduleLoading}>
+                  <Paragraph type="secondary" style={{ marginTop: 0 }}>
+                    Модуль {courseBundle?.courseModule ?? "—"} · {courseBundle?.courseHours ?? "—"} акад. часов
+                    (план).
+                  </Paragraph>
+                  <Table<TeacherCourseLesson>
+                    size="small"
+                    rowKey="id"
+                    dataSource={courseBundle?.lessons ?? []}
+                    pagination={false}
+                    locale={{ emptyText: "Нет уроков для этого модуля" }}
+                    columns={[
+                      { title: "№", width: 48, render: (_, __, i) => i + 1 },
+                      { title: "Урок", dataIndex: "title", key: "title" },
+                      {
+                        title: "Кратко (для ученика)",
+                        dataIndex: "studentSummary",
+                        key: "sum",
+                        ellipsis: true,
+                        render: (t: string | null) => t ?? "—"
+                      },
+                      {
+                        title: "",
+                        key: "guide",
+                        width: 140,
+                        render: (_, row) => (
+                          <Button
+                            size="small"
+                            onClick={() => {
+                              setGuideTitle(row.title);
+                              setGuideMd(row.teacherGuideMd ?? "Методичка пока не заполнена.");
+                              setGuideOpen(true);
+                            }}
+                          >
+                            Методичка
+                          </Button>
+                        )
+                      }
+                    ]}
+                  />
+                </Spin>
+              )
+            },
+            {
+              key: "schedule",
+              label: "Расписание",
+              children: (
+                <Spin spinning={courseScheduleLoading}>
+                  <Space direction="vertical" style={{ width: "100%" }} size="middle">
+                    <Button
+                      type="primary"
+                      onClick={() => {
+                        setNewSlotStart(dayjs());
+                        setNewSlotEnd(null);
+                        setNewSlotLessonId(undefined);
+                        setNewSlotNotes("");
+                        setScheduleModalOpen(true);
+                      }}
+                    >
+                      Добавить занятие
+                    </Button>
+                    <Table<ScheduleSlotRow>
+                      size="small"
+                      rowKey="id"
+                      dataSource={scheduleSlots}
+                      pagination={false}
+                      locale={{ emptyText: "Расписание пустое" }}
+                      columns={[
+                        {
+                          title: "Начало",
+                          dataIndex: "startsAt",
+                          key: "startsAt",
+                          render: (d: string) => new Date(d).toLocaleString("ru-RU")
+                        },
+                        {
+                          title: "Конец",
+                          dataIndex: "endsAt",
+                          key: "endsAt",
+                          render: (d: string | null) => (d ? new Date(d).toLocaleString("ru-RU") : "—")
+                        },
+                        {
+                          title: "Урок",
+                          dataIndex: "lessonTitle",
+                          key: "lessonTitle",
+                          render: (t: string | null) => t ?? "—"
+                        },
+                        { title: "Заметка", dataIndex: "notes", key: "notes", ellipsis: true },
+                        {
+                          title: "",
+                          key: "del",
+                          width: 100,
+                          render: (_, row) => (
+                            <Popconfirm
+                              title="Удалить слот?"
+                              onConfirm={() => void deleteScheduleSlot(row.id)}
+                              okText="Удалить"
+                              cancelText="Отмена"
+                            >
+                              <Button danger type="link" size="small">
+                                Удалить
+                              </Button>
+                            </Popconfirm>
+                          )
+                        }
+                      ]}
+                    />
+                  </Space>
+                </Spin>
+              )
             }
-          >
-            <Table<TeacherAssignmentRow>
-              size="small"
-              rowKey="id"
-              loading={assignmentsLoading}
-              columns={assignmentColumns}
-              dataSource={assignments}
-              pagination={false}
-              locale={{ emptyText: "Пока нет заданий" }}
-            />
-          </Card>
-          <Card title="Сдачи">
-            <Space style={{ marginBottom: 12 }} wrap>
-              <Text type="secondary">Фильтр по заданию:</Text>
-              <Select
-                allowClear
-                placeholder="Все"
-                style={{ minWidth: 220 }}
-                value={filterAssignmentId}
-                onChange={(v) => setFilterAssignmentId(v)}
-                options={assignments.map((a) => ({ value: a.id, label: a.title }))}
-              />
-            </Space>
-            <Table<TeacherSubmissionRow>
-              size="small"
-              rowKey="id"
-              loading={submissionsLoading}
-              columns={submissionColumns}
-              dataSource={submissions}
-              pagination={{ pageSize: 12 }}
-            />
-          </Card>
-        </>
+          ]}
+        />
       )}
     </Space>
   );
@@ -939,6 +1260,7 @@ export function TeacherPage() {
         onCancel={() => {
           setClassModalOpen(false);
           setClassTitle("");
+          setClassCourseModule("A");
         }}
         onOk={() => void handleCreateClass()}
       >
@@ -962,8 +1284,99 @@ export function TeacherPage() {
               onChange={(e) => setClassTitle(e.target.value)}
             />
           </div>
+          <div>
+            <Text type="secondary">Модуль курса (объём в часах)</Text>
+            <Select
+              style={{ width: "100%", marginTop: 4 }}
+              value={classCourseModule}
+              onChange={(v) => setClassCourseModule(v)}
+              options={[
+                { value: "A", label: "A — 8 ч." },
+                { value: "B", label: "B — 24 ч. (скоро)", disabled: true },
+                { value: "C", label: "C — 48 ч. (скоро)", disabled: true },
+                { value: "D", label: "D — 72 ч. (скоро)", disabled: true }
+              ]}
+            />
+          </div>
         </Space>
       </Modal>
+
+      <Modal
+        title="Удалить класс"
+        open={Boolean(deleteClassTarget)}
+        onCancel={() => {
+          setDeleteClassTarget(null);
+          setDeleteClassConfirmTitle("");
+        }}
+        footer={null}
+        destroyOnClose
+      >
+        <Space direction="vertical" style={{ width: "100%" }} size="middle">
+          <Paragraph>
+            Будут удалены задания, сдачи, расписание и приглашения. Введите название класса{" "}
+            <Text strong>{deleteClassTarget?.title}</Text> для подтверждения.
+          </Paragraph>
+          <Input
+            placeholder="Название класса"
+            value={deleteClassConfirmTitle}
+            onChange={(e) => setDeleteClassConfirmTitle(e.target.value)}
+          />
+          <Button type="primary" danger onClick={() => void handleDeleteClassroomSubmit()}>
+            Удалить класс навсегда
+          </Button>
+        </Space>
+      </Modal>
+
+      <Modal
+        title="Слот в расписании"
+        open={scheduleModalOpen}
+        okText="Добавить"
+        confirmLoading={addingSlot}
+        onCancel={() => setScheduleModalOpen(false)}
+        onOk={() => void submitNewScheduleSlot()}
+      >
+        <Space direction="vertical" style={{ width: "100%" }} size="middle">
+          <div>
+            <Text type="secondary">Начало</Text>
+            <DatePicker
+              showTime
+              style={{ width: "100%", marginTop: 4 }}
+              value={newSlotStart}
+              onChange={(d) => setNewSlotStart(d)}
+            />
+          </div>
+          <div>
+            <Text type="secondary">Конец (необязательно)</Text>
+            <DatePicker
+              showTime
+              style={{ width: "100%", marginTop: 4 }}
+              value={newSlotEnd}
+              onChange={(d) => setNewSlotEnd(d)}
+            />
+          </div>
+          <div>
+            <Text type="secondary">Урок из курса (необязательно)</Text>
+            <Select
+              allowClear
+              style={{ width: "100%", marginTop: 4 }}
+              placeholder="Без привязки к уроку"
+              value={newSlotLessonId}
+              onChange={(v) => setNewSlotLessonId(v)}
+              options={courseBundle?.lessons.map((l) => ({ value: l.id, label: l.title })) ?? []}
+            />
+          </div>
+          <TextArea
+            value={newSlotNotes}
+            onChange={(e) => setNewSlotNotes(e.target.value)}
+            placeholder="Заметка (аудитория, ссылка…)"
+            rows={2}
+          />
+        </Space>
+      </Modal>
+
+      <Drawer title={guideTitle} width={560} open={guideOpen} onClose={() => setGuideOpen(false)}>
+        <Paragraph style={{ whiteSpace: "pre-wrap", marginBottom: 0 }}>{guideMd}</Paragraph>
+      </Drawer>
 
       <Modal title="Новое задание" open={createOpen} onCancel={() => setCreateOpen(false)} onOk={() => void submitCreate()}>
         <Form form={createForm} layout="vertical">

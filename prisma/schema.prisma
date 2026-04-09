@@ -20,6 +20,7 @@ enum StudentMode {
 enum AuthProvider {
   email
   yandex
+  vk
 }
 
 enum AssignmentKind {
@@ -34,6 +35,13 @@ enum SubmissionStatus {
   submitted
   needs_revision
   graded
+}
+
+enum CourseModule {
+  A
+  B
+  C
+  D
 }
 
 model User {
@@ -110,19 +118,21 @@ model School {
 }
 
 model Classroom {
-  id          String   @id @default(cuid())
-  schoolId    String
-  teacherId   String
-  title       String
-  code        String   @unique
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id           String       @id @default(cuid())
+  schoolId     String
+  teacherId    String
+  title        String
+  code         String       @unique
+  courseModule CourseModule @default(A)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
 
-  school      School       @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  teacher     User         @relation(fields: [teacherId], references: [id], onDelete: Cascade)
-  enrollments Enrollment[]
-  inviteCodes InviteCode[]
-  assignments Assignment[]
+  school         School              @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  teacher        User                @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  enrollments    Enrollment[]
+  inviteCodes    InviteCode[]
+  assignments    Assignment[]
+  scheduleSlots  ClassScheduleSlot[]
 }
 
 model Enrollment {
@@ -209,10 +219,29 @@ model LessonTemplate {
   sortOrder      Int      @default(0)
   starterPayload Json
   published      Boolean  @default(true)
+  teacherGuideMd String?  @db.Text
+  studentSummary String?  @db.Text
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  assignments Assignment[]
+  assignments    Assignment[]
+  scheduleSlots  ClassScheduleSlot[]
+}
+
+model ClassScheduleSlot {
+  id               String   @id @default(cuid())
+  classroomId      String
+  lessonTemplateId String?
+  startsAt         DateTime
+  endsAt           DateTime?
+  notes            String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  classroom      Classroom       @relation(fields: [classroomId], references: [id], onDelete: Cascade)
+  lessonTemplate LessonTemplate? @relation(fields: [lessonTemplateId], references: [id], onDelete: SetNull)
+
+  @@index([classroomId, startsAt])
 }
 
 model Assignment {

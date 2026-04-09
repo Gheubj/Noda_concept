@@ -27,7 +27,12 @@ import {
   type AuthenticatedRequest
 } from "./auth.js";
 import { sendPasswordResetLink, sendRegistrationCode, sendTeacherNewStudentEmail } from "./email.js";
-import { ensureLessonTemplateSeed, registerLmsRoutes } from "./lms.js";
+import {
+  COURSE_MODULE_HOURS,
+  ensureLessonTemplateGuides,
+  ensureLessonTemplateSeed,
+  registerLmsRoutes
+} from "./lms.js";
 
 const app = express();
 
@@ -435,6 +440,7 @@ app.get("/api/me", authRequired, async (req: AuthenticatedRequest, res) => {
     role: user.role,
     studentMode: user.studentMode,
     isAdmin: user.isAdmin,
+    hasPassword: Boolean(user.passwordHash),
     schoolsOwned: user.schoolsOwned,
     enrollments: user.enrollments.map(
       (e: {
@@ -495,6 +501,48 @@ app.patch("/api/me/nickname", authRequired, async (req: AuthenticatedRequest, re
   res.json({ id: user.id, nickname: user.nickname });
 });
 
+app.post("/api/me/delete-account", authRequired, async (req: AuthenticatedRequest, res) => {
+  const parsed = z
+    .object({
+      password: z.string().optional(),
+      confirmPhrase: z.string().optional()
+    })
+    .safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+  const userId = req.session!.sub;
+  const account = await prisma.user.findUnique({ where: { id: userId } });
+  if (!account) {
+    res.status(404).json({ error: "User not found" });
+    return;
+  }
+  if (account.passwordHash) {
+    const pwd = parsed.data.password;
+    if (!pwd || !(await verifyPassword(pwd, account.passwordHash))) {
+      res.status(401).json({ error: "Неверный пароль" });
+      return;
+    }
+  } else {
+    const expected = `DELETE ${account.email}`;
+    if (parsed.data.confirmPhrase !== expected) {
+      res.status(400).json({
+        error: "Для аккаунта без пароля введите фразу подтверждения",
+        expectedPhrase: expected
+      });
+      return;
+    }
+  }
+  // eslint-disable-next-line no-console
+  console.info(
+    JSON.stringify({ event: "account_deleted", userId: account.id, at: new Date().toISOString() })
+  );
+  await prisma.user.delete({ where: { id: userId } });
+  clearRefreshCookie(res);
+  res.json({ ok: true });
+});
+
 app.post("/api/schools", authRequired, roleGuard(["teacher"]), async (req: AuthenticatedRequest, res) => {
   const parsed = z.object({ name: z.string().min(2) }).safeParse(req.body);
   if (!parsed.success) {
@@ -536,6 +584,8 @@ app.get("/api/teacher/dashboard", authRequired, roleGuard(["teacher"]), async (r
       code: c.code,
       schoolId: c.schoolId,
       schoolName: c.school.name,
+      courseModule: c.courseModule,
+      courseHours: COURSE_MODULE_HOURS[c.courseModule],
       createdAt: c.createdAt.toISOString(),
       students: c.enrollments.map((e) => ({
         enrollmentId: e.id,
@@ -553,9 +603,20 @@ app.post(
   authRequired,
   roleGuard(["teacher"]),
   async (req: AuthenticatedRequest, res) => {
-    const parsed = z.object({ schoolId: z.string(), title: z.string().min(2) }).safeParse(req.body);
+    const parsed = z
+      .object({
+        schoolId: z.string(),
+        title: z.string().min(2),
+        courseModule: z.enum(["A", "B", "C", "D"]).optional()
+      })
+      .safeParse(req.body);
     if (!parsed.success) {
       res.status(400).json({ error: parsed.error.message });
+      return;
+    }
+    const courseModule = parsed.data.courseModule ?? "A";
+    if (courseModule !== "A") {
+      res.status(400).json({ error: "Пока доступен только модуль A (8 часов)" });
       return;
     }
     const school = await prisma.school.findFirst({
@@ -571,7 +632,8 @@ app.post(
         schoolId: parsed.data.schoolId,
         teacherId: req.session!.sub,
         title: parsed.data.title,
-        code
+        code,
+        courseModule
       }
     });
     await prisma.inviteCode.create({
@@ -581,6 +643,57 @@ app.post(
       }
     });
     res.json(classroom);
+  }
+);
+
+app.delete(
+  "/api/teacher/classrooms/:classroomId",
+  authRequired,
+  roleGuard(["teacher"]),
+  async (req: AuthenticatedRequest, res) => {
+    const classroomId = String(req.params.classroomId);
+    const c = await prisma.classroom.findFirst({
+      where: { id: classroomId, teacherId: req.session!.sub }
+    });
+    if (!c) {
+      res.status(404).json({ error: "Класс не найден" });
+      return;
+    }
+    await prisma.classroom.delete({ where: { id: classroomId } });
+    res.json({ ok: true });
+  }
+);
+
+app.delete(
+  "/api/teacher/classrooms/:classroomId/enrollments/:enrollmentId",
+  authRequired,
+  roleGuard(["teacher"]),
+  async (req: AuthenticatedRequest, res) => {
+    const classroomId = String(req.params.classroomId);
+    const enrollmentId = String(req.params.enrollmentId);
+    const enrollment = await prisma.enrollment.findFirst({
+      where: { id: enrollmentId, classroomId },
+      include: { classroom: { select: { teacherId: true } } }
+    });
+    if (!enrollment || enrollment.classroom.teacherId !== req.session!.sub) {
+      res.status(404).json({ error: "Не найдено" });
+      return;
+    }
+    const assignments = await prisma.assignment.findMany({
+      where: { classroomId },
+      select: { id: true }
+    });
+    const assignmentIds = assignments.map((a) => a.id);
+    await prisma.$transaction([
+      prisma.submission.deleteMany({
+        where: {
+          studentId: enrollment.studentId,
+          assignmentId: { in: assignmentIds }
+        }
+      }),
+      prisma.enrollment.delete({ where: { id: enrollmentId } })
+    ]);
+    res.json({ ok: true });
   }
 );
 
@@ -830,6 +943,12 @@ app.listen(config.port, async () => {
   } catch (error) {
     // eslint-disable-next-line no-console
     console.warn("Lesson template seed skipped:", error);
+  }
+  try {
+    await ensureLessonTemplateGuides();
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.warn("Lesson template guides skipped:", error);
   }
   // eslint-disable-next-line no-console
   console.log(`Server started at http://localhost:${config.port}`);

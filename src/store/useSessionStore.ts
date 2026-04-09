@@ -21,6 +21,8 @@ export interface SessionUser {
   role: UserRole;
   studentMode: StudentMode;
   isAdmin?: boolean;
+  /** false для аккаунта только через OAuth без установленного пароля */
+  hasPassword?: boolean;
   enrollments?: SessionEnrollment[];
   spriteSelection?: {
     character?: { id: string; title: string } | null;

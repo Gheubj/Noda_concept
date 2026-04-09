@@ -1,15 +1,19 @@
 import { useEffect, useState } from "react";
-import { Button, Card, Input, Select, Space, Typography, message } from "antd";
-import { Link } from "react-router-dom";
+import { Button, Card, Checkbox, Input, Select, Space, Typography, message } from "antd";
+import { Link, useNavigate } from "react-router-dom";
 import { useSessionStore } from "@/store/useSessionStore";
-import { apiClient, toUserErrorMessage } from "@/shared/api/client";
+import { apiClient, setAccessToken, toUserErrorMessage } from "@/shared/api/client";
 
 const { Title, Paragraph, Text } = Typography;
 
 export function AccountPage() {
   const [messageApi, contextHolder] = message.useMessage();
-  const { user, refreshMe, logout } = useSessionStore();
+  const navigate = useNavigate();
+  const { user, refreshMe, logout, setUser } = useSessionStore();
   const [joinCode, setJoinCode] = useState("");
+  const [deletePassword, setDeletePassword] = useState("");
+  const [deletePhrase, setDeletePhrase] = useState("");
+  const [deleteAck, setDeleteAck] = useState(false);
   const [spriteCatalog, setSpriteCatalog] = useState<{ id: string; title: string }[]>([]);
   const [selectedSpriteId, setSelectedSpriteId] = useState<string>("");
   const [nickname, setNickname] = useState("");
@@ -72,6 +76,26 @@ export function AccountPage() {
       await apiClient.patch("/api/me/nickname", { nickname });
       await refreshMe();
       messageApi.success("Ник обновлен");
+    } catch (e) {
+      messageApi.error(toUserErrorMessage(e));
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    if (!deleteAck) {
+      messageApi.warning("Отметь, что понимаешь последствия удаления.");
+      return;
+    }
+    try {
+      const body =
+        user?.hasPassword === false
+          ? { confirmPhrase: deletePhrase.trim() }
+          : { password: deletePassword };
+      await apiClient.post<{ ok: boolean }>("/api/me/delete-account", body);
+      setAccessToken("");
+      setUser(null);
+      messageApi.success("Аккаунт удалён");
+      navigate("/");
     } catch (e) {
       messageApi.error(toUserErrorMessage(e));
     }
@@ -153,6 +177,41 @@ export function AccountPage() {
             {user.spriteSelection?.spritePack?.title ? (
               <Text type="secondary">Сейчас: {user.spriteSelection.spritePack.title}</Text>
             ) : null}
+          </Space>
+        </Card>
+        <Card title="Удаление аккаунта" styles={{ header: { borderBottomColor: "rgba(255, 77, 79, 0.35)" } }}>
+          <Space direction="vertical" style={{ width: "100%", maxWidth: 480 }} size="middle">
+            <Paragraph type="secondary" style={{ marginBottom: 0 }}>
+              Необратимо: проекты, классы, зачисления и связанные данные в сервисе будут удалены. Перед продакшеном
+              оформи политику обработки ПДн с юристом.
+            </Paragraph>
+            {user.hasPassword === false ? (
+              <>
+                <Text>
+                  Для входа через Яндекс без пароля введи фразу целиком:{" "}
+                  <Text code>
+                    DELETE {user.email}
+                  </Text>
+                </Text>
+                <Input
+                  placeholder="Фраза подтверждения"
+                  value={deletePhrase}
+                  onChange={(e) => setDeletePhrase(e.target.value)}
+                />
+              </>
+            ) : (
+              <Input.Password
+                placeholder="Текущий пароль"
+                value={deletePassword}
+                onChange={(e) => setDeletePassword(e.target.value)}
+              />
+            )}
+            <Checkbox checked={deleteAck} onChange={(e) => setDeleteAck(e.target.checked)}>
+              Понимаю, что восстановление будет невозможно.
+            </Checkbox>
+            <Button type="primary" danger onClick={() => void handleDeleteAccount()}>
+              Удалить аккаунт навсегда
+            </Button>
           </Space>
         </Card>
       </Space>

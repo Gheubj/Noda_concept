@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { randomBytes } from "crypto";
 import { z } from "zod";
-import { Prisma } from "@prisma/client";
+import { Prisma, type CourseModule } from "@prisma/client";
 import { prisma } from "./db.js";
 import { config } from "./config.js";
 import {
@@ -47,6 +47,23 @@ const EMPTY_SNAPSHOT: Prisma.InputJsonValue = {
   savedModels: [],
   blocklyState: ""
 };
+
+export const COURSE_MODULE_HOURS: Record<CourseModule, number> = {
+  A: 8,
+  B: 24,
+  C: 48,
+  D: 72
+};
+
+export function courseModuleToModuleKey(m: CourseModule): string {
+  const map: Record<CourseModule, string> = {
+    A: "module_a",
+    B: "module_b",
+    C: "module_c",
+    D: "module_d"
+  };
+  return map[m];
+}
 
 const assignmentKindZ = z.enum(["classwork", "homework", "project"]);
 
@@ -140,6 +157,262 @@ export function registerLmsRoutes(app: Express) {
     }
     res.json({ starterPayload: t.starterPayload });
   });
+
+  app.get(
+    "/api/teacher/classrooms/:classroomId/course",
+    authRequired,
+    roleGuard(["teacher"]),
+    async (req: AuthenticatedRequest, res) => {
+      const classroomId = String(req.params.classroomId);
+      const c = await prisma.classroom.findFirst({
+        where: { id: classroomId, teacherId: req.session!.sub },
+        select: { courseModule: true }
+      });
+      if (!c) {
+        res.status(404).json({ error: "Class not found" });
+        return;
+      }
+      const moduleKey = courseModuleToModuleKey(c.courseModule);
+      const lessons = await prisma.lessonTemplate.findMany({
+        where: { published: true, moduleKey },
+        orderBy: { sortOrder: "asc" },
+        select: {
+          id: true,
+          title: true,
+          description: true,
+          moduleKey: true,
+          sortOrder: true,
+          teacherGuideMd: true,
+          studentSummary: true
+        }
+      });
+      res.json({
+        courseModule: c.courseModule,
+        courseHours: COURSE_MODULE_HOURS[c.courseModule],
+        lessons
+      });
+    }
+  );
+
+  app.get(
+    "/api/student/classrooms/:classroomId/course",
+    authRequired,
+    roleGuard(["student"]),
+    async (req: AuthenticatedRequest, res) => {
+      const classroomId = String(req.params.classroomId);
+      const ok = await assertStudentInClassroom(req.session!.sub, classroomId);
+      if (!ok) {
+        res.status(404).json({ error: "Class not found" });
+        return;
+      }
+      const c = await prisma.classroom.findUnique({
+        where: { id: classroomId },
+        select: { courseModule: true }
+      });
+      if (!c) {
+        res.status(404).json({ error: "Class not found" });
+        return;
+      }
+      const moduleKey = courseModuleToModuleKey(c.courseModule);
+      const lessons = await prisma.lessonTemplate.findMany({
+        where: { published: true, moduleKey },
+        orderBy: { sortOrder: "asc" },
+        select: {
+          id: true,
+          title: true,
+          description: true,
+          moduleKey: true,
+          sortOrder: true,
+          studentSummary: true
+        }
+      });
+      res.json({
+        courseModule: c.courseModule,
+        courseHours: COURSE_MODULE_HOURS[c.courseModule],
+        lessons
+      });
+    }
+  );
+
+  app.get(
+    "/api/teacher/classrooms/:classroomId/schedule",
+    authRequired,
+    roleGuard(["teacher"]),
+    async (req: AuthenticatedRequest, res) => {
+      const classroomId = String(req.params.classroomId);
+      const c = await assertTeacherClassroom(req.session!.sub, classroomId);
+      if (!c) {
+        res.status(404).json({ error: "Class not found" });
+        return;
+      }
+      const slots = await prisma.classScheduleSlot.findMany({
+        where: { classroomId },
+        orderBy: { startsAt: "asc" },
+        include: {
+          lessonTemplate: { select: { id: true, title: true } }
+        }
+      });
+      res.json(
+        slots.map((s) => ({
+          id: s.id,
+          startsAt: s.startsAt.toISOString(),
+          endsAt: s.endsAt?.toISOString() ?? null,
+          notes: s.notes,
+          lessonTemplateId: s.lessonTemplateId,
+          lessonTitle: s.lessonTemplate?.title ?? null
+        }))
+      );
+    }
+  );
+
+  app.post(
+    "/api/teacher/classrooms/:classroomId/schedule",
+    authRequired,
+    roleGuard(["teacher"]),
+    async (req: AuthenticatedRequest, res) => {
+      const classroomId = String(req.params.classroomId);
+      const c = await assertTeacherClassroom(req.session!.sub, classroomId);
+      if (!c) {
+        res.status(404).json({ error: "Class not found" });
+        return;
+      }
+      const parsed = z
+        .object({
+          startsAt: z.string().datetime(),
+          endsAt: z.string().datetime().optional().nullable(),
+          lessonTemplateId: z.string().optional().nullable(),
+          notes: z.string().optional().nullable()
+        })
+        .safeParse(req.body);
+      if (!parsed.success) {
+        res.status(400).json({ error: parsed.error.message });
+        return;
+      }
+      const moduleKey = courseModuleToModuleKey(c.courseModule);
+      if (parsed.data.lessonTemplateId) {
+        const lt = await prisma.lessonTemplate.findFirst({
+          where: { id: parsed.data.lessonTemplateId, published: true, moduleKey }
+        });
+        if (!lt) {
+          res.status(400).json({ error: "Урок не из программы этого класса" });
+          return;
+        }
+      }
+      const row = await prisma.classScheduleSlot.create({
+        data: {
+          classroomId,
+          startsAt: new Date(parsed.data.startsAt),
+          endsAt: parsed.data.endsAt ? new Date(parsed.data.endsAt) : null,
+          lessonTemplateId: parsed.data.lessonTemplateId ?? null,
+          notes: parsed.data.notes ?? null
+        }
+      });
+      res.json({ id: row.id });
+    }
+  );
+
+  app.patch(
+    "/api/teacher/schedule-slots/:slotId",
+    authRequired,
+    roleGuard(["teacher"]),
+    async (req: AuthenticatedRequest, res) => {
+      const slotId = String(req.params.slotId);
+      const slot = await prisma.classScheduleSlot.findUnique({
+        where: { id: slotId },
+        include: { classroom: { select: { teacherId: true, courseModule: true, id: true } } }
+      });
+      if (!slot || slot.classroom.teacherId !== req.session!.sub) {
+        res.status(404).json({ error: "Not found" });
+        return;
+      }
+      const parsed = z
+        .object({
+          startsAt: z.string().datetime().optional(),
+          endsAt: z.string().datetime().optional().nullable(),
+          lessonTemplateId: z.string().optional().nullable(),
+          notes: z.string().optional().nullable()
+        })
+        .safeParse(req.body);
+      if (!parsed.success) {
+        res.status(400).json({ error: parsed.error.message });
+        return;
+      }
+      const moduleKey = courseModuleToModuleKey(slot.classroom.courseModule);
+      if (parsed.data.lessonTemplateId) {
+        const lt = await prisma.lessonTemplate.findFirst({
+          where: { id: parsed.data.lessonTemplateId, published: true, moduleKey }
+        });
+        if (!lt) {
+          res.status(400).json({ error: "Урок не из программы этого класса" });
+          return;
+        }
+      }
+      const updated = await prisma.classScheduleSlot.update({
+        where: { id: slotId },
+        data: {
+          ...(parsed.data.startsAt !== undefined ? { startsAt: new Date(parsed.data.startsAt) } : {}),
+          ...(parsed.data.endsAt !== undefined
+            ? { endsAt: parsed.data.endsAt ? new Date(parsed.data.endsAt) : null }
+            : {}),
+          ...(parsed.data.lessonTemplateId !== undefined
+            ? { lessonTemplateId: parsed.data.lessonTemplateId }
+            : {}),
+          ...(parsed.data.notes !== undefined ? { notes: parsed.data.notes } : {})
+        }
+      });
+      res.json({ id: updated.id });
+    }
+  );
+
+  app.delete(
+    "/api/teacher/schedule-slots/:slotId",
+    authRequired,
+    roleGuard(["teacher"]),
+    async (req: AuthenticatedRequest, res) => {
+      const slotId = String(req.params.slotId);
+      const slot = await prisma.classScheduleSlot.findUnique({
+        where: { id: slotId },
+        include: { classroom: { select: { teacherId: true } } }
+      });
+      if (!slot || slot.classroom.teacherId !== req.session!.sub) {
+        res.status(404).json({ error: "Not found" });
+        return;
+      }
+      await prisma.classScheduleSlot.delete({ where: { id: slotId } });
+      res.json({ ok: true });
+    }
+  );
+
+  app.get(
+    "/api/student/classrooms/:classroomId/schedule",
+    authRequired,
+    roleGuard(["student"]),
+    async (req: AuthenticatedRequest, res) => {
+      const classroomId = String(req.params.classroomId);
+      const ok = await assertStudentInClassroom(req.session!.sub, classroomId);
+      if (!ok) {
+        res.status(404).json({ error: "Class not found" });
+        return;
+      }
+      const slots = await prisma.classScheduleSlot.findMany({
+        where: { classroomId },
+        orderBy: { startsAt: "asc" },
+        include: {
+          lessonTemplate: { select: { id: true, title: true } }
+        }
+      });
+      res.json(
+        slots.map((s) => ({
+          id: s.id,
+          startsAt: s.startsAt.toISOString(),
+          endsAt: s.endsAt?.toISOString() ?? null,
+          notes: s.notes,
+          lessonTemplateId: s.lessonTemplateId,
+          lessonTitle: s.lessonTemplate?.title ?? null
+        }))
+      );
+    }
+  );
 
   app.post(
     "/api/admin/lesson-templates",
@@ -956,6 +1229,57 @@ export function registerLmsRoutes(app: Express) {
   });
 }
 
+const LESSON_GUIDE_SEED: Record<string, { teacherGuideMd: string; studentSummary: string }> = {
+  lt_intro_ai: {
+    studentSummary:
+      "Познакомишься с идеей обучения модели на примерах и с визуальным программированием в Nodly.",
+    teacherGuideMd: `# Методичка: урок 1 — Введение в ИИ
+
+## Цели
+- Снять страх перед термином «нейросеть».
+- Показать связь: данные → модель → ответ.
+
+## Ход (45 мин)
+1. Мотивация: где ИИ вокруг (5 мин).
+2. Демо в Nodly: блок «Старт» и цепочка (15 мин).
+3. Практика по заготовке урока (20 мин).
+4. Рефлексия: что запомнили (5 мин).
+
+## Вопросы ученикам
+- Чем обучение модели похоже на учёбу человека?
+`
+  },
+  lt_data_label: {
+    studentSummary: "Разберёшься, зачем модели нужны данные и как их описывать классами.",
+    teacherGuideMd: `# Методичка: урок 2 — Данные и разметка
+
+## Цели
+- Понять разницу между входом и меткой (классом).
+- Собрать мини-набор в проекте.
+
+## Материалы
+- Примеры картинок или таблицы из методички школы.
+
+## Активности
+- Создание 2–3 классов в библиотеке данных.
+- Обсуждение качества разметки.
+`
+  },
+  lt_first_model: {
+    studentSummary: "Соберёшь первую простую модель в Blockly и проверишь её на примере.",
+    teacherGuideMd: `# Методичка: урок 3 — Первая модель
+
+## Цели
+- Пройти путь: данные → обучение → предсказание.
+- Зафиксировать ошибки как часть процесса.
+
+## Замечания учителю
+- Не требовать идеальной точности на первом проходе.
+- Поощрять эксперименты с разными наборами.
+`
+  }
+};
+
 export async function ensureLessonTemplateSeed() {
   const n = await prisma.lessonTemplate.count();
   if (n > 0) {
@@ -967,21 +1291,24 @@ export async function ensureLessonTemplateSeed() {
       title: "Урок 1. Введение в ИИ",
       description: "Заготовка из каталога",
       moduleKey: "module_a",
-      sortOrder: 1
+      sortOrder: 1,
+      ...LESSON_GUIDE_SEED.lt_intro_ai
     },
     {
       id: "lt_data_label",
       title: "Урок 2. Данные и разметка",
       description: "Заготовка из каталога",
       moduleKey: "module_a",
-      sortOrder: 2
+      sortOrder: 2,
+      ...LESSON_GUIDE_SEED.lt_data_label
     },
     {
       id: "lt_first_model",
       title: "Урок 3. Первая модель",
       description: "Заготовка из каталога",
       moduleKey: "module_a",
-      sortOrder: 3
+      sortOrder: 3,
+      ...LESSON_GUIDE_SEED.lt_first_model
     }
   ];
   for (const s of seeds) {
@@ -990,6 +1317,19 @@ export async function ensureLessonTemplateSeed() {
         ...s,
         starterPayload: EMPTY_SNAPSHOT,
         published: true
+      }
+    });
+  }
+}
+
+/** Подтягивает тексты методичек для уже существующих шаблонов после миграции. */
+export async function ensureLessonTemplateGuides() {
+  for (const [id, data] of Object.entries(LESSON_GUIDE_SEED)) {
+    await prisma.lessonTemplate.updateMany({
+      where: { id },
+      data: {
+        teacherGuideMd: data.teacherGuideMd,
+        studentSummary: data.studentSummary
       }
     });
   }

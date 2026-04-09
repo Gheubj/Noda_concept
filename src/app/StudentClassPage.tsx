@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState } from "react";
-import { Button, Card, Empty, Space, Table, Tabs, Tag, Typography, message } from "antd";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Button, Card, Empty, Select, Space, Spin, Table, Tabs, Tag, Typography, message } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { Link, useNavigate } from "react-router-dom";
 import { useSessionStore } from "@/store/useSessionStore";
@@ -27,6 +27,28 @@ interface StudentAssignmentRow {
   } | null;
 }
 
+interface StudentCourseLesson {
+  id: string;
+  title: string;
+  description: string | null;
+  sortOrder: number;
+  studentSummary: string | null;
+}
+
+interface StudentCourseResponse {
+  courseModule: string;
+  courseHours: number;
+  lessons: StudentCourseLesson[];
+}
+
+interface ScheduleSlotRow {
+  id: string;
+  startsAt: string;
+  endsAt: string | null;
+  notes: string | null;
+  lessonTitle: string | null;
+}
+
 const STATUS_RU: Record<string, string> = {
   not_started: "Не начато",
   draft: "Черновик",
@@ -52,6 +74,13 @@ function needsAttention(row: StudentAssignmentRow): boolean {
   return false;
 }
 
+function dueSortKey(dueAt: string | null): number {
+  if (!dueAt) {
+    return Number.MAX_SAFE_INTEGER;
+  }
+  return new Date(dueAt).getTime();
+}
+
 export function StudentClassPage() {
   const { user } = useSessionStore();
   const [messageApi, contextHolder] = message.useMessage();
@@ -59,6 +88,10 @@ export function StudentClassPage() {
   const enrollments = user?.enrollments ?? [];
   const [assignments, setAssignments] = useState<StudentAssignmentRow[]>([]);
   const [loading, setLoading] = useState(false);
+  const [classFocusId, setClassFocusId] = useState<string>("");
+  const [courseData, setCourseData] = useState<StudentCourseResponse | null>(null);
+  const [scheduleRows, setScheduleRows] = useState<ScheduleSlotRow[]>([]);
+  const [courseScheduleLoading, setCourseScheduleLoading] = useState(false);
 
   const loadAssignments = useCallback(async () => {
     setLoading(true);
@@ -78,6 +111,67 @@ export function StudentClassPage() {
       void loadAssignments();
     }
   }, [user?.role, user?.studentMode, loadAssignments]);
+
+  useEffect(() => {
+    if (enrollments.length === 0) {
+      return;
+    }
+    if (!classFocusId || !enrollments.some((e) => e.classroomId === classFocusId)) {
+      setClassFocusId(enrollments[0].classroomId);
+    }
+  }, [enrollments, classFocusId]);
+
+  useEffect(() => {
+    if (!classFocusId) {
+      setCourseData(null);
+      setScheduleRows([]);
+      return;
+    }
+    let cancelled = false;
+    setCourseScheduleLoading(true);
+    void (async () => {
+      try {
+        const [c, s] = await Promise.all([
+          apiClient.get<StudentCourseResponse>(`/api/student/classrooms/${classFocusId}/course`),
+          apiClient.get<ScheduleSlotRow[]>(`/api/student/classrooms/${classFocusId}/schedule`)
+        ]);
+        if (!cancelled) {
+          setCourseData(c);
+          setScheduleRows(s);
+        }
+      } catch {
+        if (!cancelled) {
+          setCourseData(null);
+          setScheduleRows([]);
+        }
+      } finally {
+        if (!cancelled) {
+          setCourseScheduleLoading(false);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [classFocusId]);
+
+  const assignmentsForClass = useMemo(
+    () => assignments.filter((a) => a.classroomId === classFocusId),
+    [assignments, classFocusId]
+  );
+
+  const upcomingRows = useMemo(() => {
+    const rows = assignmentsForClass.filter((row) => (row.submission?.status ?? "not_started") !== "graded");
+    return [...rows].sort((a, b) => dueSortKey(a.dueAt) - dueSortKey(b.dueAt));
+  }, [assignmentsForClass]);
+
+  const archiveRows = useMemo(() => {
+    const rows = assignmentsForClass.filter((row) => {
+      const st = row.submission?.status ?? "not_started";
+      return st === "graded" || st === "submitted";
+    });
+    return [...rows].sort((a, b) => dueSortKey(b.dueAt) - dueSortKey(a.dueAt));
+  }, [assignmentsForClass]);
 
   const startOrOpen = async (row: StudentAssignmentRow) => {
     try {
@@ -131,7 +225,6 @@ export function StudentClassPage() {
         );
       }
     },
-    { title: "Класс", dataIndex: "classroomTitle", key: "classroomTitle" },
     {
       title: "Тип",
       dataIndex: "kind",
@@ -194,6 +287,28 @@ export function StudentClassPage() {
     }
   ];
 
+  const expandableConfig = {
+    expandedRowRender: (row: StudentAssignmentRow) => {
+      const s = row.submission;
+      if (!s) {
+        return <Paragraph type="secondary">Начни задание, чтобы появился проект и комментарии учителя.</Paragraph>;
+      }
+      const parts = [s.revisionNote, s.teacherNote].filter(
+        (x, i, a): x is string => Boolean(x) && a.indexOf(x) === i
+      );
+      if (parts.length === 0) {
+        return <Paragraph type="secondary">Пока нет комментария от учителя.</Paragraph>;
+      }
+      return (
+        <div style={{ maxWidth: 560 }}>
+          <Text strong>Комментарий учителя:</Text>
+          <Paragraph style={{ marginBottom: 0, whiteSpace: "pre-wrap" }}>{parts.join("\n\n")}</Paragraph>
+        </div>
+      );
+    },
+    rowExpandable: (row: StudentAssignmentRow) => Boolean(row.submission)
+  };
+
   if (!user) {
     return (
       <Empty description="Войдите, чтобы увидеть класс" image={Empty.PRESENTED_IMAGE_SIMPLE}>
@@ -214,6 +329,24 @@ export function StudentClassPage() {
       </Card>
     );
   }
+
+  const classPicker =
+    enrollments.length > 1 ? (
+      <Card size="small" style={{ marginBottom: 16 }}>
+        <Space wrap align="center">
+          <Text type="secondary">Класс:</Text>
+          <Select
+            style={{ minWidth: 260 }}
+            value={classFocusId}
+            onChange={(v) => setClassFocusId(v)}
+            options={enrollments.map((e) => ({
+              value: e.classroomId,
+              label: `${e.classroomTitle} (${e.schoolName})`
+            }))}
+          />
+        </Space>
+      </Card>
+    ) : null;
 
   const infoTab = (
     <Space direction="vertical" size="large" style={{ width: "100%" }}>
@@ -239,46 +372,122 @@ export function StudentClassPage() {
     </Space>
   );
 
-  const assignmentsTab = (
+  const courseTab = (
+    <Spin spinning={courseScheduleLoading}>
+      <Paragraph type="secondary">
+        Модуль {courseData?.courseModule ?? "—"} · план {courseData?.courseHours ?? "—"} ч.
+      </Paragraph>
+      <Table<StudentCourseLesson>
+        size="small"
+        rowKey="id"
+        dataSource={courseData?.lessons ?? []}
+        pagination={false}
+        locale={{ emptyText: "Нет данных курса" }}
+        columns={[
+          { title: "№", width: 48, render: (_, __, i) => i + 1 },
+          { title: "Урок", dataIndex: "title", key: "title" },
+          {
+            title: "О чём урок",
+            dataIndex: "studentSummary",
+            key: "sum",
+            render: (t: string | null) => t ?? "—"
+          }
+        ]}
+      />
+    </Spin>
+  );
+
+  const scheduleTab = (
+    <Spin spinning={courseScheduleLoading}>
+      <Table<ScheduleSlotRow>
+        size="small"
+        rowKey="id"
+        dataSource={scheduleRows}
+        pagination={false}
+        locale={{ emptyText: "Расписание пока не задано" }}
+        columns={[
+          {
+            title: "Начало",
+            dataIndex: "startsAt",
+            key: "startsAt",
+            render: (d: string) => new Date(d).toLocaleString("ru-RU")
+          },
+          {
+            title: "Конец",
+            dataIndex: "endsAt",
+            key: "endsAt",
+            render: (d: string | null) => (d ? new Date(d).toLocaleString("ru-RU") : "—")
+          },
+          { title: "Урок", dataIndex: "lessonTitle", key: "lessonTitle", render: (t: string | null) => t ?? "—" },
+          { title: "Заметка", dataIndex: "notes", key: "notes", ellipsis: true }
+        ]}
+      />
+    </Spin>
+  );
+
+  const diaryTab = (
+    <Space direction="vertical" size="large" style={{ width: "100%" }}>
+      <div>
+        <Title level={5} style={{ marginTop: 0 }}>
+          Предстоящие и в работе
+        </Title>
+        <Table<StudentAssignmentRow>
+          size="small"
+          rowKey="assignmentId"
+          loading={loading}
+          columns={assignmentColumns}
+          dataSource={upcomingRows}
+          pagination={{ pageSize: 8 }}
+          locale={{ emptyText: "Нет активных заданий" }}
+          expandable={expandableConfig}
+        />
+      </div>
+      <div>
+        <Title level={5} style={{ marginTop: 0 }}>
+          Сдано и оценки
+        </Title>
+        <Table<StudentAssignmentRow>
+          size="small"
+          rowKey="assignmentId"
+          loading={loading}
+          columns={assignmentColumns}
+          dataSource={archiveRows}
+          pagination={{ pageSize: 8 }}
+          locale={{ emptyText: "Пока нет сданных работ" }}
+          expandable={expandableConfig}
+        />
+      </div>
+    </Space>
+  );
+
+  const allAssignmentsTab = (
     <Table<StudentAssignmentRow>
       size="small"
       rowKey="assignmentId"
       loading={loading}
-      columns={assignmentColumns}
+      columns={[
+        ...assignmentColumns.slice(0, 1),
+        { title: "Класс", dataIndex: "classroomTitle", key: "classroomTitle" },
+        ...assignmentColumns.slice(1)
+      ]}
       dataSource={assignments}
       pagination={{ pageSize: 10 }}
       locale={{ emptyText: "Пока нет заданий" }}
-      expandable={{
-        expandedRowRender: (row) => {
-          const s = row.submission;
-          if (!s) {
-            return <Paragraph type="secondary">Начни задание, чтобы появился проект и комментарии учителя.</Paragraph>;
-          }
-          const parts = [s.revisionNote, s.teacherNote].filter(
-            (x, i, a): x is string => Boolean(x) && a.indexOf(x) === i
-          );
-          if (parts.length === 0) {
-            return <Paragraph type="secondary">Пока нет комментария от учителя.</Paragraph>;
-          }
-          return (
-            <div style={{ maxWidth: 560 }}>
-              <Text strong>Комментарий учителя:</Text>
-              <Paragraph style={{ marginBottom: 0, whiteSpace: "pre-wrap" }}>{parts.join("\n\n")}</Paragraph>
-            </div>
-          );
-        },
-        rowExpandable: (row) => Boolean(row.submission)
-      }}
+      expandable={expandableConfig}
     />
   );
 
   return (
     <>
       {contextHolder}
+      {classPicker}
       <Tabs
-        defaultActiveKey="assignments"
+        defaultActiveKey="diary"
         items={[
-          { key: "assignments", label: "Задания", children: assignmentsTab },
+          { key: "course", label: "Курс", children: courseTab },
+          { key: "schedule", label: "Расписание", children: scheduleTab },
+          { key: "diary", label: "Дневник", children: diaryTab },
+          { key: "all", label: "Все задания", children: allAssignmentsTab },
           { key: "info", label: "Мой класс", children: infoTab }
         ]}
       />
