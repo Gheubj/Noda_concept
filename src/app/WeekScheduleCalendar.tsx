@@ -52,7 +52,7 @@ export type WeekScheduleSlot = {
 
 const KIND_SHORT: Record<string, string> = {
   classwork: "На уроке",
-  homework: "Домашнее",
+  homework: "ДЗ",
   project: "Проект"
 };
 
@@ -106,6 +106,38 @@ function slotTimeRangeLabel(slot: Pick<WeekScheduleSlot, "startsAt" | "durationM
 
 function slotStarted(iso: string) {
   return dayjs(iso).isBefore(dayjs());
+}
+
+/** Не дублировать тег типа: шаблонные названия с сервера скрываем или оставляем только уточнение после «: » */
+function diaryStudentAssignmentCaption(title: string, kind: string): string | null {
+  const t = title.trim();
+  if (!t) {
+    return null;
+  }
+  if (kind === "classwork") {
+    if (t === "Работа на уроке") {
+      return null;
+    }
+    const prefix = "На уроке: ";
+    if (t.startsWith(prefix)) {
+      const rest = t.slice(prefix.length).trim();
+      return rest || null;
+    }
+    return t;
+  }
+  if (kind === "homework") {
+    if (t === "Домашнее задание" || t === "ДЗ") {
+      return null;
+    }
+    for (const prefix of ["ДЗ: ", "Домашнее: "]) {
+      if (t.startsWith(prefix)) {
+        const rest = t.slice(prefix.length).trim();
+        return rest || null;
+      }
+    }
+    return t;
+  }
+  return t;
 }
 
 export function WeekScheduleCalendar({
@@ -205,6 +237,7 @@ export function WeekScheduleCalendar({
                               const sub = row.submission;
                               const graded = st === "graded" && sub != null && sub.score != null;
                               const scoreShown = graded ? sub.score : null;
+                              const caption = diaryStudentAssignmentCaption(la.title, la.kind);
                               return (
                                 <div key={la.id} className="week-schedule-slot__assignment">
                                   <Space align="start" wrap size={[6, 4]} style={{ width: "100%" }}>
@@ -212,9 +245,11 @@ export function WeekScheduleCalendar({
                                       {KIND_SHORT[la.kind] ?? la.kind}
                                     </Tag>
                                     <div style={{ flex: 1, minWidth: 0 }}>
-                                      <Text strong style={{ fontSize: 12 }}>
-                                        {la.title}
-                                      </Text>
+                                      {caption ? (
+                                        <Text strong style={{ fontSize: 12 }}>
+                                          {caption}
+                                        </Text>
+                                      ) : null}
                                       {la.kind === "homework" && la.dueAt ? (
                                         <Text type="secondary" style={{ fontSize: 11, display: "block" }}>
                                           сдать до {dayjs(la.dueAt).format("DD.MM.YYYY")}
@@ -252,12 +287,12 @@ export function WeekScheduleCalendar({
                                             size="small"
                                             onClick={() => onStudentStartAssignment(row)}
                                           >
-                                            {la.kind === "classwork" ? "К работе на уроке" : "Начать"}
+                                            Начать
                                           </Button>
                                         ) : null}
                                         {(st === "draft" || st === "needs_revision") && hasProject ? (
                                           <Button size="small" onClick={() => onStudentStartAssignment(row)}>
-                                            Открыть в разработке
+                                            Продолжить
                                           </Button>
                                         ) : null}
                                         {(st === "draft" || st === "needs_revision") &&

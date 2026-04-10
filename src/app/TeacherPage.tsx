@@ -140,7 +140,7 @@ const SUBMISSION_STATUS_RU: Record<string, string> = {
 
 const KIND_RU: Record<string, string> = {
   classwork: "На уроке",
-  homework: "Домашнее",
+  homework: "ДЗ",
   project: "Проект"
 };
 
@@ -1580,7 +1580,7 @@ export function TeacherPage() {
             </Space>
           ) : null}
           <div>
-            <Text type="secondary">Домашнее задание</Text>
+            <Text type="secondary">ДЗ</Text>
             <div style={{ marginTop: 6 }}>
               <Switch checked={newSlotAddHomework} onChange={setNewSlotAddHomework} />
             </div>
@@ -1612,7 +1612,7 @@ export function TeacherPage() {
           {newSlotAddHomework ? (
             <Space direction="vertical" style={{ width: "100%" }} size="small">
               <Input
-                placeholder="Название ДЗ (необязательно, иначе «Домашнее: …»)"
+                placeholder="Название ДЗ (необязательно, иначе «ДЗ: …»)"
                 value={newSlotHomeworkTitle}
                 onChange={(e) => setNewSlotHomeworkTitle(e.target.value)}
               />
@@ -1721,7 +1721,7 @@ export function TeacherPage() {
           <Form.Item name="kind" label="Тип" rules={[{ required: true }]}>
             <Select
               options={[
-                { value: "homework", label: "Домашнее" },
+                { value: "homework", label: "ДЗ" },
                 { value: "classwork", label: "На уроке" },
                 { value: "project", label: "Проект" }
               ]}
@@ -1761,7 +1761,7 @@ export function TeacherPage() {
           <Form.Item name="kind" label="Тип" rules={[{ required: true }]}>
             <Select
               options={[
-                { value: "homework", label: "Домашнее" },
+                { value: "homework", label: "ДЗ" },
                 { value: "classwork", label: "На уроке" },
                 { value: "project", label: "Проект" }
               ]}

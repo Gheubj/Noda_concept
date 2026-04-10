@@ -65,7 +65,7 @@ const STATUS_RU: Record<string, string> = {
 
 const KIND_RU: Record<string, string> = {
   classwork: "На уроке",
-  homework: "Домашнее",
+  homework: "ДЗ",
   project: "Проект"
 };
 
@@ -314,7 +314,7 @@ export function StudentClassPage() {
             ) : null}
             {(st === "draft" || st === "needs_revision") && hasProject ? (
               <Button size="small" onClick={() => void startOrOpen(row)}>
-                Открыть в разработке
+                Продолжить
               </Button>
             ) : null}
             {(st === "draft" || st === "needs_revision") && hasProject ? (
@@ -522,7 +522,7 @@ export function StudentClassPage() {
           style={{ minWidth: 200 }}
           options={[
             { value: "all", label: "Все типы" },
-            { value: "homework", label: "Домашние" },
+            { value: "homework", label: "ДЗ" },
             { value: "classwork", label: "На уроке" },
             { value: "project", label: "Проекты" }
           ]}

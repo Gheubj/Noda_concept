@@ -576,8 +576,7 @@ export function registerLmsRoutes(app: Express) {
                 ? new Date(parsed.data.homeworkDueAt!)
                 : homeworkDueAfterLessonDays(row.startsAt, homeworkDaysAfter);
             const title =
-              homeworkTitleTrim ||
-              (lessonTitleForAuto ? `Домашнее: ${lessonTitleForAuto}` : "Домашнее задание");
+              homeworkTitleTrim || (lessonTitleForAuto ? `ДЗ: ${lessonTitleForAuto}` : "ДЗ");
             await tx.assignment.create({
               data: {
                 classroomId,
