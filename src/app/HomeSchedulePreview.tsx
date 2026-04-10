@@ -1,11 +1,8 @@
-import { Button, Card, Spin, Space, Tag, Typography, message } from "antd";
+import { Card, Spin, Typography } from "antd";
 import dayjs from "dayjs";
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { apiClient } from "@/shared/api/client";
-import type { HomeSchoolAssignmentRow } from "@/hooks/useHomeSchoolAssignments";
 import { useSessionStore } from "@/store/useSessionStore";
-import { diaryKindLabels, studentSlotNeedsAttention, type SlotStudentAssignmentRow } from "@/app/WeekScheduleCalendar";
 
 const { Text } = Typography;
 
@@ -22,58 +19,11 @@ type PreviewSlot = {
   classroomId: string;
 };
 
-function sortSlotAssignments(items: HomeSchoolAssignmentRow[]): HomeSchoolAssignmentRow[] {
-  const rank = (k: string) => (k === "classwork" ? 0 : k === "homework" ? 1 : 2);
-  return [...items].sort((a, b) => rank(a.kind) - rank(b.kind));
-}
-
-function toSlotStudentRow(r: HomeSchoolAssignmentRow): SlotStudentAssignmentRow {
-  return {
-    assignmentId: r.assignmentId,
-    classroomId: r.classroomId,
-    classroomTitle: r.classroomTitle,
-    schoolName: r.schoolName,
-    title: r.title,
-    kind: r.kind,
-    dueAt: r.dueAt,
-    maxScore: r.maxScore,
-    submission: r.submission
-  };
-}
-
-type Props = {
-  /** Задания ученика — для кнопок у слотов (только школьный режим) */
-  studentAssignments?: HomeSchoolAssignmentRow[];
-  onAfterSlotAssignmentAction?: () => void | Promise<void>;
-};
-
-export function HomeSchedulePreview({ studentAssignments, onAfterSlotAssignmentAction }: Props) {
+export function HomeSchedulePreview() {
   const { user } = useSessionStore();
-  const navigate = useNavigate();
-  const [messageApi, messageHolder] = message.useMessage();
   const showClassroomTitle = user?.role === "teacher";
-  const isSchoolStudent = Boolean(user?.role === "student" && user.studentMode === "school");
   const [loading, setLoading] = useState(true);
   const [slots, setSlots] = useState<PreviewSlot[]>([]);
-
-  const assignmentsBySlotId = useMemo(() => {
-    const m = new Map<string, HomeSchoolAssignmentRow[]>();
-    for (const a of studentAssignments ?? []) {
-      if (!a.scheduleSlotId) {
-        continue;
-      }
-      const arr = m.get(a.scheduleSlotId) ?? [];
-      arr.push(a);
-      m.set(a.scheduleSlotId, arr);
-    }
-    for (const key of [...m.keys()]) {
-      const arr = m.get(key);
-      if (arr) {
-        m.set(key, sortSlotAssignments(arr));
-      }
-    }
-    return m;
-  }, [studentAssignments]);
 
   useEffect(() => {
     let cancelled = false;
@@ -125,97 +75,15 @@ export function HomeSchedulePreview({ studentAssignments, onAfterSlotAssignmentA
 
   const todayKey = dayjs().format("YYYY-MM-DD");
 
-  const refresh = async () => {
-    await onAfterSlotAssignmentAction?.();
-  };
-
-  const startOrOpen = async (row: SlotStudentAssignmentRow) => {
-    try {
-      const res = await apiClient.post<{ projectId: string }>(
-        `/api/student/assignments/${row.assignmentId}/start`,
-        {}
-      );
-      navigate(`/studio?project=${encodeURIComponent(res.projectId)}`);
-    } catch (e) {
-      messageApi.error(e instanceof Error ? e.message : "Ошибка");
-    }
-  };
-
-  const submitWork = async (row: SlotStudentAssignmentRow) => {
-    try {
-      await apiClient.post(`/api/student/assignments/${row.assignmentId}/submit`, {});
-      messageApi.success("Работа сдана");
-      await refresh();
-    } catch (e) {
-      messageApi.error(e instanceof Error ? e.message : "Ошибка");
-    }
-  };
-
-  const markGradedSeen = async (row: SlotStudentAssignmentRow) => {
-    const sid = row.submission?.id;
-    if (!sid) {
-      return;
-    }
-    try {
-      await apiClient.post(`/api/student/submissions/${sid}/mark-graded-seen`, {});
-      await refresh();
-    } catch {
-      messageApi.error("Не удалось отметить просмотр");
-    }
-  };
-
-  const renderSlotAssignmentChips = (slotId: string) => {
-    if (!isSchoolStudent || !studentAssignments) {
-      return null;
-    }
-    const raw = assignmentsBySlotId.get(slotId) ?? [];
-    if (raw.length === 0) {
-      return null;
-    }
-    return (
-      <div className="landing-home-schedule__slot-actions-row">
-        {raw.map((a) => {
-          const row = toSlotStudentRow(a);
-          const st = row.submission?.status ?? "not_started";
-          const hasProject = Boolean(row.submission?.projectId);
-          const tagColor = a.kind === "classwork" ? "blue" : a.kind === "homework" ? "purple" : "default";
-          return (
-            <div key={a.assignmentId} className="landing-home-schedule__slot-action-chip">
-              <Tag color={tagColor} style={{ margin: 0, flexShrink: 0 }}>
-                {diaryKindLabels[a.kind] ?? a.kind}
-              </Tag>
-              <Space size={4} wrap className="landing-home-schedule__slot-action-chip-btns">
-                {st === "not_started" || !row.submission ? (
-                  <Button type="primary" size="small" onClick={() => void startOrOpen(row)}>
-                    Начать
-                  </Button>
-                ) : null}
-                {(st === "draft" || st === "needs_revision") && hasProject ? (
-                  <Button size="small" onClick={() => void startOrOpen(row)}>
-                    Продолжить
-                  </Button>
-                ) : null}
-                {(st === "draft" || st === "needs_revision") && hasProject ? (
-                  <Button size="small" onClick={() => void submitWork(row)}>
-                    Сдать
-                  </Button>
-                ) : null}
-                {st === "graded" && studentSlotNeedsAttention(row) ? (
-                  <Button size="small" onClick={() => void markGradedSeen(row)}>
-                    Понятно
-                  </Button>
-                ) : null}
-              </Space>
-            </div>
-          );
-        })}
-      </div>
-    );
+  const timeRange = (s: PreviewSlot) => {
+    const end = s.endsAt
+      ? dayjs(s.endsAt)
+      : dayjs(s.startsAt).add(s.durationMinutes, "minute");
+    return `${dayjs(s.startsAt).format("HH:mm")}–${end.format("HH:mm")}`;
   };
 
   return (
     <Card className="landing-home-schedule" title="Ближайшие занятия" size="small">
-      {messageHolder}
       <Spin spinning={loading}>
         <div className="landing-home-schedule__grid">
           {columns.map((d) => {
@@ -237,49 +105,21 @@ export function HomeSchedulePreview({ studentAssignments, onAfterSlotAssignmentA
                     </Text>
                   ) : (
                     daySlots.map((s) => (
-                      <div
-                        key={s.id}
-                        className={`landing-home-schedule__slot${!showClassroomTitle ? " landing-home-schedule__slot--student" : ""}`}
-                      >
+                      <div key={s.id} className="landing-home-schedule__slot">
+                        <Text strong style={{ fontSize: 13 }}>
+                          {timeRange(s)}
+                        </Text>
                         {showClassroomTitle ? (
-                          <>
-                            <Text strong style={{ fontSize: 13 }}>
-                              {dayjs(s.startsAt).format("HH:mm")}–
-                              {(s.endsAt
-                                ? dayjs(s.endsAt)
-                                : dayjs(s.startsAt).add(s.durationMinutes, "minute")
-                              ).format("HH:mm")}
-                            </Text>
-                            <Text type="secondary" style={{ fontSize: 11, display: "block" }}>
-                              {s.classroomTitle}
-                            </Text>
-                            <Text style={{ fontSize: 12 }}>{s.lessonTitle ?? "Занятие"}</Text>
-                            {s.notes ? (
-                              <Text type="secondary" ellipsis style={{ fontSize: 11, display: "block" }}>
-                                {s.notes}
-                              </Text>
-                            ) : null}
-                          </>
-                        ) : (
-                          <>
-                            <Text strong className="landing-home-schedule__slot-time">
-                              {dayjs(s.startsAt).format("HH:mm")}–
-                              {(s.endsAt
-                                ? dayjs(s.endsAt)
-                                : dayjs(s.startsAt).add(s.durationMinutes, "minute")
-                              ).format("HH:mm")}
-                            </Text>
-                            <Text className="landing-home-schedule__slot-lesson">
-                              {s.lessonTitle ?? "Занятие"}
-                            </Text>
-                            {s.notes ? (
-                              <Text type="secondary" ellipsis className="landing-home-schedule__slot-notes">
-                                {s.notes}
-                              </Text>
-                            ) : null}
-                            {renderSlotAssignmentChips(s.id)}
-                          </>
-                        )}
+                          <Text type="secondary" style={{ fontSize: 11, display: "block" }}>
+                            {s.classroomTitle}
+                          </Text>
+                        ) : null}
+                        <Text style={{ fontSize: 12 }}>{s.lessonTitle ?? "Занятие"}</Text>
+                        {showClassroomTitle && s.notes ? (
+                          <Text type="secondary" ellipsis style={{ fontSize: 11, display: "block" }}>
+                            {s.notes}
+                          </Text>
+                        ) : null}
                       </div>
                     ))
                   )}
