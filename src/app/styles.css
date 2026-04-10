@@ -1054,15 +1054,36 @@ html[data-theme="dark"] .blockly-palette-btn {
   margin-top: 10px;
 }
 
-.landing-home-hw-list {
-  max-height: min(480px, 55vh);
-  overflow-y: auto;
-  padding-right: 4px;
+.landing-home-hw-row {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: flex-start;
 }
 
-.landing-home-hw-list .ant-space-item:first-child .week-schedule-slot__assignment {
-  border-top: none;
-  padding-top: 0;
+.landing-home-hw-chip {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  background: color-mix(in srgb, var(--app-surface) 90%, rgba(15, 23, 42, 0.06));
+  flex: 1 1 220px;
+  min-width: min(100%, 200px);
+  max-width: 100%;
+}
+
+html[data-theme="dark"] .landing-home-hw-chip {
+  border-color: rgba(148, 163, 184, 0.22);
+  background: rgba(15, 23, 42, 0.28);
+}
+
+.landing-home-hw-chip-btns {
+  margin-left: auto;
 }
 
 .landing-home-schedule {
@@ -1168,18 +1189,9 @@ html[data-theme="dark"] .landing-home-schedule__slot-action-chip {
   background: rgba(15, 23, 42, 0.28);
 }
 
-.landing-home-schedule__slot-action-chip-title.ant-typography {
-  margin-bottom: 0;
-}
-
-.landing-home-schedule__slot-action-chip-title {
-  flex: 1 1 72px;
-  min-width: 0;
-  font-size: 12px;
-}
-
 .landing-home-schedule__slot-action-chip-btns {
   flex-shrink: 0;
+  margin-left: auto;
 }
 
 @media (max-width: 900px) {

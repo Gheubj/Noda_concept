@@ -51,7 +51,7 @@ export type WeekScheduleSlot = {
 };
 
 export const diaryKindLabels: Record<string, string> = {
-  classwork: "Классная",
+  classwork: "Классная работа",
   homework: "ДЗ",
   project: "Проект"
 };

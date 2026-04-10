@@ -5,12 +5,7 @@ import { useNavigate } from "react-router-dom";
 import { apiClient } from "@/shared/api/client";
 import type { HomeSchoolAssignmentRow } from "@/hooks/useHomeSchoolAssignments";
 import { useSessionStore } from "@/store/useSessionStore";
-import {
-  diaryKindLabels,
-  diaryStudentAssignmentCaption,
-  studentSlotNeedsAttention,
-  type SlotStudentAssignmentRow
-} from "@/app/WeekScheduleCalendar";
+import { diaryKindLabels, studentSlotNeedsAttention, type SlotStudentAssignmentRow } from "@/app/WeekScheduleCalendar";
 
 const { Text } = Typography;
 
@@ -183,16 +178,12 @@ export function HomeSchedulePreview({ studentAssignments, onAfterSlotAssignmentA
           const row = toSlotStudentRow(a);
           const st = row.submission?.status ?? "not_started";
           const hasProject = Boolean(row.submission?.projectId);
-          const caption = diaryStudentAssignmentCaption(a.title, a.kind) ?? a.title;
           const tagColor = a.kind === "classwork" ? "blue" : a.kind === "homework" ? "purple" : "default";
           return (
             <div key={a.assignmentId} className="landing-home-schedule__slot-action-chip">
               <Tag color={tagColor} style={{ margin: 0, flexShrink: 0 }}>
                 {diaryKindLabels[a.kind] ?? a.kind}
               </Tag>
-              <Text className="landing-home-schedule__slot-action-chip-title" ellipsis title={caption}>
-                {caption}
-              </Text>
               <Space size={4} wrap className="landing-home-schedule__slot-action-chip-btns">
                 {st === "not_started" || !row.submission ? (
                   <Button type="primary" size="small" onClick={() => void startOrOpen(row)}>
