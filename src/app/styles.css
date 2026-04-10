@@ -1120,6 +1120,68 @@ html[data-theme="dark"] .landing-home-schedule__slot {
   border-top-color: rgba(148, 163, 184, 0.15);
 }
 
+.landing-home-schedule__slot--student .landing-home-schedule__slot-time {
+  display: block;
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.landing-home-schedule__slot--student .landing-home-schedule__slot-lesson {
+  display: block;
+  font-size: 12px;
+  margin-top: 4px;
+  line-height: 1.35;
+}
+
+.landing-home-schedule__slot--student .landing-home-schedule__slot-notes {
+  display: block;
+  font-size: 11px;
+  margin-top: 4px;
+}
+
+.landing-home-schedule__slot-actions-row {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+  align-items: stretch;
+}
+
+.landing-home-schedule__slot-action-chip {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+  flex: 1 1 auto;
+  min-width: min(100%, 140px);
+  max-width: 100%;
+  padding: 6px 8px;
+  border-radius: 8px;
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  background: color-mix(in srgb, var(--app-surface) 90%, rgba(15, 23, 42, 0.06));
+}
+
+html[data-theme="dark"] .landing-home-schedule__slot-action-chip {
+  border-color: rgba(148, 163, 184, 0.22);
+  background: rgba(15, 23, 42, 0.28);
+}
+
+.landing-home-schedule__slot-action-chip-title.ant-typography {
+  margin-bottom: 0;
+}
+
+.landing-home-schedule__slot-action-chip-title {
+  flex: 1 1 72px;
+  min-width: 0;
+  font-size: 12px;
+}
+
+.landing-home-schedule__slot-action-chip-btns {
+  flex-shrink: 0;
+}
+
 @media (max-width: 900px) {
   .landing-home-schedule__grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));

@@ -199,7 +199,10 @@ export function LandingPage() {
         </section>
 
         {user && (user.role === "teacher" || (user.role === "student" && user.studentMode === "school")) ? (
-          <HomeSchedulePreview />
+          <HomeSchedulePreview
+            studentAssignments={schoolStudent ? homeHwRows : undefined}
+            onAfterSlotAssignmentAction={schoolStudent ? () => void reloadHomeHw() : undefined}
+          />
         ) : null}
         {schoolStudent ? (
           <HomeUpcomingHomework rows={homeHwRows} loading={homeHwLoading} onRefresh={reloadHomeHw} />
