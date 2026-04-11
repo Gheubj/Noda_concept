@@ -782,6 +782,13 @@ html[data-theme="dark"] .landing-feature-card__icon {
   background: var(--app-surface);
 }
 
+.landing-hero .landing-quick-actions-card--in-hero.ant-card {
+  margin-top: 12px;
+  margin-bottom: 0;
+  width: 100%;
+  max-width: 100%;
+}
+
 .landing-quick-actions-card .ant-card-head-title {
   font-weight: 600;
 }

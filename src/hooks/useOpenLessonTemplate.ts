@@ -34,7 +34,8 @@ export function useOpenLessonTemplate() {
         const projectId = randomProjectId();
         await apiClient.put(`/api/projects/${projectId}`, {
           title: t.title,
-          snapshot: starterPayload as unknown as Record<string, unknown>
+          snapshot: starterPayload as unknown as Record<string, unknown>,
+          lessonTemplateId: t.id
         });
         navigate(`/studio?project=${encodeURIComponent(projectId)}`);
       } catch (e) {

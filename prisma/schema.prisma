@@ -165,15 +165,20 @@ model Project {
   id          String   @id
   userId      String
   title       String
-  isCloud     Boolean  @default(true)
+  isCloud                 Boolean  @default(true)
+  /// Проект открыт из каталога уроков (самостоятельное обучение)
+  lessonTemplateId        String?
+  /// Урок каталога отмечен пройденным — на главной предлагается следующий
+  catalogLessonComplete   Boolean  @default(false)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  snapshot  ProjectSnapshot?
-  datasets  DatasetMeta[]
-  submissions Submission[]
-  sharesSource ProjectShare[] @relation("ShareSourceProject")
+  user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lessonTemplate LessonTemplate? @relation(fields: [lessonTemplateId], references: [id], onDelete: SetNull)
+  snapshot       ProjectSnapshot?
+  datasets       DatasetMeta[]
+  submissions    Submission[]
+  sharesSource   ProjectShare[] @relation("ShareSourceProject")
 }
 
 model ProjectSnapshot {
@@ -225,8 +230,9 @@ model LessonTemplate {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  assignments    Assignment[]
-  scheduleSlots  ClassScheduleSlot[]
+  assignments     Assignment[]
+  scheduleSlots   ClassScheduleSlot[]
+  catalogProjects Project[]
 }
 
 model ClassScheduleSlot {

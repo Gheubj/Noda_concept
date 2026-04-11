@@ -136,6 +136,44 @@ export function LandingPage() {
     }
   }, [heroHwAction, navigate, messageApi]);
 
+  const quickStartCard = user ? (
+    <Card className="landing-quick-actions-card landing-quick-actions-card--in-hero" title="С чего начать сегодня">
+      <Space wrap size="middle">
+        <Link to="/studio">
+          <Button type="primary" icon={<RocketOutlined />}>
+            Разработка
+          </Button>
+        </Link>
+        {user.role === "teacher" ? (
+          <Link to="/teacher">
+            <Button icon={<TeamOutlined />}>Кабинет учителя</Button>
+          </Link>
+        ) : null}
+        {user.role === "student" && user.studentMode === "school" ? (
+          <Link to="/class">
+            <Button>Обучение</Button>
+          </Link>
+        ) : null}
+        {user.role === "student" && user.studentMode === "direct" ? (
+          <Link to="/learning">
+            <Button>Обучение</Button>
+          </Link>
+        ) : null}
+        <Link to="/account">
+          <Button icon={<UserOutlined />}>Личный кабинет</Button>
+        </Link>
+        <Button icon={<SettingOutlined />} onClick={() => window.dispatchEvent(new Event("nodly-open-settings"))}>
+          Настройки
+        </Button>
+        {schoolStudent && heroHwAction ? (
+          <Button type="default" loading={homeHwLoading || heroHwBusy} onClick={() => void handleHeroHomework()}>
+            {heroHwAction.mode === "start" ? "Начать задание" : "Продолжить задание"}
+          </Button>
+        ) : null}
+      </Space>
+    </Card>
+  ) : null;
+
   return (
     <Content className="app-content landing-page">
       {messageHolder}
@@ -156,42 +194,24 @@ export function LandingPage() {
               </Title>
             </div>
           </div>
-          <p className="landing-hero__lead">
-            Собирай данные, обучай модели и собирай проекты через визуальное программирование — без установки
-            среды на компьютер. Один аккаунт для учеников и учителей
-          </p>
-          <div className="landing-hero__actions">
-            {user ? (
-              <Link to="/studio">
-                <Button type="primary" size="large" icon={<RocketOutlined />}>
-                  Открыть разработку
+          {user ? (
+            quickStartCard
+          ) : (
+            <>
+              <p className="landing-hero__lead">
+                Собирай данные, обучай модели и собирай проекты через визуальное программирование — без установки
+                среды на компьютер. Один аккаунт для учеников и учителей
+              </p>
+              <div className="landing-hero__actions">
+                <Button type="primary" size="large" icon={<RocketOutlined />} onClick={openAuthModal}>
+                  Войти в аккаунт
                 </Button>
-              </Link>
-            ) : (
-              <Button type="primary" size="large" icon={<RocketOutlined />} onClick={openAuthModal}>
-                Войти в аккаунт
-              </Button>
-            )}
-            {schoolStudent && heroHwAction ? (
-              <Button
-                type="default"
-                size="large"
-                loading={homeHwLoading || heroHwBusy}
-                onClick={() => void handleHeroHomework()}
-              >
-                {heroHwAction.mode === "start" ? "Начать" : "Продолжить"}
-              </Button>
-            ) : null}
-            {user ? (
-              <Link to="/account">
-                <Button size="large">Личный кабинет</Button>
-              </Link>
-            ) : (
-              <Text type="secondary" style={{ maxWidth: 280 }}>
-                Уже есть аккаунт? Используй «Войти» в шапке или кнопку выше
-              </Text>
-            )}
-          </div>
+                <Text type="secondary" style={{ maxWidth: 280 }}>
+                  Уже есть аккаунт? Используй «Войти» в шапке или кнопку выше
+                </Text>
+              </div>
+            </>
+          )}
         </section>
 
         {!user ? <LandingGuestPaths /> : null}
@@ -206,42 +226,6 @@ export function LandingPage() {
           />
         ) : null}
         {directStudent ? <HomeDirectStudentPanel /> : null}
-
-        {user ? (
-          <Card className="landing-quick-actions-card" title="С чего начать сегодня">
-            <Space wrap size="middle">
-              <Link to="/studio">
-                <Button type="primary" icon={<RocketOutlined />}>
-                  Разработка
-                </Button>
-              </Link>
-              {user.role === "teacher" ? (
-                <Link to="/teacher">
-                  <Button icon={<TeamOutlined />}>Кабинет учителя</Button>
-                </Link>
-              ) : null}
-              {user.role === "student" && user.studentMode === "school" ? (
-                <Link to="/class">
-                  <Button>Обучение</Button>
-                </Link>
-              ) : null}
-              {user.role === "student" && user.studentMode === "direct" ? (
-                <Link to="/learning">
-                  <Button>Обучение</Button>
-                </Link>
-              ) : null}
-              <Link to="/account">
-                <Button icon={<UserOutlined />}>Личный кабинет</Button>
-              </Link>
-              <Button
-                icon={<SettingOutlined />}
-                onClick={() => window.dispatchEvent(new Event("nodly-open-settings"))}
-              >
-                Настройки
-              </Button>
-            </Space>
-          </Card>
-        ) : null}
 
         {user && (teacher || schoolStudent) ? (
           <HomeSchedulePreview onSlotsLoaded={schoolStudent ? onScheduleSlotsLoaded : undefined} />

@@ -843,7 +843,14 @@ app.get("/api/projects", authRequired, async (req: AuthenticatedRequest, res) =>
   const projects = await prisma.project.findMany({
     where: { userId: req.session!.sub },
     orderBy: { updatedAt: "desc" },
-    select: { id: true, title: true, createdAt: true, updatedAt: true }
+    select: {
+      id: true,
+      title: true,
+      createdAt: true,
+      updatedAt: true,
+      lessonTemplateId: true,
+      catalogLessonComplete: true
+    }
   });
   res.json(projects);
 });
@@ -875,36 +882,81 @@ app.put("/api/projects/:id", authRequired, async (req: AuthenticatedRequest, res
   const parsed = z
     .object({
       title: z.string().min(1),
-      snapshot: z.record(z.string(), z.unknown())
+      snapshot: z.record(z.string(), z.unknown()),
+      lessonTemplateId: z.string().nullable().optional(),
+      catalogLessonComplete: z.boolean().optional()
     })
     .safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
+  const createData: Prisma.ProjectCreateInput = {
+    id: projectId,
+    title: parsed.data.title,
+    user: { connect: { id: req.session!.sub } },
+    snapshot: { create: { payload: parsed.data.snapshot as Prisma.InputJsonValue } },
+    ...(parsed.data.lessonTemplateId
+      ? { lessonTemplate: { connect: { id: parsed.data.lessonTemplateId } } }
+      : {}),
+    ...(parsed.data.catalogLessonComplete !== undefined
+      ? { catalogLessonComplete: parsed.data.catalogLessonComplete }
+      : {})
+  };
+  const updateData: Prisma.ProjectUpdateInput = {
+    title: parsed.data.title,
+    snapshot: {
+      upsert: {
+        create: { payload: parsed.data.snapshot as Prisma.InputJsonValue },
+        update: { payload: parsed.data.snapshot as Prisma.InputJsonValue }
+      }
+    }
+  };
+  if (parsed.data.lessonTemplateId !== undefined) {
+    updateData.lessonTemplate =
+      parsed.data.lessonTemplateId === null
+        ? { disconnect: true }
+        : { connect: { id: parsed.data.lessonTemplateId } };
+  }
+  if (parsed.data.catalogLessonComplete !== undefined) {
+    updateData.catalogLessonComplete = parsed.data.catalogLessonComplete;
+  }
   const project = await prisma.project.upsert({
     where: { id: projectId },
-    create: {
-      id: projectId,
-      userId: req.session!.sub,
-      title: parsed.data.title,
-      snapshot: { create: { payload: parsed.data.snapshot as Prisma.InputJsonValue } }
-    },
-    update: {
-      title: parsed.data.title,
-      snapshot: {
-        upsert: {
-          create: { payload: parsed.data.snapshot as Prisma.InputJsonValue },
-          update: { payload: parsed.data.snapshot as Prisma.InputJsonValue }
-        }
-      }
-    },
+    create: createData,
+    update: updateData,
     include: { snapshot: true }
   });
   res.json({
     id: project.id,
     title: project.title,
     updatedAt: project.updatedAt.toISOString()
+  });
+});
+
+app.patch("/api/projects/:id/catalog-lesson", authRequired, async (req: AuthenticatedRequest, res) => {
+  const projectId = String(req.params.id);
+  const parsed = z.object({ catalogLessonComplete: z.boolean() }).safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+  const existing = await prisma.project.findFirst({
+    where: { id: projectId, userId: req.session!.sub },
+    select: { id: true }
+  });
+  if (!existing) {
+    res.status(404).json({ error: "Not found" });
+    return;
+  }
+  const updated = await prisma.project.update({
+    where: { id: projectId },
+    data: { catalogLessonComplete: parsed.data.catalogLessonComplete }
+  });
+  res.json({
+    id: updated.id,
+    catalogLessonComplete: updated.catalogLessonComplete,
+    updatedAt: updated.updatedAt.toISOString()
   });
 });
 
