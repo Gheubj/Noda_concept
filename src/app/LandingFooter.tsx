@@ -40,16 +40,18 @@ export function LandingFooter() {
               ) : null}
             </nav>
           </div>
-          <div className="landing-footer__col">
-            <Text strong className="landing-footer__col-title">
-              О платформе
-            </Text>
-            <div className="landing-footer__links">
-              <a href="#features" className="landing-footer__a">
-                Возможности
-              </a>
+          {!user ? (
+            <div className="landing-footer__col">
+              <Text strong className="landing-footer__col-title">
+                О платформе
+              </Text>
+              <div className="landing-footer__links">
+                <a href="#features" className="landing-footer__a">
+                  Возможности
+                </a>
+              </div>
             </div>
-          </div>
+          ) : null}
           <div className="landing-footer__col">
             <Text strong className="landing-footer__col-title">
               Контакты
