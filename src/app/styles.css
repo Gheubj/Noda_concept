@@ -957,16 +957,37 @@ html[data-theme="dark"] .landing-home-next-lesson {
   gap: 8px;
 }
 
-.landing-footer__links a,
-.landing-footer__a--inline {
-  font-size: inherit;
-  color: inherit;
+.landing-footer__links a {
+  color: var(--app-accent);
+  font-size: 14px;
+  text-decoration: none;
+}
+
+.landing-footer__links a:hover {
   text-decoration: underline;
 }
 
 .landing-footer__a {
   color: var(--app-accent);
   font-size: 14px;
+  text-decoration: none;
+}
+
+.landing-footer__a:hover {
+  text-decoration: underline;
+}
+
+.landing-footer__bottom-link {
+  font-size: 12px;
+}
+
+.app-legal-doc-link {
+  color: var(--app-accent);
+  text-decoration: none;
+}
+
+.app-legal-doc-link:hover {
+  text-decoration: underline;
 }
 
 .landing-footer__link-btn {

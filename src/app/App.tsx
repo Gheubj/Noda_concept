@@ -553,8 +553,7 @@ export function App() {
                           Согласен с{" "}
                           <a
                             href={LEGAL_PRIVACY_POLICY_PDF}
-                            target="_blank"
-                            rel="noopener noreferrer"
+                            className="app-legal-doc-link"
                             onClick={(e) => e.stopPropagation()}
                           >
                             политикой конфиденциальности
@@ -562,8 +561,7 @@ export function App() {
                           и{" "}
                           <a
                             href={LEGAL_USER_AGREEMENT_PDF}
-                            target="_blank"
-                            rel="noopener noreferrer"
+                            className="app-legal-doc-link"
                             onClick={(e) => e.stopPropagation()}
                           >
                             пользовательским соглашением
@@ -632,8 +630,7 @@ export function App() {
                         Согласен с{" "}
                         <a
                           href={LEGAL_PRIVACY_POLICY_PDF}
-                          target="_blank"
-                          rel="noopener noreferrer"
+                          className="app-legal-doc-link"
                           onClick={(e) => e.stopPropagation()}
                         >
                           политикой конфиденциальности
@@ -641,8 +638,7 @@ export function App() {
                         и{" "}
                         <a
                           href={LEGAL_USER_AGREEMENT_PDF}
-                          target="_blank"
-                          rel="noopener noreferrer"
+                          className="app-legal-doc-link"
                           onClick={(e) => e.stopPropagation()}
                         >
                           пользовательским соглашением

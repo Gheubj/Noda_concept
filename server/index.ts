@@ -1,3 +1,5 @@
+import { createReadStream, existsSync } from "node:fs";
+import path from "node:path";
 import cors from "cors";
 import express from "express";
 import rateLimit from "express-rate-limit";
@@ -65,6 +67,25 @@ const forgotPasswordLimiter = rateLimit({
 
 app.get("/api/health", (_req: Request, res: Response) => {
   res.json({ ok: true, service: "nodly-poc-server" });
+});
+
+/** PDF из `public/legal` — отдаём как вложение, чтобы не перехватывалось SPA fallback на фронте. */
+app.get("/api/legal/:filename", (req: Request, res: Response) => {
+  const filename = String(req.params.filename ?? "");
+  if (!/^(privacy-policy|user-agreement)\.pdf$/.test(filename)) {
+    res.status(404).json({ error: "Not found" });
+    return;
+  }
+  const filePath = path.join(process.cwd(), "public", "legal", filename);
+  if (!existsSync(filePath)) {
+    res.status(404).json({ error: "Not found" });
+    return;
+  }
+  const downloadName =
+    filename === "privacy-policy.pdf" ? "Nodly-privacy-policy.pdf" : "Nodly-user-agreement.pdf";
+  res.setHeader("Content-Type", "application/pdf");
+  res.setHeader("Content-Disposition", `attachment; filename="${downloadName}"`);
+  createReadStream(filePath).pipe(res);
 });
 
 app.post("/api/auth/register/request-code", registerCodeLimiter, async (req, res) => {

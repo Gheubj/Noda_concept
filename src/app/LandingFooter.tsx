@@ -62,21 +62,11 @@ export function LandingFooter() {
               Документы
             </Text>
             <nav className="landing-footer__links">
-              <a
-                href={LEGAL_PRIVACY_POLICY_PDF}
-                className="landing-footer__a"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                Политика конфиденциальности
+              <a href={LEGAL_PRIVACY_POLICY_PDF} className="landing-footer__a">
+                Политика конфиденциальности (PDF)
               </a>
-              <a
-                href={LEGAL_USER_AGREEMENT_PDF}
-                className="landing-footer__a"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                Пользовательское соглашение
+              <a href={LEGAL_USER_AGREEMENT_PDF} className="landing-footer__a">
+                Пользовательское соглашение (PDF)
               </a>
             </nav>
           </div>
@@ -97,21 +87,11 @@ export function LandingFooter() {
         <div className="landing-footer__bottom">
           <Text type="secondary" style={{ fontSize: 12 }}>
             © {year} Nodly · ИИ и машинное обучение в браузере ·{" "}
-            <a
-              href={LEGAL_PRIVACY_POLICY_PDF}
-              className="landing-footer__a landing-footer__a--inline"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
+            <a href={LEGAL_PRIVACY_POLICY_PDF} className="landing-footer__a landing-footer__bottom-link">
               Конфиденциальность
             </a>
             {" · "}
-            <a
-              href={LEGAL_USER_AGREEMENT_PDF}
-              className="landing-footer__a landing-footer__a--inline"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
+            <a href={LEGAL_USER_AGREEMENT_PDF} className="landing-footer__a landing-footer__bottom-link">
               Соглашение
             </a>
           </Text>
