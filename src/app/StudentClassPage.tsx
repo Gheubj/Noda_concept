@@ -65,7 +65,7 @@ const STATUS_RU: Record<string, string> = {
 };
 
 const KIND_RU: Record<string, string> = {
-  classwork: "На уроке",
+  classwork: "Классная работа",
   homework: "ДЗ"
 };
 
@@ -94,6 +94,7 @@ export function StudentClassPage() {
   const [scheduleWeekAnchor, setScheduleWeekAnchor] = useState(() => dayjs());
   const [allFilterGrade, setAllFilterGrade] = useState<"all" | "graded" | "not_graded">("all");
   const [allFilterKind, setAllFilterKind] = useState<"all" | "homework" | "classwork">("all");
+  const [allFilterOverdue, setAllFilterOverdue] = useState<"all" | "overdue" | "not_overdue">("all");
 
   const loadAssignments = useCallback(async () => {
     setLoading(true);
@@ -322,7 +323,7 @@ export function StudentClassPage() {
           <Space wrap size="small">
             {st === "not_started" || !row.submission ? (
               <Button type="primary" size="small" onClick={() => void startOrOpen(row)}>
-                Начать
+                Открыть
               </Button>
             ) : null}
             {(st === "draft" || st === "needs_revision") && hasProject ? (
@@ -419,7 +420,6 @@ export function StudentClassPage() {
             <div>
               <Text type="secondary">Учитель: </Text>
               <Text strong>{e.teacherNickname}</Text>
-              <Text type="secondary"> ({e.teacherEmail})</Text>
             </div>
             <div>
               <Text type="secondary">Код класса (для одноклассников): </Text>
@@ -468,9 +468,16 @@ export function StudentClassPage() {
       if (allFilterKind !== "all" && row.kind !== allFilterKind) {
         return false;
       }
+      const hwOverdue = row.kind === "homework" && isOverdueByDueAt(row.dueAt, st);
+      if (allFilterOverdue === "overdue" && !hwOverdue) {
+        return false;
+      }
+      if (allFilterOverdue === "not_overdue" && hwOverdue) {
+        return false;
+      }
       return true;
     });
-  }, [assignments, allFilterGrade, allFilterKind]);
+  }, [assignments, allFilterGrade, allFilterKind, allFilterOverdue]);
 
   const diaryTab = (
     <Space direction="vertical" size="large" style={{ width: "100%" }}>
@@ -525,8 +532,8 @@ export function StudentClassPage() {
           style={{ minWidth: 200 }}
           options={[
             { value: "all", label: "Все задания" },
-            { value: "graded", label: "Только с оценкой" },
-            { value: "not_graded", label: "Без оценки (ещё не оценено)" }
+            { value: "graded", label: "С оценкой" },
+            { value: "not_graded", label: "Без оценки" }
           ]}
         />
         <Select
@@ -536,7 +543,17 @@ export function StudentClassPage() {
           options={[
             { value: "all", label: "Все типы" },
             { value: "homework", label: "ДЗ" },
-            { value: "classwork", label: "На уроке" }
+            { value: "classwork", label: "Классная работа" }
+          ]}
+        />
+        <Select
+          value={allFilterOverdue}
+          onChange={(v) => setAllFilterOverdue(v)}
+          style={{ minWidth: 220 }}
+          options={[
+            { value: "all", label: "Просрочка: все" },
+            { value: "overdue", label: "Только просроченные ДЗ" },
+            { value: "not_overdue", label: "Только без просрочки" }
           ]}
         />
       </Space>

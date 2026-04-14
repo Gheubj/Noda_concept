@@ -139,7 +139,7 @@ const SUBMISSION_STATUS_RU: Record<string, string> = {
 };
 
 const KIND_RU: Record<string, string> = {
-  classwork: "На уроке",
+  classwork: "Классная работа",
   homework: "ДЗ"
 };
 
@@ -1566,7 +1566,7 @@ export function TeacherPage() {
           {newSlotAttachClasswork ? (
             <Space direction="vertical" style={{ width: "100%" }} size="small">
               <Input
-                placeholder="Название (необязательно, иначе «На уроке: …»)"
+                placeholder="Название (необязательно, иначе «Классная работа: …»)"
                 value={newSlotClassworkTitle}
                 onChange={(e) => setNewSlotClassworkTitle(e.target.value)}
               />
@@ -1721,7 +1721,7 @@ export function TeacherPage() {
             <Select
               options={[
                 { value: "homework", label: "ДЗ" },
-                { value: "classwork", label: "На уроке" }
+                { value: "classwork", label: "Классная работа" }
               ]}
             />
           </Form.Item>
@@ -1760,7 +1760,7 @@ export function TeacherPage() {
             <Select
               options={[
                 { value: "homework", label: "ДЗ" },
-                { value: "classwork", label: "На уроке" }
+                { value: "classwork", label: "Классная работа" }
               ]}
             />
           </Form.Item>

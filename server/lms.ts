@@ -693,7 +693,7 @@ export function registerLmsRoutes(app: Express) {
           if (attachClasswork) {
             const title =
               classworkTitleTrim ||
-              (lessonTitleForAuto ? `На уроке: ${lessonTitleForAuto}` : "Работа на уроке");
+              (lessonTitleForAuto ? `Классная работа: ${lessonTitleForAuto}` : "Классная работа");
             await tx.assignment.create({
               data: {
                 classroomId,

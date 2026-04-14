@@ -4,7 +4,6 @@ import { useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { apiClient } from "@/shared/api/client";
 import { computeSlidingDayColumns, lastHomeworkDueAnchorDay } from "@/shared/homeCalendarWindow";
-import { MAX_CALENDAR_STRETCH_DAYS } from "@/shared/scheduleHorizon";
 import { isOverdueByDueAt, submissionStatusUnfinished } from "@/shared/studentAssignmentDue";
 import type { HomeSchoolAssignmentRow } from "@/hooks/useHomeSchoolAssignments";
 import {
@@ -29,17 +28,6 @@ function toSlotRow(r: HomeSchoolAssignmentRow): SlotStudentAssignmentRow {
   };
 }
 
-function sortByDueThenTitle(list: HomeSchoolAssignmentRow[]) {
-  return [...list].sort((a, b) => {
-    const da = a.dueAt ? dayjs(a.dueAt).valueOf() : Number.POSITIVE_INFINITY;
-    const db = b.dueAt ? dayjs(b.dueAt).valueOf() : Number.POSITIVE_INFINITY;
-    if (da !== db) {
-      return da - db;
-    }
-    return a.title.localeCompare(b.title, "ru");
-  });
-}
-
 type Props = {
   rows: HomeSchoolAssignmentRow[];
   loading: boolean;
@@ -49,17 +37,6 @@ type Props = {
 export function HomeUpcomingHomework({ rows, loading, onRefresh }: Props) {
   const [messageApi, holder] = message.useMessage();
   const navigate = useNavigate();
-
-  const overdueRows = useMemo(() => {
-    const list = rows.filter((r) => {
-      if (r.kind !== "homework") {
-        return false;
-      }
-      const st = r.submission?.status ?? "not_started";
-      return submissionStatusUnfinished(st) && isOverdueByDueAt(r.dueAt, st);
-    });
-    return sortByDueThenTitle(list);
-  }, [rows]);
 
   const columns = useMemo(() => {
     const anchor = lastHomeworkDueAnchorDay(rows);
@@ -178,7 +155,7 @@ export function HomeUpcomingHomework({ rows, loading, onRefresh }: Props) {
         <Space size={4} wrap style={{ marginTop: 6 }}>
           {st === "not_started" || !row.submission ? (
             <Button type="primary" size="small" onClick={() => void startOrOpen(row)}>
-              Начать
+              Открыть
             </Button>
           ) : null}
           {(st === "draft" || st === "needs_revision") && hasProject ? (
@@ -202,49 +179,21 @@ export function HomeUpcomingHomework({ rows, loading, onRefresh }: Props) {
   };
 
   const hasAnyContent =
-    overdueRows.length > 0 ||
-    [...rowsByDueDay.values()].some((arr) => arr.length > 0) ||
-    undatedUnfinished.length > 0;
+    [...rowsByDueDay.values()].some((arr) => arr.length > 0) || undatedUnfinished.length > 0;
 
   const emptyHint =
-    "Нет активных домашних заданий в календаре. Полный список и классные работы — в разделе Обучение.";
+    "Нет домашних заданий в видимых днях календаря. Просроченные и полный список — в разделе «Обучение» (фильтр «Просрочка»).";
 
   return (
-    <Card className="landing-home-homework landing-home-schedule" title="Домашние задания по срокам" size="small">
+    <Card className="landing-home-homework landing-home-schedule" title="Ближайшие ДЗ" size="small">
       {holder}
       <Spin spinning={loading}>
-        <Paragraph type="secondary" style={{ marginBottom: 12, fontSize: 13 }}>
-          Календарь показывает до {MAX_CALENDAR_STRETCH_DAYS} дней вперёд, если срок дальше стандартного окна. Просроченные
-          — отдельно сверху.
-        </Paragraph>
         {!loading && !hasAnyContent ? (
           <Paragraph type="secondary" style={{ marginBottom: 0, fontSize: 13 }}>
             {emptyHint}
           </Paragraph>
         ) : (
           <>
-            {overdueRows.length > 0 ? (
-              <div style={{ marginBottom: 14 }}>
-                <Text strong style={{ fontSize: 12, display: "block", marginBottom: 8 }}>
-                  Просрочено
-                </Text>
-                <Space direction="vertical" size="small" style={{ width: "100%" }}>
-                  {overdueRows.map((r) => (
-                    <div
-                      key={r.assignmentId}
-                      style={{ border: "1px solid rgba(255, 77, 79, 0.45)", borderRadius: 8, padding: 8 }}
-                    >
-                      {renderHwSlot(r)}
-                      {r.dueAt ? (
-                        <Text type="danger" style={{ fontSize: 11, display: "block", marginTop: 4 }}>
-                          Срок: {dayjs(r.dueAt).format("DD.MM.YYYY")}
-                        </Text>
-                      ) : null}
-                    </div>
-                  ))}
-                </Space>
-              </div>
-            ) : null}
             <div className="landing-home-schedule__grid">
               {columns.map((d) => {
                 const key = d.format("YYYY-MM-DD");

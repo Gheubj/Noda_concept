@@ -115,13 +115,15 @@ export function diaryStudentAssignmentCaption(title: string, kind: string): stri
     return null;
   }
   if (kind === "classwork") {
-    if (t === "Работа на уроке") {
+    if (t === "Работа на уроке" || t === "Классная работа") {
       return null;
     }
-    const prefix = "На уроке: ";
-    if (t.startsWith(prefix)) {
-      const rest = t.slice(prefix.length).trim();
-      return rest || null;
+    const prefixes = ["Классная работа: ", "На уроке: "];
+    for (const prefix of prefixes) {
+      if (t.startsWith(prefix)) {
+        const rest = t.slice(prefix.length).trim();
+        return rest || null;
+      }
     }
     return t;
   }
@@ -297,7 +299,7 @@ export function WeekScheduleCalendar({
                                             size="small"
                                             onClick={() => onStudentStartAssignment(row)}
                                           >
-                                            Начать
+                                            Открыть
                                           </Button>
                                         ) : null}
                                         {(st === "draft" || st === "needs_revision") && hasProject ? (
