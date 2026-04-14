@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { CheckOutlined } from "@ant-design/icons";
 import { Button, Card, Empty, Select, Space, Spin, Table, Tabs, Tag, Typography, message } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { Link, useNavigate } from "react-router-dom";
 import { useSessionStore } from "@/store/useSessionStore";
 import { apiClient } from "@/shared/api/client";
+import { passedLessonTemplateIdsFromSlots } from "@/shared/scheduleSlotPast";
 import { isOverdueByDueAt } from "@/shared/studentAssignmentDue";
 import { WeekScheduleCalendar, type SlotStudentAssignmentRow } from "@/app/WeekScheduleCalendar";
 import dayjs from "dayjs";
@@ -51,6 +53,7 @@ interface ScheduleSlotRow {
   endsAt: string | null;
   durationMinutes?: number;
   notes: string | null;
+  lessonTemplateId: string | null;
   lessonTitle: string | null;
   myPlansToAttend?: boolean | null;
   linkedAssignments?: { id: string; title: string; kind: string; dueAt: string | null }[];
@@ -171,6 +174,11 @@ export function StudentClassPage() {
   const assignmentById = useMemo(
     () => new Map(assignmentsForClass.map((a) => [a.assignmentId, a])),
     [assignmentsForClass]
+  );
+
+  const passedLessonTemplateIds = useMemo(
+    () => passedLessonTemplateIdsFromSlots(scheduleRows),
+    [scheduleRows]
   );
 
   const toSlotStudentRow = useCallback(
@@ -443,6 +451,16 @@ export function StudentClassPage() {
         pagination={false}
         locale={{ emptyText: "Нет данных курса" }}
         columns={[
+          {
+            title: "",
+            key: "passed",
+            width: 40,
+            align: "center",
+            render: (_, row: StudentCourseLesson) =>
+              passedLessonTemplateIds.has(row.id) ? (
+                <CheckOutlined style={{ color: "var(--ant-color-success)" }} aria-label="Урок проведён" />
+              ) : null
+          },
           { title: "№", width: 48, render: (_, __, i) => i + 1 },
           { title: "Урок", dataIndex: "title", key: "title" },
           {
@@ -500,6 +518,7 @@ export function StudentClassPage() {
               startsAt: r.startsAt,
               endsAt: r.endsAt,
               durationMinutes: r.durationMinutes ?? 90,
+              lessonTemplateId: r.lessonTemplateId,
               lessonTitle: r.lessonTitle,
               notes: r.notes,
               myPlansToAttend: r.myPlansToAttend,

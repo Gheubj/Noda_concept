@@ -44,6 +44,7 @@ export type WeekScheduleSlot = {
   durationMinutes: number;
   /** Если с бэкенда пришло — показываем конец по нему, иначе считаем от длительности */
   endsAt?: string | null;
+  lessonTemplateId?: string | null;
   lessonTitle: string | null;
   notes: string | null;
   weeklySeriesId?: string | null;

@@ -1,7 +1,7 @@
 import { Button, Card, Space, Spin, Tag, Typography, message } from "antd";
 import dayjs from "dayjs";
 import { useMemo } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { apiClient } from "@/shared/api/client";
 import { computeSlidingDayColumns, lastHomeworkDueAnchorDay } from "@/shared/homeCalendarWindow";
 import { isOverdueByDueAt, submissionStatusUnfinished } from "@/shared/studentAssignmentDue";
@@ -214,9 +214,6 @@ export function HomeUpcomingHomework({ rows, loading, onRefresh }: Props) {
             {undatedUnfinished.map((r) => r.title).join(", ")}
           </Paragraph>
         ) : null}
-        <Link to="/class" className="landing-home-homework__link" style={{ marginTop: 12, display: "inline-block" }}>
-          Открыть Обучение
-        </Link>
       </Spin>
     </Card>
   );

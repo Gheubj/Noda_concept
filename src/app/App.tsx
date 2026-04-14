@@ -301,11 +301,6 @@ export function App() {
                 Главная
               </NavLink>
             ) : null}
-            {user ? (
-              <NavLink to="/studio" className={headerNavClass}>
-                Разработка
-              </NavLink>
-            ) : null}
             {user?.role === "student" && user.studentMode === "school" ? (
               <Badge
                 count={meSummary.assignmentAttentionCount ?? 0}
@@ -355,6 +350,11 @@ export function App() {
                   Кабинет учителя
                 </NavLink>
               </Badge>
+            ) : null}
+            {user ? (
+              <NavLink to="/studio" className={headerNavClass}>
+                Разработка
+              </NavLink>
             ) : null}
           </nav>
           {user ? (

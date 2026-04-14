@@ -24,10 +24,11 @@ import {
 } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { Link, useLocation } from "react-router-dom";
-import { CopyOutlined, TeamOutlined } from "@ant-design/icons";
+import { CheckOutlined, CopyOutlined, TeamOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import { useSessionStore } from "@/store/useSessionStore";
 import { apiClient } from "@/shared/api/client";
+import { passedLessonTemplateIdsFromSlots } from "@/shared/scheduleSlotPast";
 import { WeekScheduleCalendar } from "@/app/WeekScheduleCalendar";
 
 const { Title, Paragraph, Text } = Typography;
@@ -418,6 +419,11 @@ export function TeacherPage() {
       cancelled = true;
     };
   }, [lmsClassroomId]);
+
+  const passedLessonTemplateIds = useMemo(
+    () => passedLessonTemplateIdsFromSlots(scheduleSlots),
+    [scheduleSlots]
+  );
 
   const handleCreateSchool = async () => {
     const name = schoolName.trim();
@@ -1133,6 +1139,16 @@ export function TeacherPage() {
                     pagination={false}
                     locale={{ emptyText: "Нет уроков для этого модуля" }}
                     columns={[
+                      {
+                        title: "",
+                        key: "passed",
+                        width: 40,
+                        align: "center",
+                        render: (_, row: TeacherCourseLesson) =>
+                          passedLessonTemplateIds.has(row.id) ? (
+                            <CheckOutlined style={{ color: "var(--ant-color-success)" }} aria-label="Урок проведён" />
+                          ) : null
+                      },
                       { title: "№", width: 48, render: (_, __, i) => i + 1 },
                       { title: "Урок", dataIndex: "title", key: "title" },
                       {
@@ -1296,6 +1312,7 @@ export function TeacherPage() {
                 startsAt: s.startsAt,
                 endsAt: s.endsAt,
                 durationMinutes: s.durationMinutes,
+                lessonTemplateId: s.lessonTemplateId,
                 lessonTitle: s.lessonTitle,
                 notes: s.notes,
                 weeklySeriesId: s.weeklySeriesId,
