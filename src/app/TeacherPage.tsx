@@ -144,6 +144,39 @@ const KIND_RU: Record<string, string> = {
   homework: "ДЗ"
 };
 
+const COMMON_START_TIMES = [
+  "08:00",
+  "09:00",
+  "10:00",
+  "11:00",
+  "12:00",
+  "13:00",
+  "14:00",
+  "15:00",
+  "16:00",
+  "17:00",
+  "18:00",
+  "19:00"
+] as const;
+
+function disabledTimeForSelectedDate(selectedDate: dayjs.Dayjs | null) {
+  if (!selectedDate || !selectedDate.isSame(dayjs(), "day")) {
+    return undefined;
+  }
+  const now = dayjs();
+  const hour = now.hour();
+  const minute = now.minute();
+  return {
+    disabledHours: () => Array.from({ length: hour }, (_, i) => i),
+    disabledMinutes: (selectedHour: number) => {
+      if (selectedHour !== hour) {
+        return [];
+      }
+      return Array.from({ length: minute + 1 }, (_, i) => i);
+    }
+  };
+}
+
 export function TeacherPage() {
   const [messageApi, contextHolder] = message.useMessage();
   const { user } = useSessionStore();
@@ -543,6 +576,10 @@ export function TeacherPage() {
       }
     }
     const start = newSlotDate.hour(newSlotTime.hour()).minute(newSlotTime.minute()).second(0).millisecond(0);
+    if (start.isBefore(dayjs())) {
+      messageApi.error("Нельзя ставить занятие в прошедшее время");
+      return;
+    }
     setAddingSlot(true);
     try {
       await apiClient.post(`/api/teacher/classrooms/${lmsClassroomId}/schedule`, {
@@ -623,6 +660,10 @@ export function TeacherPage() {
     }
     if (!end.isAfter(start) || end.diff(start, "minute") < 5) {
       messageApi.error("Занятие должно длиться не меньше 5 минут, окончание позже начала");
+      return;
+    }
+    if (start.isBefore(dayjs())) {
+      messageApi.error("Нельзя ставить занятие в прошедшее время");
       return;
     }
     setEditSlotSaving(true);
@@ -1500,7 +1541,19 @@ export function TeacherPage() {
             <DatePicker
               style={{ width: "100%", marginTop: 4 }}
               value={newSlotDate}
-              onChange={(d) => setNewSlotDate(d)}
+              onChange={(d) => {
+                setNewSlotDate(d);
+                if (d && newSlotTime) {
+                  const nextStart = d
+                    .hour(newSlotTime.hour())
+                    .minute(newSlotTime.minute())
+                    .second(0)
+                    .millisecond(0);
+                  if (nextStart.isBefore(dayjs())) {
+                    setNewSlotTime(dayjs().add(15, "minute").second(0).millisecond(0));
+                  }
+                }
+              }}
               format="DD.MM.YYYY"
               disabledDate={(current) => current != null && current < dayjs().startOf("day")}
             />
@@ -1514,7 +1567,27 @@ export function TeacherPage() {
               format="HH:mm"
               minuteStep={5}
               needConfirm={false}
+              disabledTime={() => disabledTimeForSelectedDate(newSlotDate)}
             />
+            <Space wrap size={6} style={{ marginTop: 8 }}>
+              {COMMON_START_TIMES.map((t) => (
+                <Button
+                  key={t}
+                  size="small"
+                  type={newSlotTime?.format("HH:mm") === t ? "primary" : "default"}
+                  onClick={() => {
+                    const [h, m] = t.split(":").map(Number);
+                    const candidate = dayjs().hour(h).minute(m).second(0).millisecond(0);
+                    if (newSlotDate && newSlotDate.isSame(dayjs(), "day") && candidate.isBefore(dayjs())) {
+                      return;
+                    }
+                    setNewSlotTime(candidate);
+                  }}
+                >
+                  {t}
+                </Button>
+              ))}
+            </Space>
           </div>
           <div>
             <Text type="secondary">Длительность (минуты)</Text>
@@ -1676,8 +1749,21 @@ export function TeacherPage() {
             <DatePicker
               style={{ width: "100%", marginTop: 4 }}
               value={editSlotDate}
-              onChange={(d) => setEditSlotDate(d)}
+              onChange={(d) => {
+                setEditSlotDate(d);
+                if (d && editSlotTimeStart) {
+                  const nextStart = d
+                    .hour(editSlotTimeStart.hour())
+                    .minute(editSlotTimeStart.minute())
+                    .second(0)
+                    .millisecond(0);
+                  if (nextStart.isBefore(dayjs())) {
+                    setEditSlotTimeStart(dayjs().add(15, "minute").second(0).millisecond(0));
+                  }
+                }
+              }}
               format="DD.MM.YYYY"
+              disabledDate={(current) => current != null && current < dayjs().startOf("day")}
             />
           </div>
           <div>
@@ -1689,7 +1775,27 @@ export function TeacherPage() {
               format="HH:mm"
               minuteStep={5}
               needConfirm={false}
+              disabledTime={() => disabledTimeForSelectedDate(editSlotDate)}
             />
+            <Space wrap size={6} style={{ marginTop: 8 }}>
+              {COMMON_START_TIMES.map((t) => (
+                <Button
+                  key={`edit-${t}`}
+                  size="small"
+                  type={editSlotTimeStart?.format("HH:mm") === t ? "primary" : "default"}
+                  onClick={() => {
+                    const [h, m] = t.split(":").map(Number);
+                    const candidate = dayjs().hour(h).minute(m).second(0).millisecond(0);
+                    if (editSlotDate && editSlotDate.isSame(dayjs(), "day") && candidate.isBefore(dayjs())) {
+                      return;
+                    }
+                    setEditSlotTimeStart(candidate);
+                  }}
+                >
+                  {t}
+                </Button>
+              ))}
+            </Space>
           </div>
           <div>
             <Text type="secondary">Время окончания</Text>

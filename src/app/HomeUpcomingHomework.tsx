@@ -38,10 +38,26 @@ export function HomeUpcomingHomework({ rows, loading, onRefresh }: Props) {
   const [messageApi, holder] = message.useMessage();
   const navigate = useNavigate();
 
-  const columns = useMemo(() => {
-    const anchor = lastHomeworkDueAnchorDay(rows);
-    return computeSlidingDayColumns(anchor);
+  const hasVisibleHomeworkInDefaultWindow = useMemo(() => {
+    const start = dayjs().startOf("day");
+    const end = start.add(3, "day").endOf("day");
+    return rows.some((r) => {
+      if (r.kind !== "homework" || !r.dueAt) {
+        return false;
+      }
+      const st = r.submission?.status ?? "not_started";
+      if (!submissionStatusUnfinished(st) || isOverdueByDueAt(r.dueAt, st)) {
+        return false;
+      }
+      const due = dayjs(r.dueAt).endOf("day");
+      return !due.isBefore(start) && !due.isAfter(end);
+    });
   }, [rows]);
+
+  const columns = useMemo(() => {
+    const anchor = hasVisibleHomeworkInDefaultWindow ? null : lastHomeworkDueAnchorDay(rows);
+    return computeSlidingDayColumns(anchor);
+  }, [rows, hasVisibleHomeworkInDefaultWindow]);
 
   const rowsByDueDay = useMemo(() => {
     const keys = new Set(columns.map((d) => d.format("YYYY-MM-DD")));
