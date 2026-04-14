@@ -406,6 +406,21 @@ a.app-header-account-slot {
   min-height: calc(100dvh - var(--app-header-height));
 }
 
+.account-page__inner {
+  max-width: min(1160px, 100%);
+  margin: 0 auto;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 8px 0 32px;
+}
+
+.account-page__column {
+  width: 100%;
+  max-width: 640px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
 /* Кабинет учителя и страница класса: шире контент, календарь на всю доступную ширину */
 .lms-shell-wide {
   width: 100%;

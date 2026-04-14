@@ -23,12 +23,16 @@ export function AccountPage() {
   if (!user) {
     return (
       <div className="app-content account-page">
-        <Card>
-          <Paragraph>Войдите в аккаунт, чтобы открыть личный кабинет</Paragraph>
-          <Link to="/">
-            <Button type="primary">На главную</Button>
-          </Link>
-        </Card>
+        <div className="account-page__inner">
+          <div className="account-page__column">
+            <Card>
+              <Paragraph>Войдите в аккаунт, чтобы открыть личный кабинет</Paragraph>
+              <Link to="/">
+                <Button type="primary">На главную</Button>
+              </Link>
+            </Card>
+          </div>
+        </div>
       </div>
     );
   }
@@ -75,89 +79,93 @@ export function AccountPage() {
 
   return (
     <div className="app-content account-page">
-      {contextHolder}
-      <Space direction="vertical" size="large" style={{ width: "100%", maxWidth: 560 }}>
-        <Title level={4} style={{ margin: 0 }}>
-          Личный кабинет
-        </Title>
-        {user.role === "teacher" ? (
-          <Link to="/teacher">
-            <Button type="primary">Кабинет учителя — классы и ученики</Button>
-          </Link>
-        ) : null}
-        <Card title="Профиль">
-          <Space direction="vertical" style={{ width: "100%" }}>
-            <Text>
-              Роль: {user.role === "teacher" ? "Учитель" : "Ученик"}
-              {user.nickname ? ` · ${user.nickname}` : ""}
-            </Text>
-            <Text type="secondary">{user.email}</Text>
-            <Space.Compact style={{ width: "100%", maxWidth: 360 }}>
-              <Input value={nickname} onChange={(e) => setNickname(e.target.value)} placeholder="Ник" />
-              <Button type="primary" onClick={() => void handleNicknameSave()}>
-                Сменить ник
-              </Button>
-            </Space.Compact>
-            {user.role === "student" ? (
-              <Text>
-                Режим: {user.studentMode === "school" ? "со школой (по коду класса)" : "самостоятельное обучение"}
-              </Text>
+      <div className="account-page__inner">
+        {contextHolder}
+        <div className="account-page__column">
+          <Space direction="vertical" size="large" style={{ width: "100%" }}>
+            <Title level={4} style={{ margin: 0 }}>
+              Личный кабинет
+            </Title>
+            {user.role === "teacher" ? (
+              <Link to="/teacher">
+                <Button type="primary">Кабинет учителя — классы и ученики</Button>
+              </Link>
             ) : null}
-            <Button danger onClick={() => void logout()}>
-              Выйти
-            </Button>
-          </Space>
-        </Card>
-        {user.role === "student" && user.studentMode === "school" ? (
-          <Card title="Код класса">
-            <Space wrap>
-              <Input
-                placeholder="Код класса"
-                value={joinCode}
-                onChange={(e) => setJoinCode(e.target.value)}
-                style={{ width: 200 }}
-              />
-              <Button type="primary" onClick={() => void handleJoinClassroom()}>
-                Присоединиться
-              </Button>
-            </Space>
-          </Card>
-        ) : null}
-        <Card title="Удаление аккаунта" styles={{ header: { borderBottomColor: "rgba(255, 77, 79, 0.35)" } }}>
-          <Space direction="vertical" style={{ width: "100%", maxWidth: 480 }} size="middle">
-            <Paragraph type="secondary" style={{ marginBottom: 0 }}>
-              Необратимо: проекты, классы, зачисления и связанные данные в сервисе будут удалены
-            </Paragraph>
-            {user.hasPassword === false ? (
-              <>
+            <Card title="Профиль">
+              <Space direction="vertical" style={{ width: "100%" }}>
                 <Text>
-                  Для входа через Яндекс без пароля введи фразу целиком:{" "}
-                  <Text code>
-                    DELETE {user.email}
-                  </Text>
+                  Роль: {user.role === "teacher" ? "Учитель" : "Ученик"}
+                  {user.nickname ? ` · ${user.nickname}` : ""}
                 </Text>
-                <Input
-                  placeholder="Фраза подтверждения"
-                  value={deletePhrase}
-                  onChange={(e) => setDeletePhrase(e.target.value)}
-                />
-              </>
-            ) : (
-              <Input.Password
-                placeholder="Текущий пароль"
-                value={deletePassword}
-                onChange={(e) => setDeletePassword(e.target.value)}
-              />
-            )}
-            <Checkbox checked={deleteAck} onChange={(e) => setDeleteAck(e.target.checked)}>
-              Понимаю, что восстановление будет невозможно
-            </Checkbox>
-            <Button type="primary" danger onClick={() => void handleDeleteAccount()}>
-              Удалить аккаунт навсегда
-            </Button>
+                <Text type="secondary">{user.email}</Text>
+                <Space.Compact style={{ width: "100%", maxWidth: 360 }}>
+                  <Input value={nickname} onChange={(e) => setNickname(e.target.value)} placeholder="Ник" />
+                  <Button type="primary" onClick={() => void handleNicknameSave()}>
+                    Сменить ник
+                  </Button>
+                </Space.Compact>
+                {user.role === "student" ? (
+                  <Text>
+                    Режим: {user.studentMode === "school" ? "со школой (по коду класса)" : "самостоятельное обучение"}
+                  </Text>
+                ) : null}
+                <Button danger onClick={() => void logout()}>
+                  Выйти
+                </Button>
+              </Space>
+            </Card>
+            {user.role === "student" && user.studentMode === "school" ? (
+              <Card title="Код класса">
+                <Space wrap>
+                  <Input
+                    placeholder="Код класса"
+                    value={joinCode}
+                    onChange={(e) => setJoinCode(e.target.value)}
+                    style={{ width: 200 }}
+                  />
+                  <Button type="primary" onClick={() => void handleJoinClassroom()}>
+                    Присоединиться
+                  </Button>
+                </Space>
+              </Card>
+            ) : null}
+            <Card title="Удаление аккаунта" styles={{ header: { borderBottomColor: "rgba(255, 77, 79, 0.35)" } }}>
+              <Space direction="vertical" style={{ width: "100%", maxWidth: 480 }} size="middle">
+                <Paragraph type="secondary" style={{ marginBottom: 0 }}>
+                  Необратимо: проекты, классы, зачисления и связанные данные в сервисе будут удалены
+                </Paragraph>
+                {user.hasPassword === false ? (
+                  <>
+                    <Text>
+                      Для входа через Яндекс без пароля введи фразу целиком:{" "}
+                      <Text code>
+                        DELETE {user.email}
+                      </Text>
+                    </Text>
+                    <Input
+                      placeholder="Фраза подтверждения"
+                      value={deletePhrase}
+                      onChange={(e) => setDeletePhrase(e.target.value)}
+                    />
+                  </>
+                ) : (
+                  <Input.Password
+                    placeholder="Текущий пароль"
+                    value={deletePassword}
+                    onChange={(e) => setDeletePassword(e.target.value)}
+                  />
+                )}
+                <Checkbox checked={deleteAck} onChange={(e) => setDeleteAck(e.target.checked)}>
+                  Понимаю, что восстановление будет невозможно
+                </Checkbox>
+                <Button type="primary" danger onClick={() => void handleDeleteAccount()}>
+                  Удалить аккаунт навсегда
+                </Button>
+              </Space>
+            </Card>
           </Space>
-        </Card>
-      </Space>
+        </div>
+      </div>
     </div>
   );
 }
