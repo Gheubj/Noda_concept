@@ -87,6 +87,9 @@ export function App() {
     homeworkOverdueCount?: number;
     homeworkDueSoonCount?: number;
     submittedPendingReviewCount?: number;
+    homeworkDoneGradedCount?: number;
+    upcomingMarkedSlotsCount?: number;
+    pastMarkedSlotsCount?: number;
   }>({});
   const prevPathRef = useRef<string | null>(null);
 
@@ -108,6 +111,9 @@ export function App() {
         homeworkOverdueCount?: number;
         homeworkDueSoonCount?: number;
         submittedPendingReviewCount?: number;
+        homeworkDoneGradedCount?: number;
+        upcomingMarkedSlotsCount?: number;
+        pastMarkedSlotsCount?: number;
       }>("/api/me/summary");
       setMeSummary(data);
     } catch {

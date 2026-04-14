@@ -310,6 +310,7 @@ model Submission {
   gradedAt     DateTime?
   teacherSeenAt DateTime?
   gradedSeenAt  DateTime?
+  homeworkDueReminderSentAt DateTime?
   createdAt    DateTime         @default(now())
   updatedAt    DateTime         @updatedAt
 

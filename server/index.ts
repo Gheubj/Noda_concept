@@ -35,6 +35,7 @@ import {
   ensureLessonTemplateSeed,
   registerLmsRoutes
 } from "./lms.js";
+import { startHomeworkDueReminderScheduler } from "./homeworkDueReminders.js";
 
 const app = express();
 
@@ -1025,6 +1026,7 @@ app.listen(config.port, async () => {
     // eslint-disable-next-line no-console
     console.warn("Lesson template guides skipped:", error);
   }
+  startHomeworkDueReminderScheduler();
   // eslint-disable-next-line no-console
   console.log(`Server started at http://localhost:${config.port}`);
 });

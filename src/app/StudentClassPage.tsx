@@ -4,6 +4,7 @@ import type { ColumnsType } from "antd/es/table";
 import { Link, useNavigate } from "react-router-dom";
 import { useSessionStore } from "@/store/useSessionStore";
 import { apiClient } from "@/shared/api/client";
+import { isOverdueByDueAt } from "@/shared/studentAssignmentDue";
 import { WeekScheduleCalendar, type SlotStudentAssignmentRow } from "@/app/WeekScheduleCalendar";
 import dayjs from "dayjs";
 
@@ -257,7 +258,16 @@ export function StudentClassPage() {
       title: "Срок",
       dataIndex: "dueAt",
       key: "dueAt",
-      render: (d: string | null) => (d ? new Date(d).toLocaleDateString("ru-RU") : "—")
+      render: (d: string | null, row) => {
+        const st = row.submission?.status ?? "not_started";
+        const overdueHw =
+          row.kind === "homework" && d && isOverdueByDueAt(d, st);
+        return (
+          <Text type={overdueHw ? "danger" : undefined}>
+            {d ? new Date(d).toLocaleDateString("ru-RU") : "—"}
+          </Text>
+        );
+      }
     },
     {
       title: "Статус",
@@ -266,8 +276,12 @@ export function StudentClassPage() {
         const st = row.submission?.status ?? "not_started";
         const color =
           st === "needs_revision" ? "orange" : st === "graded" ? "green" : st === "submitted" ? "blue" : "default";
+        const overdueHw = row.kind === "homework" && isOverdueByDueAt(row.dueAt, st);
         return (
           <Space size="small" wrap>
+            {overdueHw ? (
+              <Tag color="red">Просрочено</Tag>
+            ) : null}
             <Tag color={color}>{STATUS_RU[st] ?? st}</Tag>
             {needsAttention(row) ? <Tag color="red">Новое</Tag> : null}
           </Space>

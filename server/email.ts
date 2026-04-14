@@ -80,6 +80,16 @@ export async function sendPasswordResetLink(email: string, resetUrl: string) {
   await deliver(email, subject, html, text);
 }
 
+export async function sendStudentHomeworkDueTomorrowEmail(
+  studentEmail: string,
+  args: { assignmentTitle: string; classTitle: string; dueDateLabel: string; appUrl: string }
+) {
+  const subject = `Завтра срок: ${args.assignmentTitle}`;
+  const text = `В классе «${args.classTitle}» по заданию «${args.assignmentTitle}» завтра (${args.dueDateLabel}) истекает срок сдачи.\n\nЕсли работа ещё не готова, зайдите в кабинет: ${args.appUrl}`;
+  const html = `<p>В классе <strong>${args.classTitle}</strong> по заданию <strong>${args.assignmentTitle}</strong> завтра (<strong>${args.dueDateLabel}</strong>) истекает срок сдачи.</p><p>Если работа ещё не готова, откройте кабинет и выполните задание.</p><p><a href="${args.appUrl}">Открыть «Обучение»</a></p>`;
+  await deliver(studentEmail, subject, html, text);
+}
+
 export async function sendStudentNewAssignmentEmail(
   studentEmail: string,
   args: { assignmentTitle: string; classTitle: string; appUrl: string }

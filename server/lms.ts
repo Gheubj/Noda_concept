@@ -118,6 +118,20 @@ function homeworkDueAfterLessonDays(slotStart: Date, daysAfter: number): Date {
 }
 
 const LMS_HOMEWORK_HORIZON_DAYS = 4;
+/** Согласовано с `MAX_CALENDAR_STRETCH_DAYS` на фронте (сводка по слотам). */
+const SUMMARY_SCHEDULE_STRETCH_DAYS = 21;
+
+function startOfLocalDay(base: Date = new Date()): Date {
+  const d = new Date(base);
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+function addLocalDays(base: Date, days: number): Date {
+  const d = new Date(base);
+  d.setDate(d.getDate() + days);
+  return d;
+}
 
 const assignmentKindsLmsZ = ["classwork", "homework"] as const;
 
@@ -225,34 +239,75 @@ export function registerLmsRoutes(app: Express) {
         select: { classroomId: true }
       });
       const classroomIds = enrollments.map((e) => e.classroomId);
-      const [attention, homeworkAssignments] = await Promise.all([
-        prisma.submission.count({
-          where: {
-            studentId: userId,
-            OR: [
-              { status: "graded", gradedSeenAt: null },
-              { status: "needs_revision" }
-            ]
-          }
-        }),
-        classroomIds.length === 0
-          ? Promise.resolve([])
-          : prisma.assignment.findMany({
-              where: {
-                classroomId: { in: classroomIds },
-                published: true,
-                kind: "homework"
-              },
-              select: {
-                dueAt: true,
-                submissions: {
-                  where: { studentId: userId },
-                  take: 1,
-                  select: { status: true }
+      const startToday = startOfLocalDay();
+      const upcomingScheduleEnd = addLocalDays(startToday, SUMMARY_SCHEDULE_STRETCH_DAYS + 1);
+
+      const [attention, homeworkAssignments, homeworkDoneGradedCount, upcomingMarkedSlotsCount, pastMarkedSlotsCount] =
+        await Promise.all([
+          prisma.submission.count({
+            where: {
+              studentId: userId,
+              OR: [
+                { status: "graded", gradedSeenAt: null },
+                { status: "needs_revision" }
+              ]
+            }
+          }),
+          classroomIds.length === 0
+            ? Promise.resolve([])
+            : prisma.assignment.findMany({
+                where: {
+                  classroomId: { in: classroomIds },
+                  published: true,
+                  kind: "homework"
+                },
+                select: {
+                  dueAt: true,
+                  submissions: {
+                    where: { studentId: userId },
+                    take: 1,
+                    select: { status: true }
+                  }
                 }
-              }
-            })
-      ]);
+              }),
+          classroomIds.length === 0
+            ? Promise.resolve(0)
+            : prisma.submission.count({
+                where: {
+                  studentId: userId,
+                  status: "graded",
+                  assignment: {
+                    kind: "homework",
+                    published: true,
+                    classroomId: { in: classroomIds }
+                  }
+                }
+              }),
+          classroomIds.length === 0
+            ? Promise.resolve(0)
+            : prisma.scheduleSlotAttendance.count({
+                where: {
+                  studentId: userId,
+                  plansToAttend: true,
+                  slot: {
+                    classroomId: { in: classroomIds },
+                    startsAt: { gte: startToday, lt: upcomingScheduleEnd }
+                  }
+                }
+              }),
+          classroomIds.length === 0
+            ? Promise.resolve(0)
+            : prisma.scheduleSlotAttendance.count({
+                where: {
+                  studentId: userId,
+                  plansToAttend: true,
+                  slot: {
+                    classroomId: { in: classroomIds },
+                    startsAt: { lt: startToday }
+                  }
+                }
+              })
+        ]);
       let homeworkTodoCount = 0;
       let homeworkOverdueCount = 0;
       let homeworkDueSoonCount = 0;
@@ -280,7 +335,10 @@ export function registerLmsRoutes(app: Express) {
         homeworkTodoCount,
         homeworkOverdueCount,
         homeworkDueSoonCount,
-        submittedPendingReviewCount
+        submittedPendingReviewCount,
+        homeworkDoneGradedCount,
+        upcomingMarkedSlotsCount,
+        pastMarkedSlotsCount
       });
       return;
     }
@@ -319,7 +377,8 @@ export function registerLmsRoutes(app: Express) {
       return;
     }
     const horizonStart = new Date(Date.now() - 36 * 60 * 60 * 1000);
-    const horizonEnd = new Date(Date.now() + 10 * 24 * 60 * 60 * 1000);
+    /** С запасом под скользящее окно календаря на главной (MAX_CALENDAR_STRETCH_DAYS ≈ 21 + колонки). */
+    const horizonEnd = new Date(Date.now() + 35 * 24 * 60 * 60 * 1000);
     const slots = await prisma.classScheduleSlot.findMany({
       where: {
         classroomId: { in: classroomIds },

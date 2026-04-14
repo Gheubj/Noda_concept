@@ -2,12 +2,10 @@ import { Card, Spin, Typography } from "antd";
 import dayjs from "dayjs";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { apiClient } from "@/shared/api/client";
-import { SCHEDULE_PREVIEW_DAY_COUNT } from "@/shared/scheduleHorizon";
+import { computeSlidingDayColumns, lastLessonAnchorDay } from "@/shared/homeCalendarWindow";
 import { useSessionStore } from "@/store/useSessionStore";
 
 const { Text } = Typography;
-
-const DAY_COUNT = SCHEDULE_PREVIEW_DAY_COUNT;
 
 export type SchedulePreviewSlot = {
   id: string;
@@ -76,9 +74,9 @@ export function HomeSchedulePreview({ onSlotsLoaded }: Props) {
   }, [scheduleRefetchKey]);
 
   const columns = useMemo(() => {
-    const start = dayjs().startOf("day");
-    return Array.from({ length: DAY_COUNT }, (_, i) => start.add(i, "day"));
-  }, []);
+    const anchor = lastLessonAnchorDay(slots.map((s) => s.startsAt));
+    return computeSlidingDayColumns(anchor);
+  }, [slots]);
 
   const slotsByDay = useMemo(() => {
     const keys = new Set(columns.map((d) => d.format("YYYY-MM-DD")));
