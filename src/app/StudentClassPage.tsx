@@ -8,6 +8,7 @@ import { apiClient } from "@/shared/api/client";
 import { passedLessonTemplateIdsFromSlots } from "@/shared/scheduleSlotPast";
 import { isOverdueByDueAt } from "@/shared/studentAssignmentDue";
 import { WeekScheduleCalendar, type SlotStudentAssignmentRow } from "@/app/WeekScheduleCalendar";
+import { EMPTY_LESSON_CONTENT, type LessonContent } from "@/shared/types/lessonContent";
 import dayjs from "dayjs";
 
 const { Title, Paragraph, Text } = Typography;
@@ -22,6 +23,7 @@ interface StudentAssignmentRow {
   dueAt: string | null;
   maxScore: number;
   scheduleSlotId: string | null;
+  lessonTemplateId: string | null;
   submission: {
     id: string;
     status: string;
@@ -39,6 +41,7 @@ interface StudentCourseLesson {
   description: string | null;
   sortOrder: number;
   studentSummary: string | null;
+  lessonContent?: LessonContent | null;
 }
 
 interface StudentCourseResponse {
@@ -95,6 +98,7 @@ export function StudentClassPage() {
   const [scheduleRows, setScheduleRows] = useState<ScheduleSlotRow[]>([]);
   const [courseScheduleLoading, setCourseScheduleLoading] = useState(false);
   const [scheduleWeekAnchor, setScheduleWeekAnchor] = useState(() => dayjs());
+  const [lessonFocusId, setLessonFocusId] = useState<string>("");
   const [allFilterGrade, setAllFilterGrade] = useState<"all" | "graded" | "not_graded">("all");
   const [allFilterKind, setAllFilterKind] = useState<"all" | "homework" | "classwork">("all");
   const [allFilterOverdue, setAllFilterOverdue] = useState<"all" | "overdue" | "not_overdue">("all");
@@ -131,6 +135,7 @@ export function StudentClassPage() {
     if (!classFocusId) {
       setCourseData(null);
       setScheduleRows([]);
+      setLessonFocusId("");
       return;
     }
     let cancelled = false;
@@ -160,6 +165,17 @@ export function StudentClassPage() {
       cancelled = true;
     };
   }, [classFocusId]);
+
+  useEffect(() => {
+    const lessons = courseData?.lessons ?? [];
+    if (lessons.length === 0) {
+      setLessonFocusId("");
+      return;
+    }
+    if (!lessonFocusId || !lessons.some((l) => l.id === lessonFocusId)) {
+      setLessonFocusId(lessons[0].id);
+    }
+  }, [courseData?.lessons, lessonFocusId]);
 
   const assignmentsForClass = useMemo(
     () => assignments.filter((a) => a.classroomId === classFocusId),
@@ -474,6 +490,203 @@ export function StudentClassPage() {
     </Spin>
   );
 
+  const activeLesson = useMemo(
+    () => (courseData?.lessons ?? []).find((l) => l.id === lessonFocusId) ?? null,
+    [courseData?.lessons, lessonFocusId]
+  );
+  const activeLessonContent = activeLesson?.lessonContent ?? EMPTY_LESSON_CONTENT;
+  const assignmentForActiveLesson = useMemo(() => {
+    if (!activeLesson) {
+      return null;
+    }
+    const candidates = assignmentsForClass.filter((a) => a.lessonTemplateId === activeLesson.id);
+    if (candidates.length === 0) {
+      return null;
+    }
+    const rank = (st: string) => {
+      if (st === "needs_revision") {
+        return 0;
+      }
+      if (st === "draft" || st === "not_started") {
+        return 1;
+      }
+      if (st === "submitted") {
+        return 2;
+      }
+      if (st === "graded") {
+        return 3;
+      }
+      return 4;
+    };
+    return [...candidates].sort((a, b) => {
+      const sa = a.submission?.status ?? "not_started";
+      const sb = b.submission?.status ?? "not_started";
+      return rank(sa) - rank(sb);
+    })[0];
+  }, [activeLesson, assignmentsForClass]);
+
+  const lessonActionsBlock = (row: StudentAssignmentRow | null) => {
+    if (!row) {
+      return (
+        <Paragraph type="secondary" style={{ marginBottom: 0 }}>
+          Для этого урока пока нет привязанного задания. Попроси учителя выдать задание по шаблону урока.
+        </Paragraph>
+      );
+    }
+    const st = row.submission?.status ?? "not_started";
+    return (
+      <Space direction="vertical" size="small" style={{ width: "100%" }}>
+        <Text>
+          Связанное задание: <Text strong>{row.title}</Text>
+        </Text>
+        <Text type="secondary">Статус: {STATUS_RU[st] ?? st}</Text>
+        <Space wrap>
+          <Button onClick={() => void startOrOpen(row)} type={st === "not_started" ? "primary" : "default"}>
+            {st === "not_started" ? "Открыть стартовый проект" : "Открыть в Studio"}
+          </Button>
+          {(st === "draft" || st === "needs_revision") && row.submission?.projectId ? (
+            <Button onClick={() => void submitWork(row)}>Сдать работу</Button>
+          ) : null}
+          {st === "graded" && needsAttention(row) ? (
+            <Button onClick={() => void markGradedSeen(row)}>Отметить как просмотрено</Button>
+          ) : null}
+        </Space>
+      </Space>
+    );
+  };
+
+  const lessonTab = (
+    <Spin spinning={courseScheduleLoading}>
+      <Space direction="vertical" size="large" style={{ width: "100%" }}>
+        <Card size="small">
+          <Space wrap align="center">
+            <Text type="secondary">Урок:</Text>
+            <Select
+              style={{ minWidth: 320 }}
+              value={lessonFocusId || undefined}
+              onChange={setLessonFocusId}
+              options={(courseData?.lessons ?? []).map((l, idx) => ({
+                value: l.id,
+                label: `${idx + 1}. ${l.title}`
+              }))}
+            />
+          </Space>
+        </Card>
+        {!activeLesson ? (
+          <Empty description="Выбери урок" />
+        ) : (
+          <>
+            <Card title={activeLesson.title}>
+              {activeLesson.studentSummary ? (
+                <Paragraph style={{ marginBottom: 0 }}>{activeLesson.studentSummary}</Paragraph>
+              ) : (
+                <Paragraph type="secondary" style={{ marginBottom: 0 }}>
+                  Краткое описание урока пока не добавлено.
+                </Paragraph>
+              )}
+            </Card>
+            <Card title="Материалы урока">
+              {activeLessonContent.presentationPdfUrl ? (
+                <Card size="small" title="Презентация (PDF)" style={{ marginBottom: 12 }}>
+                  <Space direction="vertical" size="small" style={{ width: "100%" }}>
+                    <Button
+                      type="default"
+                      onClick={() => window.open(activeLessonContent.presentationPdfUrl ?? "", "_blank", "noreferrer")}
+                    >
+                      Открыть презентацию PDF
+                    </Button>
+                    <iframe
+                      src={activeLessonContent.presentationPdfUrl}
+                      title={`PDF урока: ${activeLesson.title}`}
+                      style={{ width: "100%", minHeight: 420, border: "1px solid var(--ant-color-border)" }}
+                    />
+                  </Space>
+                </Card>
+              ) : null}
+              {activeLessonContent.slides.length === 0 ? (
+                <Paragraph type="secondary" style={{ marginBottom: 0 }}>
+                  Слайды пока не заполнены.
+                </Paragraph>
+              ) : (
+                <Space direction="vertical" size="middle" style={{ width: "100%" }}>
+                  {activeLessonContent.slides.map((slide, idx) => (
+                    <Card key={`${activeLesson.id}-slide-${idx}`} size="small" title={`Слайд ${idx + 1}: ${slide.title}`}>
+                      <Paragraph style={{ whiteSpace: "pre-wrap", marginBottom: 0 }}>{slide.body}</Paragraph>
+                      {slide.mediaUrl ? (
+                        <Paragraph style={{ marginTop: 8, marginBottom: 0 }}>
+                          Материал:{" "}
+                          <a href={slide.mediaUrl} target="_blank" rel="noreferrer">
+                            открыть ссылку
+                          </a>
+                        </Paragraph>
+                      ) : null}
+                    </Card>
+                  ))}
+                </Space>
+              )}
+            </Card>
+            <Card title="Практика по шагам">
+              {activeLessonContent.practiceSteps.length === 0 ? (
+                <Paragraph type="secondary" style={{ marginBottom: 0 }}>
+                  Практические шаги не заполнены.
+                </Paragraph>
+              ) : (
+                <Space direction="vertical" size="middle" style={{ width: "100%" }}>
+                  {activeLessonContent.practiceSteps.map((step, idx) => (
+                    <Card key={`${activeLesson.id}-step-${idx}`} size="small" title={`Шаг ${idx + 1}: ${step.title}`}>
+                      <Paragraph style={{ whiteSpace: "pre-wrap", marginBottom: 0 }}>{step.instruction}</Paragraph>
+                    </Card>
+                  ))}
+                </Space>
+              )}
+            </Card>
+            <Card title="Проверка понимания">
+              {activeLessonContent.checkpoints.length === 0 ? (
+                <Paragraph type="secondary" style={{ marginBottom: 0 }}>
+                  Контрольные вопросы не добавлены.
+                </Paragraph>
+              ) : (
+                <Space direction="vertical" size="small" style={{ width: "100%" }}>
+                  {activeLessonContent.checkpoints.map((checkpoint, idx) => (
+                    <Card key={`${activeLesson.id}-checkpoint-${idx}`} size="small">
+                      <Paragraph style={{ marginBottom: 8 }}>
+                        <Text strong>
+                          {idx + 1}. {checkpoint.question}
+                        </Text>
+                      </Paragraph>
+                      <Paragraph type="secondary" style={{ marginBottom: 0 }}>
+                        Ожидаемый ответ: {checkpoint.expectedAnswer}
+                      </Paragraph>
+                    </Card>
+                  ))}
+                </Space>
+              )}
+            </Card>
+            <Card title="Помощник">
+              {activeLessonContent.hints.length === 0 ? (
+                <Paragraph type="secondary" style={{ marginBottom: 0 }}>
+                  Пока нет подсказок для этого урока.
+                </Paragraph>
+              ) : (
+                <Space direction="vertical" size="small" style={{ width: "100%" }}>
+                  {activeLessonContent.hints.map((hint, idx) => (
+                    <Card key={`${activeLesson.id}-hint-${idx}`} size="small">
+                      <Paragraph style={{ marginBottom: 6 }}>
+                        <Text strong>{hint.title}</Text>
+                      </Paragraph>
+                      <Paragraph style={{ marginBottom: 0 }}>{hint.text}</Paragraph>
+                    </Card>
+                  ))}
+                </Space>
+              )}
+            </Card>
+            <Card title="Действия по уроку">{lessonActionsBlock(assignmentForActiveLesson)}</Card>
+          </>
+        )}
+      </Space>
+    </Spin>
+  );
+
   const filteredAllAssignments = useMemo(() => {
     return assignments.filter((row) => {
       const st = row.submission?.status ?? "not_started";
@@ -600,6 +813,7 @@ export function StudentClassPage() {
       <Tabs
         defaultActiveKey="diary"
         items={[
+          { key: "lesson", label: "Урок", children: lessonTab },
           { key: "course", label: "Курс", children: courseTab },
           { key: "diary", label: "Дневник", children: diaryTab },
           { key: "all", label: "Все задания", children: allAssignmentsTab },

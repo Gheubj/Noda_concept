@@ -224,6 +224,7 @@ model LessonTemplate {
   moduleKey      String
   sortOrder      Int      @default(0)
   starterPayload Json
+  lessonContent  Json?
   published      Boolean  @default(true)
   teacherGuideMd String?  @db.Text
   studentSummary String?  @db.Text

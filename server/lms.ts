@@ -184,6 +184,31 @@ export function courseModuleToModuleKey(m: CourseModule): string {
 }
 
 const assignmentKindZ = z.enum(assignmentKindsLmsZ);
+const lessonContentSlideZ = z.object({
+  title: z.string().min(1).max(180),
+  body: z.string().min(1).max(8000),
+  mediaUrl: z.string().url().optional().nullable()
+});
+const lessonContentPracticeStepZ = z.object({
+  title: z.string().min(1).max(180),
+  instruction: z.string().min(1).max(8000),
+  ctaAction: z.string().min(1).max(120).optional().nullable()
+});
+const lessonContentCheckpointZ = z.object({
+  question: z.string().min(1).max(8000),
+  expectedAnswer: z.string().min(1).max(8000)
+});
+const lessonContentHintZ = z.object({
+  title: z.string().min(1).max(180),
+  text: z.string().min(1).max(8000)
+});
+const lessonContentZ = z.object({
+  presentationPdfUrl: z.string().url().optional().nullable(),
+  slides: z.array(lessonContentSlideZ).default([]),
+  practiceSteps: z.array(lessonContentPracticeStepZ).default([]),
+  checkpoints: z.array(lessonContentCheckpointZ).default([]),
+  hints: z.array(lessonContentHintZ).default([])
+});
 
 async function assertTeacherClassroom(teacherId: string, classroomId: string) {
   const c = await prisma.classroom.findFirst({
@@ -418,10 +443,76 @@ export function registerLmsRoutes(app: Express) {
         title: t.title,
         description: t.description,
         moduleKey: t.moduleKey,
-        sortOrder: t.sortOrder
+        sortOrder: t.sortOrder,
+        lessonContent: t.lessonContent
       }))
     );
   });
+
+  app.get("/api/lesson-templates/:id/content", authRequired, async (req, res) => {
+    const id = String(req.params.id);
+    const t = await prisma.lessonTemplate.findFirst({
+      where: { id, published: true },
+      select: {
+        id: true,
+        title: true,
+        moduleKey: true,
+        sortOrder: true,
+        studentSummary: true,
+        lessonContent: true
+      }
+    });
+    if (!t) {
+      res.status(404).json({ error: "Not found" });
+      return;
+    }
+    res.json(t);
+  });
+
+  app.patch(
+    "/api/admin/lesson-templates/:id/content",
+    authRequired,
+    adminRequired,
+    async (_req: AuthenticatedRequest, res) => {
+      const req = _req;
+      const id = String(req.params.id);
+      const parsed = z
+        .object({
+          studentSummary: z.string().max(8000).optional().nullable(),
+          lessonContent: lessonContentZ.optional().nullable()
+        })
+        .safeParse(req.body);
+      if (!parsed.success) {
+        res.status(400).json({ error: parsed.error.message });
+        return;
+      }
+      const exists = await prisma.lessonTemplate.findFirst({
+        where: { id, published: true },
+        select: { id: true }
+      });
+      if (!exists) {
+        res.status(404).json({ error: "Lesson not found" });
+        return;
+      }
+      await prisma.lessonTemplate.update({
+        where: { id },
+        data: {
+          ...(parsed.data.studentSummary !== undefined
+            ? { studentSummary: parsed.data.studentSummary }
+            : {}),
+          ...(parsed.data.lessonContent !== undefined
+            ? {
+                lessonContent:
+                  parsed.data.lessonContent === null
+                    ? Prisma.JsonNull
+                    : (parsed.data.lessonContent as Prisma.InputJsonValue)
+              }
+            : {})
+        }
+      });
+      res.json({ ok: true });
+    }
+  );
 
   app.get("/api/lesson-templates/:id/starter", async (req, res) => {
     const t = await prisma.lessonTemplate.findFirst({
@@ -459,7 +550,8 @@ export function registerLmsRoutes(app: Express) {
           moduleKey: true,
           sortOrder: true,
           teacherGuideMd: true,
-          studentSummary: true
+          studentSummary: true,
+          lessonContent: true
         }
       });
       res.json({
@@ -499,7 +591,8 @@ export function registerLmsRoutes(app: Express) {
           description: true,
           moduleKey: true,
           sortOrder: true,
-          studentSummary: true
+          studentSummary: true,
+          lessonContent: true
         }
       });
       res.json({
@@ -1505,6 +1598,7 @@ export function registerLmsRoutes(app: Express) {
       dueAt: string | null;
       maxScore: number;
       scheduleSlotId: string | null;
+      lessonTemplateId: string | null;
       submission: {
         id: string;
         status: string;
@@ -1528,6 +1622,7 @@ export function registerLmsRoutes(app: Express) {
           dueAt: a.dueAt?.toISOString() ?? null,
           maxScore: a.maxScore,
           scheduleSlotId: a.scheduleSlotId,
+          lessonTemplateId: a.lessonTemplateId,
           submission: sub
             ? {
                 id: sub.id,
@@ -1890,6 +1985,100 @@ const LESSON_GUIDE_SEED: Record<string, { teacherGuideMd: string; studentSummary
   }
 };
 
+const LESSON_CONTENT_SEED: Record<string, Prisma.InputJsonValue> = {
+  lt_intro_ai: {
+    slides: [
+      {
+        title: "Что такое ИИ",
+        body: "ИИ учится на примерах и находит закономерности в данных."
+      },
+      {
+        title: "Цикл работы модели",
+        body: "Данные -> обучение -> предсказание."
+      }
+    ],
+    practiceSteps: [
+      {
+        title: "Открой проект урока",
+        instruction: "Запусти стартовый проект и познакомься с интерфейсом Studio.",
+        ctaAction: "open_studio"
+      },
+      {
+        title: "Подготовь первые данные",
+        instruction: "Собери 3 класса и добавь примеры в каждый."
+      }
+    ],
+    checkpoints: [
+      {
+        question: "Что делает модель в машинном обучении?",
+        expectedAnswer: "Ищет закономерности в примерах и предсказывает класс."
+      }
+    ],
+    hints: [
+      {
+        title: "Мало примеров",
+        text: "Для каждого класса нужно хотя бы 5-10 примеров."
+      }
+    ]
+  },
+  lt_data_label: {
+    slides: [
+      {
+        title: "Данные и разметка",
+        body: "Качество модели напрямую зависит от качества разметки."
+      }
+    ],
+    practiceSteps: [
+      {
+        title: "Проверь баланс классов",
+        instruction: "Старайся, чтобы в каждом классе было похожее число примеров."
+      }
+    ],
+    checkpoints: [
+      {
+        question: "Почему разметка важна?",
+        expectedAnswer: "Модель учится на метках и без корректной разметки не поймет классы."
+      }
+    ],
+    hints: [
+      {
+        title: "Смешанные классы",
+        text: "Убери из класса примеры, которые похожи на другой класс."
+      }
+    ]
+  },
+  lt_first_model: {
+    slides: [
+      {
+        title: "Первая модель",
+        body: "Обучи модель, проверь точность и зафиксируй ошибки."
+      }
+    ],
+    practiceSteps: [
+      {
+        title: "Обучи модель",
+        instruction: "Сделай 10 эпох и посмотри метрики качества."
+      },
+      {
+        title: "Проверь предсказания",
+        instruction: "Протестируй модель на новых данных и запиши результат."
+      }
+    ],
+    checkpoints: [
+      {
+        question: "Что делать, если модель часто ошибается?",
+        expectedAnswer: "Добавить качественные данные и выровнять классы."
+      }
+    ],
+    hints: [
+      {
+        title: "Освещение и ракурс",
+        text: "Добавляй примеры при разном свете и угле съемки."
+      }
+    ]
+  }
+};
+
 export async function ensureLessonTemplateSeed() {
   const n = await prisma.lessonTemplate.count();
   if (n > 0) {
@@ -1926,6 +2115,7 @@ export async function ensureLessonTemplateSeed() {
       data: {
         ...s,
         starterPayload: EMPTY_SNAPSHOT,
+        lessonContent: LESSON_CONTENT_SEED[s.id] ?? Prisma.JsonNull,
         published: true
       }
     });

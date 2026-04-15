@@ -30,6 +30,7 @@ import { useSessionStore } from "@/store/useSessionStore";
 import { apiClient } from "@/shared/api/client";
 import { passedLessonTemplateIdsFromSlots } from "@/shared/scheduleSlotPast";
 import { WeekScheduleCalendar } from "@/app/WeekScheduleCalendar";
+import { EMPTY_LESSON_CONTENT, type LessonContent } from "@/shared/types/lessonContent";
 
 const { Title, Paragraph, Text } = Typography;
 const { TextArea } = Input;
@@ -67,6 +68,7 @@ interface TeacherCourseLesson {
   sortOrder: number;
   teacherGuideMd: string | null;
   studentSummary: string | null;
+  lessonContent?: LessonContent | null;
 }
 
 interface TeacherCourseResponse {
@@ -202,6 +204,13 @@ export function TeacherPage() {
   const [guideOpen, setGuideOpen] = useState(false);
   const [guideTitle, setGuideTitle] = useState("");
   const [guideMd, setGuideMd] = useState("");
+  const [lessonEditorOpen, setLessonEditorOpen] = useState(false);
+  const [lessonEditorSaving, setLessonEditorSaving] = useState(false);
+  const [lessonEditorLesson, setLessonEditorLesson] = useState<TeacherCourseLesson | null>(null);
+  const [lessonEditorSummary, setLessonEditorSummary] = useState("");
+  const [lessonEditorJson, setLessonEditorJson] = useState(
+    JSON.stringify(EMPTY_LESSON_CONTENT, null, 2)
+  );
   const [scheduleModalOpen, setScheduleModalOpen] = useState(false);
   const [newSlotLessonId, setNewSlotLessonId] = useState<string | undefined>(undefined);
   const [newSlotDate, setNewSlotDate] = useState<dayjs.Dayjs | null>(null);
@@ -856,6 +865,43 @@ export function TeacherPage() {
     }
   };
 
+  const openLessonEditor = (lesson: TeacherCourseLesson) => {
+    setLessonEditorLesson(lesson);
+    setLessonEditorSummary(lesson.studentSummary ?? "");
+    setLessonEditorJson(JSON.stringify(lesson.lessonContent ?? EMPTY_LESSON_CONTENT, null, 2));
+    setLessonEditorOpen(true);
+  };
+
+  const submitLessonEditor = async () => {
+    if (!lessonEditorLesson) {
+      return;
+    }
+    let lessonContent: LessonContent;
+    try {
+      lessonContent = JSON.parse(lessonEditorJson) as LessonContent;
+    } catch {
+      messageApi.error("Некорректный JSON материалов урока");
+      return;
+    }
+    setLessonEditorSaving(true);
+    try {
+      await apiClient.patch(`/api/admin/lesson-templates/${lessonEditorLesson.id}/content`, {
+        studentSummary: lessonEditorSummary.trim() || null,
+        lessonContent
+      });
+      messageApi.success("Материалы урока сохранены");
+      setLessonEditorOpen(false);
+      if (lmsClassroomId) {
+        const c = await apiClient.get<TeacherCourseResponse>(`/api/teacher/classrooms/${lmsClassroomId}/course`);
+        setCourseBundle(c);
+      }
+    } catch (e) {
+      messageApi.error(e instanceof Error ? e.message : "Не удалось сохранить материалы");
+    } finally {
+      setLessonEditorSaving(false);
+    }
+  };
+
   const getStudentColumns = (classroomId: string): ColumnsType<DashboardStudent> => [
     { title: "Ник", dataIndex: "nickname", key: "nickname" },
     { title: "Email", dataIndex: "email", key: "email" },
@@ -1202,18 +1248,25 @@ export function TeacherPage() {
                       {
                         title: "",
                         key: "guide",
-                        width: 140,
+                        width: 260,
                         render: (_, row) => (
-                          <Button
-                            size="small"
-                            onClick={() => {
-                              setGuideTitle(row.title);
-                              setGuideMd(row.teacherGuideMd ?? "Методичка пока не заполнена.");
-                              setGuideOpen(true);
-                            }}
-                          >
-                            Методичка
-                          </Button>
+                          <Space size="small" wrap>
+                            <Button
+                              size="small"
+                              onClick={() => {
+                                setGuideTitle(row.title);
+                                setGuideMd(row.teacherGuideMd ?? "Методичка пока не заполнена.");
+                                setGuideOpen(true);
+                              }}
+                            >
+                              Методичка
+                            </Button>
+                            {user.isAdmin === true ? (
+                              <Button size="small" onClick={() => openLessonEditor(row)}>
+                                Материалы (админ)
+                              </Button>
+                            ) : null}
+                          </Space>
                         )
                       }
                     ]}
@@ -1831,6 +1884,41 @@ export function TeacherPage() {
       <Drawer title={guideTitle} width={560} open={guideOpen} onClose={() => setGuideOpen(false)}>
         <Paragraph style={{ whiteSpace: "pre-wrap", marginBottom: 0 }}>{guideMd}</Paragraph>
       </Drawer>
+
+      <Modal
+        title={lessonEditorLesson ? `Материалы урока: ${lessonEditorLesson.title}` : "Материалы урока"}
+        open={lessonEditorOpen}
+        width={760}
+        okText="Сохранить"
+        confirmLoading={lessonEditorSaving}
+        onCancel={() => setLessonEditorOpen(false)}
+        onOk={() => void submitLessonEditor()}
+      >
+        <Space direction="vertical" size="middle" style={{ width: "100%" }}>
+          <div>
+            <Text type="secondary">Кратко для ученика</Text>
+            <TextArea
+              rows={3}
+              value={lessonEditorSummary}
+              onChange={(e) => setLessonEditorSummary(e.target.value)}
+              placeholder="Краткое описание урока в таблице курса"
+              style={{ marginTop: 4 }}
+            />
+          </div>
+          <div>
+            <Text type="secondary">lessonContent (JSON)</Text>
+            <TextArea
+              rows={16}
+              value={lessonEditorJson}
+              onChange={(e) => setLessonEditorJson(e.target.value)}
+              style={{ marginTop: 4, fontFamily: "monospace" }}
+            />
+            <Paragraph type="secondary" style={{ marginTop: 8, marginBottom: 0, fontSize: 12 }}>
+              Поддерживаемые поля: presentationPdfUrl, slides[], practiceSteps[], checkpoints[], hints[].
+            </Paragraph>
+          </div>
+        </Space>
+      </Modal>
 
       <Modal title="Новое задание" open={createOpen} onCancel={() => setCreateOpen(false)} onOk={() => void submitCreate()}>
         <Form form={createForm} layout="vertical">
