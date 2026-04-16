@@ -20,6 +20,7 @@ import { LandingPage } from "@/app/LandingPage";
 import { StudioPage } from "@/app/StudioPage";
 import { ClassPage } from "@/app/ClassPage";
 import { LearningPage } from "@/app/LearningPage";
+import { LessonPlayerPage } from "@/app/LessonPlayerPage";
 import { TeacherPage } from "@/app/TeacherPage";
 import { ResetPasswordPage } from "@/app/ResetPasswordPage";
 import { ShareImportPage } from "@/app/ShareImportPage";
@@ -425,6 +426,14 @@ export function App() {
           element={
             <RequireUser>
               <ClassPage />
+            </RequireUser>
+          }
+        />
+        <Route
+          path="/lesson/:lessonId"
+          element={
+            <RequireUser>
+              <LessonPlayerPage />
             </RequireUser>
           }
         />

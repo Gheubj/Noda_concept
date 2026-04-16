@@ -1945,6 +1945,173 @@ export function registerLmsRoutes(app: Express) {
     });
     res.json({ projectId: newId, title, importedFromShare: true });
   });
+
+  app.get(
+    "/api/student/lessons/:lessonId/player-bootstrap",
+    authRequired,
+    roleGuard(["student"]),
+    async (req: AuthenticatedRequest, res) => {
+      const lessonId = String(req.params.lessonId);
+      const assignmentIdRaw = req.query.assignmentId;
+      const assignmentId =
+        typeof assignmentIdRaw === "string" && assignmentIdRaw.length > 0 ? assignmentIdRaw : null;
+
+      const lesson = await prisma.lessonTemplate.findFirst({
+        where: { id: lessonId, published: true },
+        select: { id: true, title: true, studentSummary: true, lessonContent: true }
+      });
+      if (!lesson) {
+        res.status(404).json({ error: "Урок не найден" });
+        return;
+      }
+
+      let scopeKey = "direct";
+      let assignmentTitle: string | null = null;
+      if (assignmentId) {
+        const sub = await prisma.submission.findFirst({
+          where: { studentId: req.session!.sub, assignmentId },
+          include: { assignment: { select: { lessonTemplateId: true, title: true } } }
+        });
+        if (!sub || sub.assignment.lessonTemplateId !== lessonId) {
+          res.status(403).json({ error: "Нет доступа к этому заданию или урок не совпадает" });
+          return;
+        }
+        scopeKey = assignmentId;
+        assignmentTitle = sub.assignment.title;
+      }
+
+      const progress = await prisma.lessonPlayerProgress.findUnique({
+        where: {
+          userId_lessonTemplateId_scopeKey: {
+            userId: req.session!.sub,
+            lessonTemplateId: lessonId,
+            scopeKey
+          }
+        }
+      });
+
+      res.json({
+        title: lesson.title,
+        studentSummary: lesson.studentSummary,
+        lessonContent: lesson.lessonContent,
+        scopeKey,
+        assignmentTitle,
+        state: progress?.state ?? {}
+      });
+    }
+  );
+
+  app.patch(
+    "/api/student/lessons/:lessonId/player-progress",
+    authRequired,
+    roleGuard(["student"]),
+    async (req: AuthenticatedRequest, res) => {
+      const lessonId = String(req.params.lessonId);
+      const parsed = z.object({ state: z.record(z.string(), z.unknown()) }).safeParse(req.body);
+      if (!parsed.success) {
+        res.status(400).json({ error: parsed.error.message });
+        return;
+      }
+      if (JSON.stringify(parsed.data.state).length > 48000) {
+        res.status(400).json({ error: "Слишком большой state" });
+        return;
+      }
+
+      const assignmentIdRaw = req.query.assignmentId;
+      const assignmentId =
+        typeof assignmentIdRaw === "string" && assignmentIdRaw.length > 0 ? assignmentIdRaw : null;
+
+      const exists = await prisma.lessonTemplate.findFirst({
+        where: { id: lessonId, published: true },
+        select: { id: true }
+      });
+      if (!exists) {
+        res.status(404).json({ error: "Урок не найден" });
+        return;
+      }
+
+      let scopeKey = "direct";
+      if (assignmentId) {
+        const sub = await prisma.submission.findFirst({
+          where: { studentId: req.session!.sub, assignmentId },
+          include: { assignment: { select: { lessonTemplateId: true } } }
+        });
+        if (!sub || sub.assignment.lessonTemplateId !== lessonId) {
+          res.status(403).json({ error: "Нет доступа" });
+          return;
+        }
+        scopeKey = assignmentId;
+      }
+
+      await prisma.lessonPlayerProgress.upsert({
+        where: {
+          userId_lessonTemplateId_scopeKey: {
+            userId: req.session!.sub,
+            lessonTemplateId: lessonId,
+            scopeKey
+          }
+        },
+        create: {
+          userId: req.session!.sub,
+          lessonTemplateId: lessonId,
+          scopeKey,
+          state: parsed.data.state as Prisma.InputJsonValue
+        },
+        update: { state: parsed.data.state as Prisma.InputJsonValue }
+      });
+      res.json({ ok: true });
+    }
+  );
+
+  app.get(
+    "/api/teacher/classrooms/:classroomId/lesson-player-progress",
+    authRequired,
+    roleGuard(["teacher"]),
+    async (req: AuthenticatedRequest, res) => {
+      const classroomId = String(req.params.classroomId);
+      const lessonTemplateIdFilter = req.query.lessonTemplateId
+        ? String(req.query.lessonTemplateId)
+        : null;
+
+      const room = await assertTeacherClassroom(req.session!.sub, classroomId);
+      if (!room) {
+        res.status(404).json({ error: "Класс не найден" });
+        return;
+      }
+
+      const assignments = await prisma.assignment.findMany({
+        where: {
+          classroomId,
+          lessonTemplateId: lessonTemplateIdFilter ?? { not: null }
+        },
+        select: { id: true, title: true, lessonTemplateId: true }
+      });
+      const scopeKeys = assignments.map((a) => a.id);
+      if (scopeKeys.length === 0) {
+        res.json({ assignments: [], progress: [] });
+        return;
+      }
+
+      const progressRows = await prisma.lessonPlayerProgress.findMany({
+        where: { scopeKey: { in: scopeKeys } },
+        include: { user: { select: { id: true, nickname: true } } }
+      });
+
+      const assignmentById = new Map(assignments.map((a) => [a.id, a]));
+      res.json({
+        assignments,
+        progress: progressRows.map((p) => ({
+          studentId: p.userId,
+          studentNickname: p.user.nickname,
+          assignmentId: p.scopeKey,
+          assignmentTitle: assignmentById.get(p.scopeKey)?.title ?? null,
+          lessonTemplateId: p.lessonTemplateId,
+          state: p.state,
+          updatedAt: p.updatedAt.toISOString()
+        }))
+      });
+    }
+  );
 }
 
 const LESSON_GUIDE_SEED: Record<string, { teacherGuideMd: string; studentSummary: string }> = {

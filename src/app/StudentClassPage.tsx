@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { CheckOutlined } from "@ant-design/icons";
-import { Button, Card, Empty, Select, Space, Spin, Table, Tabs, Tag, Typography, message } from "antd";
+import { Alert, Button, Card, Empty, Select, Space, Spin, Table, Tabs, Tag, Typography, message } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { Link, useNavigate } from "react-router-dom";
 import { useSessionStore } from "@/store/useSessionStore";
 import { apiClient } from "@/shared/api/client";
-import { resolveLessonMediaUrl } from "@/shared/lessonMediaUrl";
+import { LessonContentMaterials } from "@/components/LessonContentMaterials";
+import { courseModuleStudentLabel, courseModuleToApiModuleKey } from "@/shared/courseModuleLabels";
 import { passedLessonTemplateIdsFromSlots } from "@/shared/scheduleSlotPast";
 import { isOverdueByDueAt } from "@/shared/studentAssignmentDue";
 import { WeekScheduleCalendar, type SlotStudentAssignmentRow } from "@/app/WeekScheduleCalendar";
@@ -559,6 +560,21 @@ export function StudentClassPage() {
   const lessonTab = (
     <Spin spinning={courseScheduleLoading}>
       <Space direction="vertical" size="large" style={{ width: "100%" }}>
+        {courseData ? (
+          <Alert
+            type="info"
+            showIcon
+            message="Как подбираются уроки и материалы"
+            description={
+              <>
+                В классе задан {courseModuleStudentLabel(courseData.courseModule)} — в программе показываются только
+                шаблоны с ключом модуля{" "}
+                <Text code>{courseModuleToApiModuleKey(courseData.courseModule)}</Text>. Если после правок в
+                админке уроки не появились, проверь, что шаблон относится к этому модулю и опубликован.
+              </>
+            }
+          />
+        ) : null}
         <Card size="small">
           <Space wrap align="center">
             <Text type="secondary">Урок:</Text>
@@ -573,122 +589,43 @@ export function StudentClassPage() {
             />
           </Space>
         </Card>
+        {(courseData?.lessons ?? []).length === 0 && courseData ? (
+          <Alert
+            type="warning"
+            showIcon
+            message="В программе класса нет уроков"
+            description="Обычно это значит, что в каталоге нет опубликованных шаблонов для модуля класса. Попроси учителя или администратора проверить модуль класса и каталог шаблонов."
+          />
+        ) : null}
         {!activeLesson ? (
           <Empty description="Выбери урок" />
         ) : (
-          <>
-            <Card title={activeLesson.title}>
-              {activeLesson.studentSummary ? (
-                <Paragraph style={{ marginBottom: 0 }}>{activeLesson.studentSummary}</Paragraph>
-              ) : (
-                <Paragraph type="secondary" style={{ marginBottom: 0 }}>
-                  Краткое описание урока пока не добавлено.
-                </Paragraph>
-              )}
-            </Card>
-            <Card title="Материалы урока">
-              {activeLessonContent.presentationPdfUrl ? (
-                <Card size="small" title="Презентация (PDF)" style={{ marginBottom: 12 }}>
-                  <Space direction="vertical" size="small" style={{ width: "100%" }}>
-                    <Button
-                      type="default"
-                      onClick={() =>
-                        window.open(
-                          resolveLessonMediaUrl(activeLessonContent.presentationPdfUrl),
-                          "_blank",
-                          "noreferrer"
-                        )
-                      }
+          <LessonContentMaterials
+            lessonTitle={activeLesson.title}
+            studentSummary={activeLesson.studentSummary}
+            lessonContent={activeLessonContent}
+            showCheckpointAnswers
+            footer={
+              <Space direction="vertical" size="small" style={{ width: "100%" }}>
+                {assignmentForActiveLesson ? (
+                  <Paragraph style={{ marginBottom: 0 }}>
+                    <Link
+                      to={`/lesson/${encodeURIComponent(activeLesson.id)}?assignmentId=${encodeURIComponent(assignmentForActiveLesson.assignmentId)}`}
                     >
-                      Открыть презентацию PDF
-                    </Button>
-                    <iframe
-                      src={resolveLessonMediaUrl(activeLessonContent.presentationPdfUrl)}
-                      title={`PDF урока: ${activeLesson.title}`}
-                      style={{ width: "100%", minHeight: 420, border: "1px solid var(--ant-color-border)" }}
-                    />
-                  </Space>
-                </Card>
-              ) : null}
-              {activeLessonContent.slides.length === 0 ? (
-                <Paragraph type="secondary" style={{ marginBottom: 0 }}>
-                  Слайды пока не заполнены.
-                </Paragraph>
-              ) : (
-                <Space direction="vertical" size="middle" style={{ width: "100%" }}>
-                  {activeLessonContent.slides.map((slide, idx) => (
-                    <Card key={`${activeLesson.id}-slide-${idx}`} size="small" title={`Слайд ${idx + 1}: ${slide.title}`}>
-                      <Paragraph style={{ whiteSpace: "pre-wrap", marginBottom: 0 }}>{slide.body}</Paragraph>
-                      {slide.mediaUrl ? (
-                        <Paragraph style={{ marginTop: 8, marginBottom: 0 }}>
-                          Материал:{" "}
-                          <a href={slide.mediaUrl} target="_blank" rel="noreferrer">
-                            открыть ссылку
-                          </a>
-                        </Paragraph>
-                      ) : null}
-                    </Card>
-                  ))}
-                </Space>
-              )}
-            </Card>
-            <Card title="Практика по шагам">
-              {activeLessonContent.practiceSteps.length === 0 ? (
-                <Paragraph type="secondary" style={{ marginBottom: 0 }}>
-                  Практические шаги не заполнены.
-                </Paragraph>
-              ) : (
-                <Space direction="vertical" size="middle" style={{ width: "100%" }}>
-                  {activeLessonContent.practiceSteps.map((step, idx) => (
-                    <Card key={`${activeLesson.id}-step-${idx}`} size="small" title={`Шаг ${idx + 1}: ${step.title}`}>
-                      <Paragraph style={{ whiteSpace: "pre-wrap", marginBottom: 0 }}>{step.instruction}</Paragraph>
-                    </Card>
-                  ))}
-                </Space>
-              )}
-            </Card>
-            <Card title="Проверка понимания">
-              {activeLessonContent.checkpoints.length === 0 ? (
-                <Paragraph type="secondary" style={{ marginBottom: 0 }}>
-                  Контрольные вопросы не добавлены.
-                </Paragraph>
-              ) : (
-                <Space direction="vertical" size="small" style={{ width: "100%" }}>
-                  {activeLessonContent.checkpoints.map((checkpoint, idx) => (
-                    <Card key={`${activeLesson.id}-checkpoint-${idx}`} size="small">
-                      <Paragraph style={{ marginBottom: 8 }}>
-                        <Text strong>
-                          {idx + 1}. {checkpoint.question}
-                        </Text>
-                      </Paragraph>
-                      <Paragraph type="secondary" style={{ marginBottom: 0 }}>
-                        Ожидаемый ответ: {checkpoint.expectedAnswer}
-                      </Paragraph>
-                    </Card>
-                  ))}
-                </Space>
-              )}
-            </Card>
-            <Card title="Помощник">
-              {activeLessonContent.hints.length === 0 ? (
-                <Paragraph type="secondary" style={{ marginBottom: 0 }}>
-                  Пока нет подсказок для этого урока.
-                </Paragraph>
-              ) : (
-                <Space direction="vertical" size="small" style={{ width: "100%" }}>
-                  {activeLessonContent.hints.map((hint, idx) => (
-                    <Card key={`${activeLesson.id}-hint-${idx}`} size="small">
-                      <Paragraph style={{ marginBottom: 6 }}>
-                        <Text strong>{hint.title}</Text>
-                      </Paragraph>
-                      <Paragraph style={{ marginBottom: 0 }}>{hint.text}</Paragraph>
-                    </Card>
-                  ))}
-                </Space>
-              )}
-            </Card>
-            <Card title="Действия по уроку">{lessonActionsBlock(assignmentForActiveLesson)}</Card>
-          </>
+                      Интерактивное прохождение (чекпоинты и сохранение прогресса)
+                    </Link>
+                  </Paragraph>
+                ) : (
+                  <Paragraph type="secondary" style={{ marginBottom: 0 }}>
+                    Когда учитель выдаст задание по этому шаблону урока, здесь появится ссылка на интерактивное
+                    прохождение с сохранением прогресса.
+                  </Paragraph>
+                )}
+                <Link to={`/lesson/${encodeURIComponent(activeLesson.id)}`}>Открыть плеер без привязки к заданию</Link>
+                {lessonActionsBlock(assignmentForActiveLesson)}
+              </Space>
+            }
+          />
         )}
       </Space>
     </Spin>

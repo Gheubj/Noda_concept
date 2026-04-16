@@ -91,6 +91,16 @@ interface ScheduleSlotRow {
   linkedAssignments?: { id: string; title: string; kind: string; dueAt: string | null }[];
 }
 
+interface LessonPlayerProgressTeacherRow {
+  studentId: string;
+  studentNickname: string;
+  assignmentId: string;
+  assignmentTitle: string | null;
+  lessonTemplateId: string;
+  state: unknown;
+  updatedAt: string;
+}
+
 interface TeacherDashboard {
   schools: DashboardSchool[];
   classrooms: DashboardClassroom[];
@@ -276,6 +286,9 @@ export function TeacherPage() {
   const [gradingSubmission, setGradingSubmission] = useState<TeacherSubmissionRow | null>(null);
   const [gradebook, setGradebook] = useState<GradebookResponse | null>(null);
   const [gradebookLoading, setGradebookLoading] = useState(false);
+  const [lpLoading, setLpLoading] = useState(false);
+  const [lpRows, setLpRows] = useState<LessonPlayerProgressTeacherRow[]>([]);
+  const [lpLessonFilter, setLpLessonFilter] = useState<string | undefined>(undefined);
   const [createForm] = Form.useForm();
   const [editForm] = Form.useForm();
   const [gradeForm] = Form.useForm();
@@ -429,6 +442,26 @@ export function TeacherPage() {
     [messageApi]
   );
 
+  const loadLessonPlayerProgress = useCallback(async () => {
+    if (!lmsClassroomId) {
+      setLpRows([]);
+      return;
+    }
+    setLpLoading(true);
+    try {
+      const q = lpLessonFilter ? `?lessonTemplateId=${encodeURIComponent(lpLessonFilter)}` : "";
+      const data = await apiClient.get<{ progress: LessonPlayerProgressTeacherRow[] }>(
+        `/api/teacher/classrooms/${encodeURIComponent(lmsClassroomId)}/lesson-player-progress${q}`
+      );
+      setLpRows(data.progress);
+    } catch {
+      setLpRows([]);
+      messageApi.error("Не удалось загрузить прогресс плеера");
+    } finally {
+      setLpLoading(false);
+    }
+  }, [lmsClassroomId, lpLessonFilter, messageApi]);
+
   useEffect(() => {
     if (user?.role === "teacher") {
       void loadDashboard();
@@ -459,6 +492,12 @@ export function TeacherPage() {
       void loadGradebook(lmsClassroomId);
     }
   }, [lmsClassroomId, filterAssignmentId, loadAssignments, loadSubmissions, loadGradebook]);
+
+  useEffect(() => {
+    if (lmsInnerTab === "lessonPlayer" && lmsClassroomId) {
+      void loadLessonPlayerProgress();
+    }
+  }, [lmsInnerTab, lmsClassroomId, lpLessonFilter, loadLessonPlayerProgress]);
 
   useEffect(() => {
     if (!lmsClassroomId) {
@@ -1344,6 +1383,67 @@ export function TeacherPage() {
                 </Spin>
               )
             },
+            {
+              key: "lessonPlayer",
+              label: "Прогресс плеера",
+              children: (
+                <Space direction="vertical" size="middle" style={{ width: "100%" }}>
+                  <Paragraph type="secondary" style={{ marginTop: 0 }}>
+                    Сохранённый прогресс интерактивного урока (чекпоинты, материалы) по заданиям с привязкой к шаблону
+                    урока. Оценка задания по-прежнему в «Задания и сдачи».
+                  </Paragraph>
+                  <Space wrap align="center">
+                    <Text type="secondary">Фильтр по шаблону урока:</Text>
+                    <Select
+                      allowClear
+                      placeholder="Все шаблоны в заданиях"
+                      style={{ minWidth: 260 }}
+                      value={lpLessonFilter}
+                      onChange={(v) => setLpLessonFilter(v)}
+                      options={(courseBundle?.lessons ?? []).map((l) => ({ value: l.id, label: l.title }))}
+                    />
+                    <Button type="default" disabled={!lmsClassroomId} onClick={() => void loadLessonPlayerProgress()}>
+                      Обновить
+                    </Button>
+                  </Space>
+                  <Table<LessonPlayerProgressTeacherRow>
+                    size="small"
+                    rowKey={(r) => `${r.studentId}-${r.assignmentId}`}
+                    loading={lpLoading}
+                    dataSource={lpRows}
+                    pagination={{ pageSize: 12 }}
+                    locale={{ emptyText: "Пока нет записей прогресса" }}
+                    columns={[
+                      { title: "Ученик", dataIndex: "studentNickname", key: "st" },
+                      { title: "Задание", dataIndex: "assignmentTitle", key: "as", ellipsis: true },
+                      {
+                        title: "Шаблон урока",
+                        dataIndex: "lessonTemplateId",
+                        key: "lt",
+                        width: 120,
+                        ellipsis: true
+                      },
+                      {
+                        title: "State",
+                        key: "state",
+                        ellipsis: true,
+                        render: (_, r) => {
+                          const s = JSON.stringify(r.state ?? {});
+                          return s.length > 140 ? `${s.slice(0, 140)}…` : s;
+                        }
+                      },
+                      {
+                        title: "Обновлено",
+                        dataIndex: "updatedAt",
+                        key: "u",
+                        width: 160,
+                        render: (t: string) => new Date(t).toLocaleString("ru-RU")
+                      }
+                    ]}
+                  />
+                </Space>
+              )
+            }
           ]}
         />
       )}

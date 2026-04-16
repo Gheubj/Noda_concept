@@ -2,6 +2,7 @@ import { useCallback, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { message } from "antd";
 import { apiClient } from "@/shared/api/client";
+import type { LessonContent } from "@/shared/types/lessonContent";
 import type { NodlyProjectSnapshot } from "@/shared/types/project";
 
 function randomProjectId() {
@@ -17,7 +18,22 @@ export type LessonTemplateListItem = {
   description: string | null;
   moduleKey: string;
   sortOrder: number;
+  lessonContent?: LessonContent | null;
 };
+
+/** Создаёт облачный проект из шаблона и возвращает id (навигацию делает вызывающий). */
+export async function createStudioProjectFromLessonTemplate(t: { id: string; title: string }): Promise<string> {
+  const { starterPayload } = await apiClient.get<{ starterPayload: NodlyProjectSnapshot }>(
+    `/api/lesson-templates/${t.id}/starter`
+  );
+  const projectId = randomProjectId();
+  await apiClient.put(`/api/projects/${projectId}`, {
+    title: t.title,
+    snapshot: starterPayload as unknown as Record<string, unknown>,
+    lessonTemplateId: t.id
+  });
+  return projectId;
+}
 
 export function useOpenLessonTemplate() {
   const navigate = useNavigate();
@@ -28,15 +44,7 @@ export function useOpenLessonTemplate() {
     async (t: LessonTemplateListItem) => {
       setOpeningId(t.id);
       try {
-        const { starterPayload } = await apiClient.get<{ starterPayload: NodlyProjectSnapshot }>(
-          `/api/lesson-templates/${t.id}/starter`
-        );
-        const projectId = randomProjectId();
-        await apiClient.put(`/api/projects/${projectId}`, {
-          title: t.title,
-          snapshot: starterPayload as unknown as Record<string, unknown>,
-          lessonTemplateId: t.id
-        });
+        const projectId = await createStudioProjectFromLessonTemplate(t);
         navigate(`/studio?project=${encodeURIComponent(projectId)}`);
       } catch (e) {
         messageApi.error(e instanceof Error ? e.message : "Не удалось открыть урок");

@@ -74,6 +74,24 @@ model User {
   passwordResetTokens PasswordResetToken[]
   projectSharesCreated ProjectShare[]
   scheduleSlotAttendances ScheduleSlotAttendance[]
+  lessonPlayerProgress LessonPlayerProgress[]
+}
+
+/// Прогресс интерактивного плеера урока (direct: scopeKey = "direct", школа: scopeKey = id задания)
+model LessonPlayerProgress {
+  id               String   @id @default(cuid())
+  userId           String
+  lessonTemplateId String
+  scopeKey         String   @default("direct")
+  state            Json     @default("{}")
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lessonTemplate LessonTemplate @relation(fields: [lessonTemplateId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, lessonTemplateId, scopeKey])
+  @@index([lessonTemplateId, scopeKey])
 }
 
 // Одноразовый код подтверждения email перед регистрацией
@@ -234,6 +252,7 @@ model LessonTemplate {
   assignments     Assignment[]
   scheduleSlots   ClassScheduleSlot[]
   catalogProjects Project[]
+  lessonPlayerProgress LessonPlayerProgress[]
 }
 
 model ClassScheduleSlot {
