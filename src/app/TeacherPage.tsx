@@ -1959,10 +1959,12 @@ export function TeacherPage() {
                 blocks={lessonEditorBlocks}
                 checkpointOk={() => false}
                 miniDevDone={() => false}
+                miniDevProjectId={() => null}
                 draftAnswers={{}}
                 onDraftChange={() => {}}
                 onVerifyCheckpoint={() => {}}
                 onToggleMiniDevDone={() => {}}
+                onEnsureMiniDevProject={() => {}}
                 saving={false}
               />
             </div>

@@ -6,6 +6,8 @@ export type LessonPlayerStateV1 = {
   checkpoints?: Record<string, LessonPlayerCheckpointStatus>;
   /** Мини-разработка: блоки, отмеченные как выполненные */
   miniDevDone?: Record<string, boolean>;
+  /** Проекты мини-разработки по id блока */
+  miniDevProjectIds?: Record<string, string>;
 };
 
 export function normalizeCheckpointAnswer(s: string): string {
@@ -18,8 +20,9 @@ export function parseLessonPlayerState(raw: unknown): LessonPlayerStateV1 {
     return {
       v: 1,
       checkpoints: v.checkpoints ?? {},
-      miniDevDone: v.miniDevDone ?? {}
+      miniDevDone: v.miniDevDone ?? {},
+      miniDevProjectIds: v.miniDevProjectIds ?? {}
     };
   }
-  return { v: 1, checkpoints: {}, miniDevDone: {} };
+  return { v: 1, checkpoints: {}, miniDevDone: {}, miniDevProjectIds: {} };
 }

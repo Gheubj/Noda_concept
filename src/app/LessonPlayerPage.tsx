@@ -11,6 +11,7 @@ import {
   parseLessonPlayerState,
   type LessonPlayerStateV1
 } from "@/shared/types/lessonPlayerState";
+import { createStudioProjectFromLessonTemplate } from "@/hooks/useOpenLessonTemplate";
 
 const { Content } = Layout;
 const { Title, Paragraph } = Typography;
@@ -115,6 +116,7 @@ export function LessonPlayerPage() {
 
   const checkpointsOk = (blockId: string) => playerState.checkpoints?.[blockId] === "ok";
   const miniDevDone = (blockId: string) => Boolean(playerState.miniDevDone?.[blockId]);
+  const miniDevProjectId = (blockId: string) => playerState.miniDevProjectIds?.[blockId] ?? null;
 
   const verifyCheckpoint = async (blockId: string, expected: string) => {
     const raw = draftAnswers[blockId] ?? "";
@@ -143,6 +145,33 @@ export function LessonPlayerPage() {
       }
     };
     await persistState(next);
+  };
+
+  const ensureMiniDevProject = async (blockId: string) => {
+    if (!bootstrap) {
+      return;
+    }
+    if (miniDevProjectId(blockId)) {
+      return;
+    }
+    setSaving(true);
+    try {
+      const projectId = await createStudioProjectFromLessonTemplate({
+        id: lessonId,
+        title: `${bootstrap.title} · мини-${blockId.slice(0, 6)}`
+      });
+      const next: LessonPlayerStateV1 = {
+        ...playerState,
+        miniDevProjectIds: {
+          ...(playerState.miniDevProjectIds ?? {}),
+          [blockId]: projectId
+        }
+      };
+      await persistState(next);
+    } catch (e) {
+      messageApi.error(e instanceof Error ? e.message : "Не удалось запустить мини-разработку");
+      setSaving(false);
+    }
   };
 
   return (
@@ -189,10 +218,12 @@ export function LessonPlayerPage() {
                 blocks={flowBlocks}
                 checkpointOk={checkpointsOk}
                 miniDevDone={miniDevDone}
+                miniDevProjectId={miniDevProjectId}
                 draftAnswers={draftAnswers}
                 onDraftChange={(id, v) => setDraftAnswers((d) => ({ ...d, [id]: v }))}
                 onVerifyCheckpoint={(id, exp) => void verifyCheckpoint(id, exp)}
                 onToggleMiniDevDone={(id) => void toggleMiniDevDone(id)}
+                onEnsureMiniDevProject={(id) => void ensureMiniDevProject(id)}
                 saving={saving}
               />
               {allCheckpointsDone && checkpointBlockIds.length > 0 ? (

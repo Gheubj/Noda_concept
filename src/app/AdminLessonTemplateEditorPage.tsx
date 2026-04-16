@@ -119,10 +119,12 @@ export function AdminLessonTemplateEditorPage() {
               blocks={blocks}
               checkpointOk={() => false}
               miniDevDone={() => false}
+              miniDevProjectId={() => null}
               draftAnswers={{}}
               onDraftChange={() => {}}
               onVerifyCheckpoint={() => {}}
               onToggleMiniDevDone={() => {}}
+              onEnsureMiniDevProject={() => {}}
               saving={false}
             />
           </Card>

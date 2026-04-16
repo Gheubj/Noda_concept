@@ -16,10 +16,12 @@ export type LessonFlowViewProps = {
   blocks: LessonContentBlock[];
   checkpointOk: (blockId: string) => boolean;
   miniDevDone: (blockId: string) => boolean;
+  miniDevProjectId: (blockId: string) => string | null;
   draftAnswers: Record<string, string>;
   onDraftChange: (blockId: string, value: string) => void;
   onVerifyCheckpoint: (blockId: string, expected: string) => void;
   onToggleMiniDevDone: (blockId: string) => void;
+  onEnsureMiniDevProject: (blockId: string) => void;
   saving: boolean;
 };
 
@@ -27,10 +29,12 @@ export function LessonFlowView({
   blocks,
   checkpointOk,
   miniDevDone,
+  miniDevProjectId,
   draftAnswers,
   onDraftChange,
   onVerifyCheckpoint,
   onToggleMiniDevDone,
+  onEnsureMiniDevProject,
   saving
 }: LessonFlowViewProps) {
   let checkpointOrdinal = 0;
@@ -81,6 +85,7 @@ export function LessonFlowView({
           );
         }
         if (block.type === "studio") {
+          const projectId = miniDevProjectId(block.id);
           return (
             <div key={block.id} className="lesson-flow__segment lesson-flow__studio">
               <Paragraph style={{ marginBottom: 8 }}>
@@ -88,8 +93,21 @@ export function LessonFlowView({
               </Paragraph>
               <Paragraph style={{ whiteSpace: "pre-wrap", marginBottom: 12 }}>{block.instruction}</Paragraph>
               <Space direction="vertical" size="small" style={{ width: "100%" }}>
+                <Button type="primary" onClick={() => onEnsureMiniDevProject(block.id)}>
+                  {projectId ? "Открыть мини-разработку" : "Запустить мини-разработку"}
+                </Button>
+                {projectId ? (
+                  <iframe
+                    className="lesson-flow__mini-dev-frame"
+                    title={`mini-dev-${block.id}`}
+                    src={`/studio?mini=1&project=${encodeURIComponent(projectId)}`}
+                  />
+                ) : null}
                 <Input.TextArea rows={3} placeholder="Заметка ученика по мини-разработке (необязательно)" />
-                <Button type={miniDevDone(block.id) ? "default" : "primary"} onClick={() => onToggleMiniDevDone(block.id)}>
+                <Button
+                  type={miniDevDone(block.id) ? "default" : "primary"}
+                  onClick={() => onToggleMiniDevDone(block.id)}
+                >
                   {miniDevDone(block.id) ? "Отмечено выполненным" : "Отметить мини-разработку выполненной"}
                 </Button>
                 {isStudioCta(block.ctaAction) ? (

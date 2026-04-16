@@ -1546,3 +1546,30 @@ html[data-theme="dark"] .week-schedule-slot__diary-grade-mark {
   background: var(--ant-color-border, rgba(148, 163, 184, 0.45));
   border: 0;
 }
+
+.lesson-flow__mini-dev-frame {
+  width: 100%;
+  height: 360px;
+  border: 1px solid var(--ant-color-border, rgba(148, 163, 184, 0.45));
+  border-radius: 8px;
+  display: block;
+  background: #0b1220;
+}
+
+.studio-mini-host.app-content--workspace {
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+.studio-mini-host .studio-page {
+  gap: 0;
+}
+
+.studio-mini-host .studio-page__main {
+  min-height: 360px;
+  height: 360px;
+}
+
+.studio-mini-host .studio-page__blockly {
+  min-height: 360px;
+}

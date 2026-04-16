@@ -78,6 +78,7 @@ const GRADEABLE_STATUSES = ["submitted", "needs_revision", "graded"] as const;
 
 export function StudioPage() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const isMini = searchParams.get("mini") === "1";
   const [messageApi, contextHolder] = message.useMessage();
   const [guestUserId] = useState(() => {
     const stored =
@@ -383,7 +384,7 @@ export function StudioPage() {
 
   const projectWorkspace = (
     <div className="studio-page">
-      <div className="studio-page__chrome">
+      {!isMini ? <div className="studio-page__chrome">
         {!readOnly && submissionCtx ? (
           <Alert
             type={submissionCtx.status === "needs_revision" ? "warning" : "info"}
@@ -417,8 +418,8 @@ export function StudioPage() {
             }
           />
         ) : null}
-      </div>
-      <div className="studio-page__toolbar">
+      </div> : null}
+      {!isMini ? <div className="studio-page__toolbar">
         <span className="studio-page__toolbar-title" title={currentProjectTitle}>
           {currentProjectTitle}
         </span>
@@ -464,7 +465,7 @@ export function StudioPage() {
             Поделиться
           </Button>
         ) : null}
-      </div>
+      </div> : null}
       <div className="studio-page__main">
         <div className="studio-page__blockly">
           <BlocklyWorkspace />
@@ -475,9 +476,9 @@ export function StudioPage() {
   );
 
   return (
-    <Content className="app-content app-content--workspace">
+    <Content className={`app-content app-content--workspace${isMini ? " studio-mini-host" : ""}`}>
       {contextHolder}
-      {user ? (
+      {!isMini && user ? (
         <Tabs
           className="studio-workspace-tabs"
           defaultActiveKey="project"
@@ -489,6 +490,8 @@ export function StudioPage() {
       ) : (
         projectWorkspace
       )}
+      {!isMini ? (
+        <>
       <Drawer
         title="Данные проекта"
         placement="right"
@@ -537,6 +540,8 @@ export function StudioPage() {
           <Input value={saveTitle} onChange={(e) => setSaveTitle(e.target.value)} placeholder="Название проекта" />
         </Space>
       </Modal>
+        </>
+      ) : null}
       <Modal
         open={Boolean(readOnly && teacherReview && teacherReviewModalOpen)}
         title={
