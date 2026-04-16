@@ -1,6 +1,11 @@
-import { Button, Input, Space, Tag, Typography } from "antd";
+import { lazy, Suspense } from "react";
+import { Button, Input, Space, Spin, Tag, Typography } from "antd";
 import type { LessonContentBlock } from "@/shared/types/lessonContent";
-import { pdfEmbedUrl, resolveLessonMediaUrl } from "@/shared/lessonMediaUrl";
+import { resolveLessonMediaUrl } from "@/shared/lessonMediaUrl";
+
+const LessonPdfReader = lazy(() =>
+  import("@/components/LessonPdfReader").then((m) => ({ default: m.LessonPdfReader }))
+);
 
 const { Paragraph, Text } = Typography;
 
@@ -76,11 +81,15 @@ export function LessonFlowView({
                   <Text strong>{block.caption}</Text>
                 </div>
               ) : null}
-              <iframe
-                className="lesson-flow__pdf"
-                title={block.caption ?? "PDF"}
-                src={pdfEmbedUrl(block.url)}
-              />
+              <Suspense
+                fallback={
+                  <div className="lesson-flow__pdf-reader-loading">
+                    <Spin />
+                  </div>
+                }
+              >
+                <LessonPdfReader src={block.url} caption={block.caption} />
+              </Suspense>
             </div>
           );
         }

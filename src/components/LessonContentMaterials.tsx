@@ -1,7 +1,11 @@
-import type { ReactNode } from "react";
-import { Button, Card, Collapse, Space, Typography } from "antd";
+import { lazy, Suspense, type ReactNode } from "react";
+import { Button, Card, Collapse, Space, Spin, Typography } from "antd";
 import type { LessonContent } from "@/shared/types/lessonContent";
 import { pdfEmbedUrl, resolveLessonMediaUrl } from "@/shared/lessonMediaUrl";
+
+const LessonPdfReader = lazy(() =>
+  import("@/components/LessonPdfReader").then((m) => ({ default: m.LessonPdfReader }))
+);
 
 const { Text, Paragraph } = Typography;
 
@@ -48,12 +52,15 @@ export function LessonContentMaterials({
               >
                 Открыть презентацию PDF
               </Button>
-              <iframe
-                src={pdfEmbedUrl(c.presentationPdfUrl)}
-                className="lesson-flow__pdf"
-                title={`PDF: ${lessonTitle}`}
-                style={{ width: "100%", minHeight: 420, border: "1px solid var(--ant-color-border)" }}
-              />
+              <Suspense
+                fallback={
+                  <div className="lesson-flow__pdf-reader-loading">
+                    <Spin />
+                  </div>
+                }
+              >
+                <LessonPdfReader src={c.presentationPdfUrl} caption={`Презентация: ${lessonTitle}`} />
+              </Suspense>
             </Space>
           </Card>
         ) : null}
