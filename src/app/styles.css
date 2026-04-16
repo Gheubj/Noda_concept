@@ -1522,7 +1522,7 @@ html[data-theme="dark"] .week-schedule-slot__diary-grade-mark {
 }
 
 .lesson-flow--colab {
-  max-width: min(980px, 100%);
+  max-width: min(1280px, 100%);
   margin: 0 auto;
   gap: 2px;
 }
@@ -1699,4 +1699,22 @@ html[data-theme="dark"] .lesson-flow__pdf-page-canvas {
 .lesson-block-editor__card.ant-card:focus-within {
   border-color: var(--ant-color-border, rgba(148, 163, 184, 0.45));
   background: color-mix(in srgb, var(--app-surface, #fff) 92%, transparent);
+}
+
+.lesson-block-editor__insert-row {
+  display: flex;
+  justify-content: center;
+  margin: 2px 0;
+}
+
+.lesson-block-editor__insert-row .ant-btn {
+  color: var(--app-muted);
+}
+
+.lesson-block-editor__insert-row--empty {
+  margin: 14px 0 4px;
+}
+
+.lesson-block-editor__cell .ant-card-body {
+  padding-top: 14px;
 }

@@ -4,7 +4,6 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { useSessionStore } from "@/store/useSessionStore";
 import { apiClient } from "@/shared/api/client";
 import { AdminLessonBlockEditor } from "@/components/AdminLessonBlockEditor";
-import { LessonFlowView } from "@/components/LessonFlowView";
 import { expandLessonContentToBlocks, lessonContentFromBlocks } from "@/shared/lessonContentBlocks";
 import { EMPTY_LESSON_CONTENT, type LessonContentBlock } from "@/shared/types/lessonContent";
 
@@ -110,24 +109,12 @@ export function AdminLessonTemplateEditorPage() {
             </Paragraph>
           </Card>
 
-          <Card title="Холст урока">
+          <div>
+            <Paragraph type="secondary" style={{ marginBottom: 8 }}>
+              Холст урока (редактирование как в Colab): добавляй блоки через `+` между ячейками.
+            </Paragraph>
             <AdminLessonBlockEditor blocks={blocks} onChange={setBlocks} />
-          </Card>
-
-          <Card title="Предпросмотр для ученика">
-            <LessonFlowView
-              blocks={blocks}
-              checkpointOk={() => false}
-              miniDevDone={() => false}
-              miniDevProjectId={() => null}
-              draftAnswers={{}}
-              onDraftChange={() => {}}
-              onVerifyCheckpoint={() => {}}
-              onToggleMiniDevDone={() => {}}
-              saving={false}
-              variant="colab"
-            />
-          </Card>
+          </div>
 
           <Space>
             <Button

@@ -87,6 +87,12 @@ export function AdminLessonBlockEditor({ blocks, onChange }: AdminLessonBlockEdi
     onChange(blocks.filter((_, i) => i !== index));
   };
 
+  const insertBlockAt = (index: number, type: LessonContentBlock["type"]) => {
+    const next = [...blocks];
+    next.splice(index, 0, defaultBlock(type));
+    onChange(next);
+  };
+
   const uploadImageForMediaBlock = (blockId: string, index: number): UploadProps["customRequest"] => {
     return async (options) => {
       const { file, onError, onSuccess } = options;
@@ -134,45 +140,64 @@ export function AdminLessonBlockEditor({ blocks, onChange }: AdminLessonBlockEdi
       <Paragraph type="secondary" style={{ marginBottom: 0 }}>
         Сверху вниз — как увидит ученик: единая colab-лента с markdown, медиа и мини-разработкой.
       </Paragraph>
-      <Dropdown
-        menu={{
-          items: BLOCK_TYPES.map((t) => ({
-            key: t.value,
-            label: t.label,
-            onClick: () => onChange([...blocks, defaultBlock(t.value)])
-          }))
-        }}
-      >
-        <Button type="dashed" icon={<PlusOutlined />}>
-          Добавить блок…
-        </Button>
-      </Dropdown>
+      {blocks.length === 0 ? (
+        <div className="lesson-block-editor__insert-row lesson-block-editor__insert-row--empty">
+          <Dropdown
+            menu={{
+              items: BLOCK_TYPES.map((t) => ({
+                key: t.value,
+                label: t.label,
+                onClick: () => insertBlockAt(0, t.value)
+              }))
+            }}
+          >
+            <Button type="dashed" icon={<PlusOutlined />}>
+              Добавить первый блок
+            </Button>
+          </Dropdown>
+        </div>
+      ) : null}
       {blocks.map((block, index) => (
-        <Card
-          key={block.id}
-          className="lesson-block-editor__card"
-          size="small"
-          title={
-            <Space wrap>
-              <Text type="secondary">#{index + 1}</Text>
-              <Select
-                size="small"
-                style={{ width: 200 }}
-                value={block.type}
-                options={BLOCK_TYPES}
-                onChange={(v) => replaceBlockType(index, v as LessonContentBlock["type"])}
-              />
-              <Button size="small" icon={<UpOutlined />} disabled={index === 0} onClick={() => move(index, -1)} />
-              <Button
-                size="small"
-                icon={<DownOutlined />}
-                disabled={index === blocks.length - 1}
-                onClick={() => move(index, 1)}
-              />
-              <Button size="small" danger icon={<DeleteOutlined />} onClick={() => remove(index)} />
-            </Space>
-          }
-        >
+        <div key={block.id}>
+          <div className="lesson-block-editor__insert-row">
+            <Dropdown
+              menu={{
+                items: BLOCK_TYPES.map((t) => ({
+                  key: t.value,
+                  label: t.label,
+                  onClick: () => insertBlockAt(index, t.value)
+                }))
+              }}
+            >
+              <Button size="small" type="text" icon={<PlusOutlined />}>
+                Добавить блок
+              </Button>
+            </Dropdown>
+          </div>
+          <Card
+            className="lesson-block-editor__card lesson-block-editor__cell"
+            size="small"
+            title={
+              <Space wrap>
+                <Text type="secondary">#{index + 1}</Text>
+                <Select
+                  size="small"
+                  style={{ width: 200 }}
+                  value={block.type}
+                  options={BLOCK_TYPES}
+                  onChange={(v) => replaceBlockType(index, v as LessonContentBlock["type"])}
+                />
+                <Button size="small" icon={<UpOutlined />} disabled={index === 0} onClick={() => move(index, -1)} />
+                <Button
+                  size="small"
+                  icon={<DownOutlined />}
+                  disabled={index === blocks.length - 1}
+                  onClick={() => move(index, 1)}
+                />
+                <Button size="small" danger icon={<DeleteOutlined />} onClick={() => remove(index)} />
+              </Space>
+            }
+          >
           {block.type === "text" ? (
             <Space direction="vertical" style={{ width: "100%" }}>
               <Input.TextArea rows={6} value={block.body} onChange={(e) => setBlock(index, { body: e.target.value })} />
@@ -311,8 +336,26 @@ export function AdminLessonBlockEditor({ blocks, onChange }: AdminLessonBlockEdi
               />
             </Space>
           ) : null}
-          {block.type === "divider" ? <Text type="secondary">Разделитель между блоками</Text> : null}
-        </Card>
+            {block.type === "divider" ? <Text type="secondary">Разделитель между блоками</Text> : null}
+          </Card>
+          {index === blocks.length - 1 ? (
+            <div className="lesson-block-editor__insert-row">
+              <Dropdown
+                menu={{
+                  items: BLOCK_TYPES.map((t) => ({
+                    key: t.value,
+                    label: t.label,
+                    onClick: () => insertBlockAt(index + 1, t.value)
+                  }))
+                }}
+              >
+                <Button size="small" type="text" icon={<PlusOutlined />}>
+                  Добавить блок
+                </Button>
+              </Dropdown>
+            </div>
+          ) : null}
+        </div>
       ))}
     </Space>
   );
