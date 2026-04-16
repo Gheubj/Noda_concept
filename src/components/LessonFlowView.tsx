@@ -22,6 +22,7 @@ export type LessonFlowViewProps = {
   onVerifyCheckpoint: (blockId: string, expected: string) => void;
   onToggleMiniDevDone: (blockId: string) => void;
   saving: boolean;
+  bareMiniStudio?: boolean;
 };
 
 export function LessonFlowView({
@@ -33,7 +34,8 @@ export function LessonFlowView({
   onDraftChange,
   onVerifyCheckpoint,
   onToggleMiniDevDone,
-  saving
+  saving,
+  bareMiniStudio = false
 }: LessonFlowViewProps) {
   let checkpointOrdinal = 0;
 
@@ -84,6 +86,21 @@ export function LessonFlowView({
         }
         if (block.type === "studio") {
           const projectId = miniDevProjectId(block.id);
+          if (bareMiniStudio) {
+            return (
+              <div key={block.id}>
+                {projectId ? (
+                  <iframe
+                    className="lesson-flow__mini-dev-frame"
+                    title={`mini-dev-${block.id}`}
+                    src={`/studio?mini=1&project=${encodeURIComponent(projectId)}`}
+                  />
+                ) : (
+                  <Text type="secondary">Мини-разработка инициализируется…</Text>
+                )}
+              </div>
+            );
+          }
           return (
             <div key={block.id} className="lesson-flow__segment lesson-flow__studio">
               <Paragraph style={{ marginBottom: 8 }}>

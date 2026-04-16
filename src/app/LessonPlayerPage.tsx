@@ -250,6 +250,7 @@ export function LessonPlayerPage() {
                 onVerifyCheckpoint={(id, exp) => void verifyCheckpoint(id, exp)}
                 onToggleMiniDevDone={(id) => void toggleMiniDevDone(id)}
                 saving={saving}
+                bareMiniStudio
               />
               {allCheckpointsDone && checkpointBlockIds.length > 0 ? (
                 <Alert type="success" showIcon message="Все контрольные вопросы пройдены" />
