@@ -232,12 +232,12 @@ function getPaletteItems(level: 1 | 2): PaletteItem[] {
       },
       { type: "noda_model_tabular_neural", title: "Модель: нейросеть", group: "model_types", shape: "value" },
       {
-        type: "noda_predict_class",
+        type: "noda_predict_l1",
         title: "Предсказать",
         group: "predict",
         shape: "stack",
         description:
-          "После обучения — по модели в памяти, без сохранения в библиотеку. Вход: картинка из «Данные» или строка таблицы / вручную."
+          "После «Обучить модель» — всегда по последней модели в памяти. Вход только: файл из «Данные» или вручную (таблицы)."
       },
       { type: "noda_if_then", title: "если ... то", group: "control", shape: "stack" },
       { type: "noda_if_then_only", title: "если ... то (без иначе)", group: "control", shape: "stack" },
@@ -352,6 +352,19 @@ function collectPaletteColors(ws: Blockly.WorkspaceSvg, level: 1 | 2): Record<st
 
 function refreshNodlyPredictInlineRow(block: Blockly.Block) {
   const modelType = getPredictModelTypeForBlock(String(block.getFieldValue("SAVED_MODEL_ID") ?? ""));
+  const ref = block.getFieldValue("INPUT_REF");
+  const manual = ref === TABULAR_MANUAL_REF || ref === "none";
+  const show = !!modelType && modelType !== "image_knn" && manual;
+  block.getInput("INLINE_ROW")?.setVisible(show);
+  const svg = block as Blockly.BlockSvg;
+  if (svg.rendered) {
+    svg.render();
+  }
+}
+
+/** Уровень 1: только вход, модель — последняя обученная в памяти. */
+function refreshNodlyPredictL1InlineRow(block: Blockly.Block) {
+  const modelType = getLastTrainedModelType();
   const ref = block.getFieldValue("INPUT_REF");
   const manual = ref === TABULAR_MANUAL_REF || ref === "none";
   const show = !!modelType && modelType !== "image_knn" && manual;
@@ -543,6 +556,37 @@ function registerBlocks() {
       });
     }
   };
+  /** Уровень 1: предсказание без выбора модели (последняя обученная в памяти). */
+  Blockly.Blocks.noda_predict_l1 = {
+    init() {
+      const block = this;
+      this.appendDummyInput()
+        .appendField("предсказать")
+        .appendField("вход")
+        .appendField(
+          new Blockly.FieldDropdown(function () {
+            return getPredictInputOptions(SESSION_TRAINED_MODEL_ID);
+          }),
+          "INPUT_REF"
+        );
+      this.appendDummyInput("INLINE_ROW")
+        .appendField("если вручную — признаки")
+        .appendField(new Blockly.FieldTextInput("5.1,3.5,1.4,0.2"), "INLINE_TABULAR");
+      this.setPreviousStatement(true, null);
+      this.setNextStatement(true, null);
+      this.setColour(BLOCK_COLOR.predict);
+      refreshNodlyPredictL1InlineRow(block);
+      this.setOnChange(function (this: Blockly.Block, e: Blockly.Events.Abstract) {
+        if (e.type !== Blockly.Events.BLOCK_CHANGE || (e as Blockly.Events.BlockChange).blockId !== this.id) {
+          return;
+        }
+        const ce = e as Blockly.Events.BlockChange;
+        if (ce.element === "field" && ce.name === "INPUT_REF") {
+          refreshNodlyPredictL1InlineRow(this);
+        }
+      });
+    }
+  };
   Blockly.Blocks.noda_wait_seconds = {
     init() {
       this.appendDummyInput()
@@ -682,7 +726,7 @@ function getDefaultWorkspaceJson(trainBlockType: "noda_train_model_simple" | "no
   if (trainBlockType === "noda_train_model") {
     blocks.push({ type: "noda_predict_class", x: 20, y: 180 });
   } else {
-    blocks.push({ type: "noda_predict_class", x: 20, y: 180 });
+    blocks.push({ type: "noda_predict_l1", x: 20, y: 180 });
   }
   return {
     blocks: {
@@ -858,6 +902,20 @@ export function BlocklyWorkspace({ miniStudioToolbar, onOpenDataLibrary }: Block
           type: "predict",
           savedModelId,
           inputRef: current.getFieldValue("INPUT_REF"),
+          inlineTabular: String(
+            current.getFieldValue("INLINE_TABULAR") ?? ""
+          ).trim()
+        });
+      } else if (current.type === "noda_predict_l1") {
+        const inputRef = String(current.getFieldValue("INPUT_REF") ?? "none");
+        if (inputRef === "none") {
+          current = current.getNextBlock();
+          continue;
+        }
+        commands.push({
+          type: "predict",
+          savedModelId: SESSION_TRAINED_MODEL_ID,
+          inputRef,
           inlineTabular: String(
             current.getFieldValue("INLINE_TABULAR") ?? ""
           ).trim()
@@ -1371,8 +1429,8 @@ export function BlocklyWorkspace({ miniStudioToolbar, onOpenDataLibrary }: Block
               </div>
               {showPredictHintLevel1 ? (
                 <div style={{ marginTop: 8 }}>
-                  Уровень 1: «Предсказать» работает по модели сразу после «Обучить модель», без сохранения в
-                  библиотеку. Файл или строка для входа — в разделе «Данные».
+                  Уровень 1: в «Предсказать» только вход (из «Данные» или вручную для таблиц); модель — та, что
+                  только что обучили, без выбора и без библиотеки.
                 </div>
               ) : null}
               {showPredictHint ? (
