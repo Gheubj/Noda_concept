@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { DatabaseOutlined, FormOutlined } from "@ant-design/icons";
 import {
   Alert,
@@ -35,6 +35,7 @@ const { TextArea } = Input;
 const GUEST_USER_ID_KEY = "nodly_guest_user_id";
 const LEGACY_GUEST_USER_ID_KEY = "noda_guest_user_id";
 const DEFAULT_PROJECT_TITLE = "Новый проект";
+const STUDIO_DRAFT_PREFIX = "nodly_studio_draft_v1";
 
 const EMPTY_SNAPSHOT: NodlyProjectSnapshot = {
   imageDatasets: [],
@@ -75,6 +76,15 @@ interface TeacherWorkPayload {
   review: TeacherWorkReview;
 }
 
+function studioDraftStorageKey(userId: string, projectId: string | null): string {
+  return `${STUDIO_DRAFT_PREFIX}:${userId}:${projectId ?? "__unsaved__"}`;
+}
+
+type StudioDraftPayload = {
+  snapshot: NodlyProjectSnapshot;
+  saveTitle: string;
+};
+
 const GRADEABLE_STATUSES = ["submitted", "needs_revision", "graded"] as const;
 
 export function StudioPage() {
@@ -106,11 +116,28 @@ export function StudioPage() {
   const [teacherReviewModalOpen, setTeacherReviewModalOpen] = useState(true);
   const [teacherGrading, setTeacherGrading] = useState(false);
   const [teacherGradeForm] = Form.useForm();
-  const { getProjectSnapshot, loadProjectSnapshot, activeProject, setActiveProject } = useAppStore();
+  const {
+    getProjectSnapshot,
+    loadProjectSnapshot,
+    activeProject,
+    setActiveProject,
+    imageDatasets,
+    tabularDatasets,
+    imagePredictionInputs,
+    tabularPredictionInputs,
+    savedModels,
+    blocklyState,
+    workspaceLevel
+  } = useAppStore();
   const { user } = useSessionStore();
   const resolvedUserId = user?.id ?? guestUserId;
   const currentProjectTitle = activeProject?.title ?? DEFAULT_PROJECT_TITLE;
   const readOnly = Boolean(activeProject?.readOnly);
+  const draftKey = useMemo(
+    () => studioDraftStorageKey(resolvedUserId.trim() || "guest", activeProject?.id ?? null),
+    [resolvedUserId, activeProject?.id]
+  );
+  const restoringDraftRef = useRef(false);
 
   const refreshProjects = async (nextUserId: string) => {
     const list = await listProjects(nextUserId.trim());
@@ -120,6 +147,55 @@ export function StudioPage() {
   useEffect(() => {
     void refreshProjects(resolvedUserId);
   }, [resolvedUserId]);
+
+  useEffect(() => {
+    restoringDraftRef.current = true;
+    try {
+      const raw = localStorage.getItem(draftKey);
+      if (raw) {
+        const parsed = JSON.parse(raw) as StudioDraftPayload;
+        if (parsed?.snapshot && typeof parsed.snapshot === "object") {
+          loadProjectSnapshot(parsed.snapshot);
+        }
+        if (typeof parsed?.saveTitle === "string" && parsed.saveTitle.trim()) {
+          setSaveTitle(parsed.saveTitle);
+        }
+      }
+    } catch {
+      /* ignore malformed local draft */
+    } finally {
+      queueMicrotask(() => {
+        restoringDraftRef.current = false;
+      });
+    }
+  }, [draftKey, loadProjectSnapshot]);
+
+  useEffect(() => {
+    if (readOnly || restoringDraftRef.current) {
+      return;
+    }
+    try {
+      const payload: StudioDraftPayload = {
+        snapshot: getProjectSnapshot(),
+        saveTitle
+      };
+      localStorage.setItem(draftKey, JSON.stringify(payload));
+    } catch {
+      /* localStorage may be unavailable/full */
+    }
+  }, [
+    draftKey,
+    readOnly,
+    saveTitle,
+    getProjectSnapshot,
+    imageDatasets,
+    tabularDatasets,
+    imagePredictionInputs,
+    tabularPredictionInputs,
+    savedModels,
+    blocklyState,
+    workspaceLevel
+  ]);
 
   useEffect(() => {
     if (!readOnly) {

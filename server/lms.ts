@@ -327,7 +327,7 @@ const mediaBlockZ = z.object({
 const studioBlockZ = z.object({
   id: lessonBlockIdZ,
   type: z.literal("studio"),
-  instruction: z.string().min(1).max(8000),
+  instruction: z.string().max(8000),
   ctaAction: z.string().max(120).optional().nullable(),
   studioPracticeKind: z.enum(["template", "project_clone", "empty"]).optional(),
   referenceProjectId: z.string().min(1).max(120).optional().nullable(),
