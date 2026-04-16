@@ -24,6 +24,7 @@ function toSlotRow(r: HomeSchoolAssignmentRow): SlotStudentAssignmentRow {
     kind: r.kind,
     dueAt: r.dueAt,
     maxScore: r.maxScore,
+    lessonTemplateId: r.lessonTemplateId ?? null,
     submission: r.submission
   };
 }
@@ -102,14 +103,10 @@ export function HomeUpcomingHomework({ rows, loading, onRefresh }: Props) {
 
   const startOrOpen = async (row: SlotStudentAssignmentRow) => {
     try {
-      await apiClient.post<{ projectId: string }>(
-        `/api/student/assignments/${row.assignmentId}/start`,
-        {}
-      );
       if (!row.lessonTemplateId) {
-        messageApi.error("У задания не указан урок. Попроси учителя привязать урок к заданию.");
-        return;
+        throw new Error("У задания не указан урок (lessonTemplateId). Попроси учителя привязать урок к заданию.");
       }
+      await apiClient.post(`/api/student/assignments/${row.assignmentId}/start`, {});
       navigate(
         `/lesson/${encodeURIComponent(row.lessonTemplateId)}?assignmentId=${encodeURIComponent(row.assignmentId)}`
       );

@@ -222,14 +222,10 @@ export function StudentClassPage() {
 
   const startOrOpen = async (row: StudentAssignmentRow) => {
     try {
-      await apiClient.post<{ projectId: string; submissionId: string; status: string }>(
-        `/api/student/assignments/${row.assignmentId}/start`,
-        {}
-      );
       if (!row.lessonTemplateId) {
-        messageApi.error("У задания не указан урок. Попроси учителя привязать урок к заданию.");
-        return;
+        throw new Error("У задания не указан урок (lessonTemplateId). Попроси учителя привязать урок к заданию.");
       }
+      await apiClient.post(`/api/student/assignments/${row.assignmentId}/start`, {});
       navigate(
         `/lesson/${encodeURIComponent(row.lessonTemplateId)}?assignmentId=${encodeURIComponent(row.assignmentId)}`
       );
