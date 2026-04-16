@@ -178,6 +178,34 @@ function getPredictInputOptions(savedModelId: string): [string, string][] {
   return [...fromLibrary, manual];
 }
 
+/**
+ * Уровень 1, блок «Предсказать»: только источник входа — строка в блоке или строка/файл из «Данные».
+ * Модель не выбирается (последняя обученная в памяти).
+ */
+function getPredictL1DataSourceOptions(): [string, string][] {
+  const modelType = getLastTrainedModelType();
+  if (!modelType) {
+    return [["Сначала обучите модель", "none"]];
+  }
+  const state = useAppStore.getState();
+  if (isImageModel(modelType)) {
+    const opts = state.imagePredictionInputs.map(
+      (item) => [`Из данных: ${item.title}`, `image:${item.id}`] as [string, string]
+    );
+    return opts.length > 0
+      ? opts
+      : [["Добавьте изображение в «Данные»", "none"]];
+  }
+  const manual: [string, string] = ["Ввести в блоке", TABULAR_MANUAL_REF];
+  const fromLib = state.tabularPredictionInputs.map(
+    (item) => [`Из данных: ${item.title}`, `tabular:${item.id}`] as [string, string]
+  );
+  if (fromLib.length === 0) {
+    return [manual];
+  }
+  return [manual, ...fromLib];
+}
+
 /** Уровень 3 пока как 2 — только набор блоков в палитре */
 function effectiveToolboxLevel(level: WorkspaceLevel): 1 | 2 {
   return level === 1 ? 1 : 2;
@@ -237,7 +265,7 @@ function getPaletteItems(level: 1 | 2): PaletteItem[] {
         group: "predict",
         shape: "stack",
         description:
-          "После «Обучить модель» — всегда по последней модели в памяти. Вход только: файл из «Данные» или вручную (таблицы)."
+          "После обучения — сразу по этой модели. Выбери: ввести признаки строкой в блоке или строку/файл из «Данные»."
       },
       { type: "noda_if_then", title: "если ... то", group: "control", shape: "stack" },
       { type: "noda_if_then_only", title: "если ... то (без иначе)", group: "control", shape: "stack" },
@@ -362,12 +390,11 @@ function refreshNodlyPredictInlineRow(block: Blockly.Block) {
   }
 }
 
-/** Уровень 1: только вход, модель — последняя обученная в памяти. */
+/** Уровень 1: строка в блоке только для таблиц и только при выборе «Ввести в блоке». */
 function refreshNodlyPredictL1InlineRow(block: Blockly.Block) {
   const modelType = getLastTrainedModelType();
   const ref = block.getFieldValue("INPUT_REF");
-  const manual = ref === TABULAR_MANUAL_REF || ref === "none";
-  const show = !!modelType && modelType !== "image_knn" && manual;
+  const show = !!modelType && modelType !== "image_knn" && ref === TABULAR_MANUAL_REF;
   block.getInput("INLINE_ROW")?.setVisible(show);
   const svg = block as Blockly.BlockSvg;
   if (svg.rendered) {
@@ -556,21 +583,20 @@ function registerBlocks() {
       });
     }
   };
-  /** Уровень 1: предсказание без выбора модели (последняя обученная в памяти). */
+  /** Уровень 1: только вход (строка в блоке или из «Данные»), модель — последняя обученная. */
   Blockly.Blocks.noda_predict_l1 = {
     init() {
       const block = this;
       this.appendDummyInput()
         .appendField("предсказать")
-        .appendField("вход")
         .appendField(
           new Blockly.FieldDropdown(function () {
-            return getPredictInputOptions(SESSION_TRAINED_MODEL_ID);
+            return getPredictL1DataSourceOptions();
           }),
           "INPUT_REF"
         );
       this.appendDummyInput("INLINE_ROW")
-        .appendField("если вручную — признаки")
+        .appendField("строка через запятую")
         .appendField(new Blockly.FieldTextInput("5.1,3.5,1.4,0.2"), "INLINE_TABULAR");
       this.setPreviousStatement(true, null);
       this.setNextStatement(true, null);
@@ -1429,8 +1455,8 @@ export function BlocklyWorkspace({ miniStudioToolbar, onOpenDataLibrary }: Block
               </div>
               {showPredictHintLevel1 ? (
                 <div style={{ marginTop: 8 }}>
-                  Уровень 1: в «Предсказать» только вход (из «Данные» или вручную для таблиц); модель — та, что
-                  только что обучили, без выбора и без библиотеки.
+                  Уровень 1: «Предсказать» — только откуда взять вход: строка в блоке или из «Данные». Модель та,
+                  что только что обучили; сохранять в библиотеку не нужно.
                 </div>
               ) : null}
               {showPredictHint ? (
