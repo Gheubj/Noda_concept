@@ -1556,20 +1556,30 @@ html[data-theme="dark"] .week-schedule-slot__diary-grade-mark {
   background: #0b1220;
 }
 
+/* Встроенная мини-студия (iframe): шапки приложения нет, но .app-content--workspace
+   по умолчанию вычитает --app-header-height — снизу остаётся полоса фона (#0b1220 / app-bg),
+   которая перекрывает низ палитры Blockly (например блок «Число»). */
 .studio-mini-host.app-content--workspace {
   padding: 0 !important;
   margin: 0 !important;
+  min-height: 100dvh !important;
+  height: 100dvh !important;
+  max-height: 100dvh !important;
 }
 
 .studio-mini-host .studio-page {
   gap: 0;
+  flex: 1;
+  min-height: 0;
+  height: 100%;
 }
 
 .studio-mini-host .studio-page__main {
-  min-height: 360px;
-  height: 360px;
+  flex: 1;
+  min-height: 0;
+  height: auto;
 }
 
 .studio-mini-host .studio-page__blockly {
-  min-height: 360px;
+  min-height: 0;
 }
