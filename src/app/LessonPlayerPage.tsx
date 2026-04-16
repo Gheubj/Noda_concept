@@ -36,6 +36,7 @@ export function LessonPlayerPage() {
   const [bootstrap, setBootstrap] = useState<Bootstrap | null>(null);
   const [playerState, setPlayerState] = useState<LessonPlayerStateV1>({ v: 1, checkpoints: {} });
   const [draftAnswers, setDraftAnswers] = useState<Record<string, string>>({});
+  const [autoCreatingMini, setAutoCreatingMini] = useState<Record<string, boolean>>({});
 
   const lessonContent: LessonContent = useMemo(() => {
     if (!bootstrap?.lessonContent || typeof bootstrap.lessonContent !== "object") {
@@ -48,6 +49,10 @@ export function LessonPlayerPage() {
 
   const checkpointBlockIds = useMemo(
     () => flowBlocks.filter((b): b is Extract<(typeof flowBlocks)[0], { type: "checkpoint" }> => b.type === "checkpoint").map((b) => b.id),
+    [flowBlocks]
+  );
+  const studioBlockIds = useMemo(
+    () => flowBlocks.filter((b): b is Extract<(typeof flowBlocks)[0], { type: "studio" }> => b.type === "studio").map((b) => b.id),
     [flowBlocks]
   );
 
@@ -154,6 +159,10 @@ export function LessonPlayerPage() {
     if (miniDevProjectId(blockId)) {
       return;
     }
+    if (autoCreatingMini[blockId]) {
+      return;
+    }
+    setAutoCreatingMini((prev) => ({ ...prev, [blockId]: true }));
     setSaving(true);
     try {
       const projectId = await createStudioProjectFromLessonTemplate({
@@ -171,14 +180,31 @@ export function LessonPlayerPage() {
     } catch (e) {
       messageApi.error(e instanceof Error ? e.message : "Не удалось запустить мини-разработку");
       setSaving(false);
+    } finally {
+      setAutoCreatingMini((prev) => ({ ...prev, [blockId]: false }));
     }
   };
 
+  useEffect(() => {
+    if (!bootstrap) {
+      return;
+    }
+    const missing = studioBlockIds.filter((id) => !miniDevProjectId(id));
+    if (missing.length === 0) {
+      return;
+    }
+    void (async () => {
+      for (const id of missing) {
+        await ensureMiniDevProject(id);
+      }
+    })();
+  }, [bootstrap?.title, studioBlockIds.join("|"), JSON.stringify(playerState.miniDevProjectIds ?? {})]);
+
   return (
-    <Content className="app-content lesson-player-page">
+    <Content className="app-content app-content--workspace lesson-player-page">
       {holder}
       <Spin spinning={loading}>
-        <Space direction="vertical" size="large" style={{ width: "100%", maxWidth: 960, margin: "0 auto" }}>
+        <Space direction="vertical" size="large" style={{ width: "100%" }}>
           <div>
             <Title level={4} style={{ marginTop: 0 }}>
               {bootstrap?.title ?? "Урок"}
@@ -223,7 +249,6 @@ export function LessonPlayerPage() {
                 onDraftChange={(id, v) => setDraftAnswers((d) => ({ ...d, [id]: v }))}
                 onVerifyCheckpoint={(id, exp) => void verifyCheckpoint(id, exp)}
                 onToggleMiniDevDone={(id) => void toggleMiniDevDone(id)}
-                onEnsureMiniDevProject={(id) => void ensureMiniDevProject(id)}
                 saving={saving}
               />
               {allCheckpointsDone && checkpointBlockIds.length > 0 ? (

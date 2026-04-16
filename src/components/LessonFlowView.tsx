@@ -21,7 +21,6 @@ export type LessonFlowViewProps = {
   onDraftChange: (blockId: string, value: string) => void;
   onVerifyCheckpoint: (blockId: string, expected: string) => void;
   onToggleMiniDevDone: (blockId: string) => void;
-  onEnsureMiniDevProject: (blockId: string) => void;
   saving: boolean;
 };
 
@@ -34,7 +33,6 @@ export function LessonFlowView({
   onDraftChange,
   onVerifyCheckpoint,
   onToggleMiniDevDone,
-  onEnsureMiniDevProject,
   saving
 }: LessonFlowViewProps) {
   let checkpointOrdinal = 0;
@@ -93,16 +91,15 @@ export function LessonFlowView({
               </Paragraph>
               <Paragraph style={{ whiteSpace: "pre-wrap", marginBottom: 12 }}>{block.instruction}</Paragraph>
               <Space direction="vertical" size="small" style={{ width: "100%" }}>
-                <Button type="primary" onClick={() => onEnsureMiniDevProject(block.id)}>
-                  {projectId ? "Открыть мини-разработку" : "Запустить мини-разработку"}
-                </Button>
                 {projectId ? (
                   <iframe
                     className="lesson-flow__mini-dev-frame"
                     title={`mini-dev-${block.id}`}
                     src={`/studio?mini=1&project=${encodeURIComponent(projectId)}`}
                   />
-                ) : null}
+                ) : (
+                  <Text type="secondary">Мини-разработка инициализируется…</Text>
+                )}
                 <Input.TextArea rows={3} placeholder="Заметка ученика по мини-разработке (необязательно)" />
                 <Button
                   type={miniDevDone(block.id) ? "default" : "primary"}

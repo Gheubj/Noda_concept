@@ -124,7 +124,6 @@ export function AdminLessonTemplateEditorPage() {
               onDraftChange={() => {}}
               onVerifyCheckpoint={() => {}}
               onToggleMiniDevDone={() => {}}
-              onEnsureMiniDevProject={() => {}}
               saving={false}
             />
           </Card>

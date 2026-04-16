@@ -65,6 +65,8 @@ function RequireUser({ children }: { children: ReactElement }) {
 
 export function App() {
   const location = useLocation();
+  const isMiniStudioEmbed =
+    location.pathname === "/studio" && new URLSearchParams(location.search).get("mini") === "1";
   const [messageApi, contextHolder] = message.useMessage();
   const [authOpen, setAuthOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -271,7 +273,8 @@ export function App() {
   return (
     <Layout className="app-layout">
       {contextHolder}
-      <Header className={`app-header app-header--edge${user ? " app-header--authed" : ""}`}>
+      {!isMiniStudioEmbed ? (
+        <Header className={`app-header app-header--edge${user ? " app-header--authed" : ""}`}>
         <Title level={3} className="app-title">
           <Link to="/" className="app-title-link app-brand" aria-label="Nodly — на главную">
             <span className="app-brand-logo-wrap" aria-hidden>
@@ -399,7 +402,8 @@ export function App() {
             ) : null}
           </div>
         </div>
-      </Header>
+        </Header>
+      ) : null}
       <div className="app-layout-body">
         <Drawer
           title="Настройки"

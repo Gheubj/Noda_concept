@@ -1964,7 +1964,6 @@ export function TeacherPage() {
                 onDraftChange={() => {}}
                 onVerifyCheckpoint={() => {}}
                 onToggleMiniDevDone={() => {}}
-                onEnsureMiniDevProject={() => {}}
                 saving={false}
               />
             </div>
