@@ -228,7 +228,7 @@ export function LessonPlayerPage() {
       {holder}
       <Spin spinning={loading}>
         <Space direction="vertical" size="large" style={{ width: "100%" }}>
-          <div>
+          <div className="lesson-player-page__head">
             <Title level={4} style={{ marginTop: 0 }}>
               {bootstrap?.title ?? "Урок"}
             </Title>
@@ -238,9 +238,7 @@ export function LessonPlayerPage() {
               </Paragraph>
             ) : null}
             <Space wrap>
-              <Link to="/learning">Каталог</Link>
-              <Link to="/class">Класс</Link>
-              <Link to="/">На главную</Link>
+              <Link to="/learning">Назад</Link>
             </Space>
           </div>
           {bootstrap?.assignmentTitle ? (

@@ -272,7 +272,9 @@ const lessonContentPracticeStepZ = z.object({
 });
 const lessonContentCheckpointZ = z.object({
   question: z.string().min(1).max(8000),
-  expectedAnswer: z.string().min(1).max(8000)
+  expectedAnswer: z.string().min(1).max(8000),
+  answerMode: z.enum(["text", "single", "multi"]).optional(),
+  options: z.array(z.string().min(1).max(300)).max(24).optional()
 });
 const lessonContentHintZ = z.object({
   title: z.string().min(1).max(180),
@@ -315,18 +317,29 @@ const pdfBlockZ = z.object({
   url: blockMediaUrlZ,
   caption: z.string().max(500).optional().nullable()
 });
+const mediaBlockZ = z.object({
+  id: lessonBlockIdZ,
+  type: z.literal("media"),
+  kind: z.enum(["image", "pdf"]),
+  url: blockMediaUrlZ,
+  caption: z.string().max(500).optional().nullable()
+});
 const studioBlockZ = z.object({
   id: lessonBlockIdZ,
   type: z.literal("studio"),
-  title: z.string().min(1).max(180),
   instruction: z.string().min(1).max(8000),
-  ctaAction: z.string().max(120).optional().nullable()
+  ctaAction: z.string().max(120).optional().nullable(),
+  studioPracticeKind: z.enum(["template", "project_clone", "empty"]).optional(),
+  referenceProjectId: z.string().min(1).max(120).optional().nullable(),
+  studioWorkspaceLevel: z.union([z.literal(1), z.literal(2), z.literal(3)]).optional()
 });
 const checkpointBlockZ = z.object({
   id: lessonBlockIdZ,
   type: z.literal("checkpoint"),
   question: z.string().min(1).max(8000),
-  expectedAnswer: z.string().min(1).max(8000)
+  expectedAnswer: z.string().min(1).max(8000),
+  answerMode: z.enum(["text", "single", "multi"]).optional(),
+  options: z.array(z.string().min(1).max(300)).max(24).optional()
 });
 const dividerBlockZ = z.object({
   id: lessonBlockIdZ,
@@ -335,6 +348,7 @@ const dividerBlockZ = z.object({
 
 const lessonBlockZ = z.discriminatedUnion("type", [
   textBlockZ,
+  mediaBlockZ,
   imageBlockZ,
   pdfBlockZ,
   studioBlockZ,
