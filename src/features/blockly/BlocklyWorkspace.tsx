@@ -6,6 +6,7 @@ import { useAppStore } from "@/store/useAppStore";
 import type { WorkspaceLevel } from "@/store/useAppStore";
 import {
   canPersistCurrentModel,
+  getLastTrainedModelType,
   loadModelFromLibraryEntry,
   persistCurrentModelToLibrary,
   predictByModelType,
@@ -114,6 +115,8 @@ function getTrainDatasetOptions(modelType: ModelType) {
 }
 
 const TABULAR_MANUAL_REF = "tabular:__manual__";
+/** Уровень 1: предсказание по последней обученной модели в памяти, без записи в библиотеку. */
+const SESSION_TRAINED_MODEL_ID = "__session__";
 
 /** Порядок запуска нескольких шляп: сверху вниз, при одной высоте — слева направо. */
 function sortBlocklyHatsByWorkspaceOrder(hats: Blockly.Block[]): Blockly.Block[] {
@@ -128,6 +131,10 @@ function sortBlocklyHatsByWorkspaceOrder(hats: Blockly.Block[]): Blockly.Block[]
 }
 
 function getSavedModelBlocklyOptions(): [string, string][] {
+  const level = effectiveToolboxLevel(useAppStore.getState().workspaceLevel);
+  if (level === 1) {
+    return [["после обучения (без библиотеки)", SESSION_TRAINED_MODEL_ID]];
+  }
   const models = useAppStore.getState().savedModels;
   if (models.length === 0) {
     return [["нет сохранённых моделей", "__none__"]];
@@ -142,13 +149,20 @@ function getSavedModelEntryById(id: string): SavedModelEntry | null {
   return useAppStore.getState().savedModels.find((m) => m.id === id) ?? null;
 }
 
+function getPredictModelTypeForBlock(savedModelId: string): ModelType | null {
+  if (savedModelId === SESSION_TRAINED_MODEL_ID) {
+    return getLastTrainedModelType();
+  }
+  return getSavedModelEntryById(savedModelId)?.modelType ?? null;
+}
+
 function getPredictInputOptions(savedModelId: string): [string, string][] {
-  const model = getSavedModelEntryById(savedModelId);
-  if (!model) {
-    return [["сначала выбери модель", "none"]];
+  const modelType = getPredictModelTypeForBlock(savedModelId);
+  if (!modelType) {
+    return [["сначала обучи модель", "none"]];
   }
   const state = useAppStore.getState();
-  if (isImageModel(model.modelType)) {
+  if (isImageModel(modelType)) {
     const merged = state.imagePredictionInputs.map(
       (item) => [`Image: ${item.title}`, `image:${item.id}`] as [string, string]
     );
@@ -217,7 +231,14 @@ function getPaletteItems(level: 1 | 2): PaletteItem[] {
         shape: "value"
       },
       { type: "noda_model_tabular_neural", title: "Модель: нейросеть", group: "model_types", shape: "value" },
-      { type: "noda_predict_class", title: "Предсказать", group: "predict", shape: "stack" },
+      {
+        type: "noda_predict_class",
+        title: "Предсказать",
+        group: "predict",
+        shape: "stack",
+        description:
+          "После обучения — по модели в памяти, без сохранения в библиотеку. Вход: картинка из «Данные» или строка таблицы / вручную."
+      },
       { type: "noda_if_then", title: "если ... то", group: "control", shape: "stack" },
       { type: "noda_if_then_only", title: "если ... то (без иначе)", group: "control", shape: "stack" },
       { type: "noda_wait_seconds", title: "ждать ... сек", group: "control", shape: "stack" },
@@ -330,10 +351,10 @@ function collectPaletteColors(ws: Blockly.WorkspaceSvg, level: 1 | 2): Record<st
 }
 
 function refreshNodlyPredictInlineRow(block: Blockly.Block) {
-  const model = getSavedModelEntryById(block.getFieldValue("SAVED_MODEL_ID"));
+  const modelType = getPredictModelTypeForBlock(String(block.getFieldValue("SAVED_MODEL_ID") ?? ""));
   const ref = block.getFieldValue("INPUT_REF");
   const manual = ref === TABULAR_MANUAL_REF || ref === "none";
-  const show = !!model && model.modelType !== "image_knn" && manual;
+  const show = !!modelType && modelType !== "image_knn" && manual;
   block.getInput("INLINE_ROW")?.setVisible(show);
   const svg = block as Blockly.BlockSvg;
   if (svg.rendered) {
@@ -1010,6 +1031,9 @@ export function BlocklyWorkspace({ miniStudioToolbar, onOpenDataLibrary }: Block
         }
       }
       if (command.type === "save_model") {
+        if (effectiveToolboxLevel(useAppStore.getState().workspaceLevel) === 1) {
+          throw new Error("Сохранение модели в библиотеку доступно с уровня 2. Переключи уровень или убери блок «сохранить модель».");
+        }
         if (!canPersistCurrentModel()) {
           throw new Error("Нечего сохранить: сначала обучи модель (или загрузи сохранённую).");
         }
@@ -1031,15 +1055,32 @@ export function BlocklyWorkspace({ miniStudioToolbar, onOpenDataLibrary }: Block
         await sleep(Math.max(0, command.seconds) * 1000);
       }
       if (command.type === "predict") {
-        const entry = state.savedModels.find((m) => m.id === command.savedModelId);
-        if (!entry) {
-          throw new Error("Сохранённая модель не найдена. Выбери модель из библиотеки в блоке «предсказать».");
+        const useSessionModel = command.savedModelId === SESSION_TRAINED_MODEL_ID;
+        let modelType: ModelType;
+        if (useSessionModel) {
+          if (!canPersistCurrentModel()) {
+            throw new Error(
+              "Сначала обучи модель или выбери сохранённую из библиотеки: для режима «после обучения» в памяти должна быть готовая модель."
+            );
+          }
+          const t = getLastTrainedModelType();
+          if (!t) {
+            throw new Error("Нет типа модели в памяти. Сначала обучи модель.");
+          }
+          modelType = t;
+          loadedSavedModelIdRef.current = SESSION_TRAINED_MODEL_ID;
+        } else {
+          const entry = state.savedModels.find((m) => m.id === command.savedModelId);
+          if (!entry) {
+            throw new Error("Сохранённая модель не найдена. Выбери модель из библиотеки в блоке «предсказать».");
+          }
+          if (loadedSavedModelIdRef.current !== entry.id) {
+            await loadModelFromLibraryEntry(entry);
+            loadedSavedModelIdRef.current = entry.id;
+          }
+          modelType = entry.modelType;
         }
-        if (loadedSavedModelIdRef.current !== entry.id) {
-          await loadModelFromLibraryEntry(entry);
-          loadedSavedModelIdRef.current = entry.id;
-        }
-        state.setLastModelType(entry.modelType);
+        state.setLastModelType(modelType);
         const labelsMap = state.imageDatasets
           .flatMap((dataset) => dataset.classes)
           .reduce<Record<string, string>>((acc, item) => {
@@ -1047,7 +1088,7 @@ export function BlocklyWorkspace({ miniStudioToolbar, onOpenDataLibrary }: Block
             return acc;
           }, {});
 
-        if (entry.modelType === "image_knn") {
+        if (modelType === "image_knn") {
           const [kind, id] = command.inputRef.split(":");
           const imageInput =
             kind === "image" ? state.imagePredictionInputs.find((item) => item.id === id) : null;
@@ -1062,7 +1103,7 @@ export function BlocklyWorkspace({ miniStudioToolbar, onOpenDataLibrary }: Block
           });
           state.setPrediction(result);
           await trackEvent("prediction_run", {
-            modelType: entry.modelType,
+            modelType,
             label: result?.title ?? null
           });
           if (!fromEvent) {
@@ -1084,14 +1125,14 @@ export function BlocklyWorkspace({ miniStudioToolbar, onOpenDataLibrary }: Block
             );
           }
           const result = await predictByModelType({
-            modelType: entry.modelType,
+            modelType,
             predictionFile: null,
             labelsMap,
             tabularInput: tabularLine
           });
           state.setPrediction(result);
           await trackEvent("prediction_run", {
-            modelType: entry.modelType,
+            modelType,
             label: result?.title ?? null
           });
           if (!fromEvent) {
@@ -1315,7 +1356,9 @@ export function BlocklyWorkspace({ miniStudioToolbar, onOpenDataLibrary }: Block
     }
   }, [blocklyState]);
 
-  const showPredictHint = effectiveToolboxLevel(workspaceLevel) === 2;
+  const effLevel = effectiveToolboxLevel(workspaceLevel);
+  const showPredictHint = effLevel === 2;
+  const showPredictHintLevel1 = effLevel === 1;
 
   return (
     <div className="blockly-root">
@@ -1326,10 +1369,16 @@ export function BlocklyWorkspace({ miniStudioToolbar, onOpenDataLibrary }: Block
               <div>
                 Цепочка выполняется от блока <strong>Старт</strong>. Нажми на «Старт», чтобы запустить.
               </div>
+              {showPredictHintLevel1 ? (
+                <div style={{ marginTop: 8 }}>
+                  Уровень 1: «Предсказать» работает по модели сразу после «Обучить модель», без сохранения в
+                  библиотеку. Файл или строка для входа — в разделе «Данные».
+                </div>
+              ) : null}
               {showPredictHint ? (
                 <div style={{ marginTop: 8 }}>
-                  Уровень 2: в «Предсказать» укажи числа через запятую (как столбцы CSV) или выбери вход в
-                  разделе «Данные». Для картинок KNN поле таблицы не нужно.
+                  Уровень 2: в «Предсказать» выбери модель из библиотеки; числа через запятую (как столбцы CSV)
+                  или вход из «Данные». Для картинок KNN поле таблицы не нужно.
                 </div>
               ) : null}
             </div>
