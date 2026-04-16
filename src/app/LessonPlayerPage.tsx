@@ -241,7 +241,8 @@ export function LessonPlayerPage() {
               <Link to="/learning">Назад</Link>
             </Space>
           </div>
-          {bootstrap?.assignmentTitle ? (
+          {/* Для школьных учеников убираем верхний блок «Задание: …», чтобы не дублировать контекст ДЗ. */}
+          {bootstrap?.assignmentTitle && !(user?.role === "student" && user.studentMode === "school") ? (
             <Alert
               type="info"
               showIcon
