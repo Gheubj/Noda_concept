@@ -23,13 +23,14 @@ import {
   message
 } from "antd";
 import type { ColumnsType } from "antd/es/table";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { CheckOutlined, CopyOutlined, TeamOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import { useSessionStore } from "@/store/useSessionStore";
 import { apiClient } from "@/shared/api/client";
 import { passedLessonTemplateIdsFromSlots } from "@/shared/scheduleSlotPast";
 import { WeekScheduleCalendar } from "@/app/WeekScheduleCalendar";
+import { AdminLessonTemplatesPage } from "@/app/AdminLessonTemplatesPage";
 import { LessonFlowView } from "@/components/LessonFlowView";
 import { AdminLessonBlockEditor } from "@/components/AdminLessonBlockEditor";
 import { expandLessonContentToBlocks, lessonContentFromBlocks } from "@/shared/lessonContentBlocks";
@@ -196,7 +197,6 @@ export function TeacherPage() {
   const [messageApi, contextHolder] = message.useMessage();
   const { user } = useSessionStore();
   const location = useLocation();
-  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("classes");
   const [tabBadges, setTabBadges] = useState({ newEnroll: 0, pending: 0 });
   const [loading, setLoading] = useState(true);
@@ -1382,26 +1382,11 @@ export function TeacherPage() {
     </Space>
   );
 
-  const adminTab =
-    user.role === "admin" ? (
-      <Space direction="vertical" size="large" style={{ width: "100%" }}>
-        <Card title="Шаблоны уроков">
-          <Paragraph type="secondary" style={{ marginTop: 0 }}>
-            Каталог и создание шаблонов перенесены на отдельную страницу. При создании шаблона открывается пустой
-            холст, где можно добавлять блоки: картинки, PDF, мини-разработку и вопросы.
-          </Paragraph>
-          <Space wrap>
-            <Button type="primary" onClick={() => navigate("/admin/templates")}>
-              Открыть шаблоны
-            </Button>
-          </Space>
-        </Card>
-      </Space>
-    ) : (
-      <Card>
-        <Paragraph>Раздел только для администраторов.</Paragraph>
-      </Card>
-    );
+  const adminTab = user.role === "admin" ? <AdminLessonTemplatesPage /> : (
+    <Card>
+      <Paragraph>Раздел только для администраторов.</Paragraph>
+    </Card>
+  );
 
   const scheduleCabinetTab = (
     <Space direction="vertical" size="large" style={{ width: "100%" }}>
@@ -1492,7 +1477,7 @@ export function TeacherPage() {
 
   const tabItems =
     user.role === "admin"
-      ? [{ key: "admin", label: "Админ: шаблоны", children: adminTab }]
+      ? [{ key: "admin", label: "Админ: уроки", children: adminTab }]
       : [
           {
             key: "classes",
