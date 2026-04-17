@@ -446,6 +446,24 @@ function refreshAllPredictL1Blocks(workspace: Blockly.WorkspaceSvg) {
   }
 }
 
+/** Синхронизирует тип модели и валидность dataset в блоках обучения. */
+function syncTrainBlockModelAndDataset(block: Blockly.Block) {
+  if (block.type !== "noda_train_model_simple" && block.type !== "noda_train_model") {
+    return;
+  }
+  const modelRef = String(
+    block.getInputTargetBlock("MODEL")?.getFieldValue("MODEL_TYPE_REF") ?? block.getFieldValue("MODEL_TYPE") ?? "image_knn"
+  );
+  const modelType = parseModelTypeRef(modelRef);
+  block.setFieldValue(modelType, "MODEL_TYPE");
+
+  const options = getTrainDatasetOptions(modelType).map(([, value]) => value);
+  const cur = String(block.getFieldValue("DATASET_REF") ?? "none");
+  if (!options.includes(cur)) {
+    block.setFieldValue(options[0] ?? "none", "DATASET_REF");
+  }
+}
+
 function registerBlocks() {
   if (Blockly.Blocks.noda_start) {
     return;
@@ -491,9 +509,23 @@ function registerBlocks() {
           }),
           "DATASET_REF"
         );
+      // Служебное поле: явно сохраняем тип модели в сериализованном блоке.
+      this.appendDummyInput("MODEL_META")
+        .appendField(new Blockly.FieldLabelSerializable("image_knn"), "MODEL_TYPE")
+        .setVisible(false);
       this.setPreviousStatement(true, null);
       this.setNextStatement(true, null);
       this.setColour(BLOCK_COLOR.model);
+      syncTrainBlockModelAndDataset(this);
+      this.setOnChange(function (this: Blockly.Block, e: Blockly.Events.Abstract) {
+        if (
+          e.type === Blockly.Events.BLOCK_MOVE ||
+          e.type === Blockly.Events.BLOCK_CHANGE ||
+          e.type === Blockly.Events.BLOCK_CREATE
+        ) {
+          syncTrainBlockModelAndDataset(this);
+        }
+      });
     }
   };
   /** Уровень 2+: сплит, эпохи, lr */
@@ -528,9 +560,22 @@ function registerBlocks() {
         .appendField(new Blockly.FieldNumber(80, 5, 500, 5), "EPOCHS")
         .appendField("lr")
         .appendField(new Blockly.FieldNumber(0.02, 0.0001, 1, 0.001), "LR");
+      this.appendDummyInput("MODEL_META")
+        .appendField(new Blockly.FieldLabelSerializable("image_knn"), "MODEL_TYPE")
+        .setVisible(false);
       this.setPreviousStatement(true, null);
       this.setNextStatement(true, null);
       this.setColour(BLOCK_COLOR.model);
+      syncTrainBlockModelAndDataset(this);
+      this.setOnChange(function (this: Blockly.Block, e: Blockly.Events.Abstract) {
+        if (
+          e.type === Blockly.Events.BLOCK_MOVE ||
+          e.type === Blockly.Events.BLOCK_CHANGE ||
+          e.type === Blockly.Events.BLOCK_CREATE
+        ) {
+          syncTrainBlockModelAndDataset(this);
+        }
+      });
     }
   };
   Blockly.Blocks.noda_model_image_knn = {

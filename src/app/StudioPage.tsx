@@ -14,6 +14,7 @@ import {
   Select,
   Space,
   Tabs,
+  Popconfirm,
   Typography,
   message
 } from "antd";
@@ -24,7 +25,7 @@ import { StudioStagePanel } from "@/app/StudioStagePanel";
 import { StudioSpriteSettingsTab } from "@/app/StudioSpriteSettingsTab";
 import { useAppStore } from "@/store/useAppStore";
 import type { NodlyProjectMeta, NodlyProjectSnapshot } from "@/shared/types/project";
-import { loadProjectSmart, listProjects, saveProjectSmart } from "@/features/project/projectRepository";
+import { deleteProjectSmart, loadProjectSmart, listProjects, saveProjectSmart } from "@/features/project/projectRepository";
 import { useSessionStore } from "@/store/useSessionStore";
 import { apiClient } from "@/shared/api/client";
 
@@ -110,6 +111,7 @@ export function StudioPage() {
   const [saveOpen, setSaveOpen] = useState(false);
   const [saveTitle, setSaveTitle] = useState(DEFAULT_PROJECT_TITLE);
   const [projectItems, setProjectItems] = useState<NodlyProjectMeta[]>([]);
+  const [deletingProjectId, setDeletingProjectId] = useState<string | null>(null);
   const [submittingAssignment, setSubmittingAssignment] = useState(false);
   const [submissionCtx, setSubmissionCtx] = useState<SubmissionContext | null>(null);
   const [teacherReview, setTeacherReview] = useState<TeacherWorkReview | null>(null);
@@ -513,6 +515,10 @@ export function StudioPage() {
           size="small"
           disabled={readOnly}
           onClick={() => {
+            if (activeProject) {
+              void saveProjectToCloud(currentProjectTitle || saveTitle || DEFAULT_PROJECT_TITLE);
+              return;
+            }
             setSaveTitle(currentProjectTitle);
             setSaveOpen(true);
           }}
@@ -621,7 +627,34 @@ export function StudioPage() {
               actions={[
                 <Button key="load" type="link" onClick={() => void handleLoadProject(item.id)}>
                   Загрузить
-                </Button>
+                </Button>,
+                <Popconfirm
+                  key="delete"
+                  title="Удалить проект?"
+                  okText="Удалить"
+                  cancelText="Отмена"
+                  onConfirm={async () => {
+                    setDeletingProjectId(item.id);
+                    try {
+                      await deleteProjectSmart(item.id);
+                      messageApi.success("Проект удалён");
+                      await refreshProjects(resolvedUserId);
+                      if (activeProject?.id === item.id) {
+                        setActiveProject(null);
+                        loadProjectSnapshot(EMPTY_SNAPSHOT);
+                        setSaveTitle(DEFAULT_PROJECT_TITLE);
+                      }
+                    } catch (e) {
+                      messageApi.error(e instanceof Error ? e.message : "Не удалось удалить проект");
+                    } finally {
+                      setDeletingProjectId(null);
+                    }
+                  }}
+                >
+                  <Button key="delete-btn" type="link" danger loading={deletingProjectId === item.id}>
+                    Удалить
+                  </Button>
+                </Popconfirm>
               ]}
             >
               <List.Item.Meta

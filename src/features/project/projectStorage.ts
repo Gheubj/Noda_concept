@@ -181,3 +181,8 @@ export async function loadProject(projectId: string): Promise<NodlyProject | nul
   };
   return { meta: stored.meta, snapshot };
 }
+
+export async function deleteProject(projectId: string): Promise<void> {
+  const db = await dbPromise;
+  await db.delete(STORE_NAME, projectId);
+}

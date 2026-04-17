@@ -974,6 +974,20 @@ app.put("/api/projects/:id", authRequired, async (req: AuthenticatedRequest, res
   });
 });
 
+app.delete("/api/projects/:id", authRequired, async (req: AuthenticatedRequest, res) => {
+  const projectId = String(req.params.id);
+  const existing = await prisma.project.findFirst({
+    where: { id: projectId, userId: req.session!.sub },
+    select: { id: true }
+  });
+  if (!existing) {
+    res.status(404).json({ error: "Project not found" });
+    return;
+  }
+  await prisma.project.delete({ where: { id: projectId } });
+  res.json({ ok: true });
+});
+
 app.patch("/api/projects/:id/catalog-lesson", authRequired, async (req: AuthenticatedRequest, res) => {
   const projectId = String(req.params.id);
   const parsed = z.object({ catalogLessonComplete: z.boolean() }).safeParse(req.body);

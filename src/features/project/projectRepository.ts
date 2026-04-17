@@ -1,6 +1,6 @@
 import type { NodlyProject, NodlyProjectMeta } from "@/shared/types/project";
 import { apiClient } from "@/shared/api/client";
-import { listProjectsByUser, loadProject, saveProject } from "@/features/project/projectStorage";
+import { deleteProject, listProjectsByUser, loadProject, saveProject } from "@/features/project/projectStorage";
 import { useSessionStore } from "@/store/useSessionStore";
 
 function canUseCloud() {
@@ -39,5 +39,13 @@ export async function loadProjectSmart(projectId: string): Promise<NodlyProject 
     return loadProject(projectId);
   }
   return apiClient.get<NodlyProject>(`/api/projects/${projectId}`);
+}
+
+export async function deleteProjectSmart(projectId: string): Promise<void> {
+  if (!canUseCloud()) {
+    await deleteProject(projectId);
+    return;
+  }
+  await apiClient.delete(`/api/projects/${projectId}`);
 }
 
