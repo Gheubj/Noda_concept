@@ -1,11 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { CheckOutlined } from "@ant-design/icons";
-import { Alert, Button, Card, Empty, Select, Space, Spin, Table, Tabs, Tag, Typography, message } from "antd";
+import { Button, Card, Empty, Select, Space, Spin, Table, Tabs, Tag, Typography, message } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { Link, useNavigate } from "react-router-dom";
 import { useSessionStore } from "@/store/useSessionStore";
 import { apiClient } from "@/shared/api/client";
-import { courseModuleStudentLabel, courseModuleToApiModuleKey } from "@/shared/courseModuleLabels";
 import { passedLessonTemplateIdsFromSlots } from "@/shared/scheduleSlotPast";
 import { isOverdueByDueAt } from "@/shared/studentAssignmentDue";
 import { WeekScheduleCalendar, type SlotStudentAssignmentRow } from "@/app/WeekScheduleCalendar";
