@@ -360,13 +360,13 @@ export function StudioPage() {
     }
   };
 
-  const handleSave = async () => {
+  const saveProjectToCloud = async (titleRaw: string) => {
     if (readOnly) {
       messageApi.warning("Режим только просмотра — сохранение в облако отключено.");
       return;
     }
     const normalizedUserId = resolvedUserId.trim();
-    const normalizedTitle = saveTitle.trim();
+    const normalizedTitle = titleRaw.trim();
     if (!normalizedTitle) {
       messageApi.error("Укажи название проекта.");
       return;
@@ -391,8 +391,16 @@ export function StudioPage() {
       updatedAt: now
     });
     await refreshProjects(normalizedUserId);
-    setSaveOpen(false);
     messageApi.success("Проект сохранен");
+  };
+
+  const handleSave = async () => {
+    await saveProjectToCloud(saveTitle);
+    setSaveOpen(false);
+  };
+
+  const handleMiniSaveToProjects = async () => {
+    await saveProjectToCloud(currentProjectTitle || DEFAULT_PROJECT_TITLE);
   };
 
   const handleLoadProject = async (projectId: string) => {
@@ -548,6 +556,7 @@ export function StudioPage() {
           <BlocklyWorkspace
             miniStudioToolbar={isMini}
             onOpenDataLibrary={isMini ? () => setDataLibraryOpen(true) : undefined}
+            onSaveProject={isMini && !readOnly ? () => void handleMiniSaveToProjects() : undefined}
           />
         </div>
         <StudioStagePanel />

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { DatabaseOutlined } from "@ant-design/icons";
+import { DatabaseOutlined, SaveOutlined } from "@ant-design/icons";
 import { Alert, Button, Segmented, Space, Tag } from "antd";
 import * as Blockly from "blockly";
 import { useAppStore } from "@/store/useAppStore";
@@ -482,8 +482,10 @@ function registerBlocks() {
           new Blockly.FieldDropdown(function () {
             const source = this.getSourceBlock();
             const modelBlock = source?.getInputTargetBlock("MODEL");
+            const currentRef = String(source?.getFieldValue("DATASET_REF") ?? "");
+            const inferredByDataset = currentRef.startsWith("tabular:") ? "tabular_regression" : "image_knn";
             const modelType = parseModelTypeRef(
-              String(modelBlock?.getFieldValue("MODEL_TYPE_REF") ?? source?.getFieldValue("MODEL_TYPE") ?? "image_knn")
+              String(modelBlock?.getFieldValue("MODEL_TYPE_REF") ?? source?.getFieldValue("MODEL_TYPE") ?? inferredByDataset)
             );
             return getTrainDatasetOptions(modelType);
           }),
@@ -505,8 +507,10 @@ function registerBlocks() {
           new Blockly.FieldDropdown(function () {
             const source = this.getSourceBlock();
             const modelBlock = source?.getInputTargetBlock("MODEL");
+            const currentRef = String(source?.getFieldValue("DATASET_REF") ?? "");
+            const inferredByDataset = currentRef.startsWith("tabular:") ? "tabular_regression" : "image_knn";
             const modelType = parseModelTypeRef(
-              String(modelBlock?.getFieldValue("MODEL_TYPE_REF") ?? source?.getFieldValue("MODEL_TYPE") ?? "image_knn")
+              String(modelBlock?.getFieldValue("MODEL_TYPE_REF") ?? source?.getFieldValue("MODEL_TYPE") ?? inferredByDataset)
             );
             return getTrainDatasetOptions(modelType);
           }),
@@ -811,9 +815,10 @@ export type BlocklyWorkspaceProps = {
   /** Мини-студия в уроке: без переключателя уровней, с кнопкой «Данные» как в полной студии */
   miniStudioToolbar?: boolean;
   onOpenDataLibrary?: () => void;
+  onSaveProject?: () => void;
 };
 
-export function BlocklyWorkspace({ miniStudioToolbar, onOpenDataLibrary }: BlocklyWorkspaceProps = {}) {
+export function BlocklyWorkspace({ miniStudioToolbar, onOpenDataLibrary, onSaveProject }: BlocklyWorkspaceProps = {}) {
   const htmlTheme = useHtmlDataTheme();
   const containerRef = useRef<HTMLDivElement | null>(null);
   const workspaceRef = useRef<Blockly.WorkspaceSvg | null>(null);
@@ -1518,14 +1523,25 @@ export function BlocklyWorkspace({ miniStudioToolbar, onOpenDataLibrary }: Block
       <div className="blockly-root__toolbar">
         <Space size={8} wrap>
           {miniStudioToolbar ? (
-            <Button
-              type="default"
-              size="small"
-              icon={<DatabaseOutlined />}
-              onClick={() => onOpenDataLibrary?.()}
-            >
-              Данные
-            </Button>
+            <>
+              <Button
+                type="default"
+                size="small"
+                icon={<DatabaseOutlined />}
+                onClick={() => onOpenDataLibrary?.()}
+              >
+                Данные
+              </Button>
+              <Button
+                type="primary"
+                size="small"
+                icon={<SaveOutlined />}
+                onClick={() => onSaveProject?.()}
+                disabled={!onSaveProject}
+              >
+                Сохранить в проекты
+              </Button>
+            </>
           ) : (
             <>
               {workspaceLevel === 3 ? <Tag color="processing">Скоро больше блоков</Tag> : null}
