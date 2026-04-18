@@ -25,6 +25,9 @@ import { StudioStagePanel } from "@/app/StudioStagePanel";
 import { StudioSpriteSettingsTab } from "@/app/StudioSpriteSettingsTab";
 import { useAppStore } from "@/store/useAppStore";
 import type { NodlyProjectMeta, NodlyProjectSnapshot } from "@/shared/types/project";
+import type { StudioGoal } from "@/shared/types/lessonContent";
+import type { MiniDevTelemetry } from "@/shared/types/lessonPlayerState";
+import { evalMiniStudioGoal, summarizeBlocklyState } from "@/shared/miniStudioGoalEval";
 import { deleteProjectSmart, loadProjectSmart, listProjects, saveProjectSmart } from "@/features/project/projectRepository";
 import { useSessionStore } from "@/store/useSessionStore";
 import { apiClient } from "@/shared/api/client";
@@ -93,6 +96,12 @@ export function StudioPage() {
   const isMini = searchParams.get("mini") === "1";
   const miniLessonId = searchParams.get("miniLessonId");
   const miniBlockId = searchParams.get("miniBlockId");
+  type MiniCoachPayload = { instruction: string; goals: StudioGoal[] };
+  const [miniCoach, setMiniCoach] = useState<MiniCoachPayload | null>(null);
+  const [goalUiStatus, setGoalUiStatus] = useState<Record<string, boolean>>({});
+  const [allLessonGoalsDone, setAllLessonGoalsDone] = useState(false);
+  const miniTelemetryRef = useRef({ trained: false, predicted: false });
+  const lastPostedGoalsJson = useRef<string>("");
   const [messageApi, contextHolder] = message.useMessage();
   const [guestUserId] = useState(() => {
     const stored =
@@ -142,6 +151,76 @@ export function StudioPage() {
     [resolvedUserId, activeProject?.id]
   );
   const restoringDraftRef = useRef(false);
+
+  useEffect(() => {
+    if (!isMini || !miniLessonId || !miniBlockId) {
+      setMiniCoach(null);
+      return;
+    }
+    try {
+      const raw = sessionStorage.getItem(`nodly_mini_ctx__${miniLessonId}__${miniBlockId}`);
+      if (!raw) {
+        setMiniCoach({ instruction: "", goals: [] });
+        return;
+      }
+      const parsed = JSON.parse(raw) as { instruction?: string; goals?: StudioGoal[] };
+      setMiniCoach({
+        instruction: typeof parsed.instruction === "string" ? parsed.instruction : "",
+        goals: Array.isArray(parsed.goals) ? parsed.goals : []
+      });
+    } catch {
+      setMiniCoach({ instruction: "", goals: [] });
+    }
+  }, [isMini, miniLessonId, miniBlockId]);
+
+  useEffect(() => {
+    if (!isMini) {
+      return;
+    }
+    miniTelemetryRef.current = { trained: false, predicted: false };
+    setGoalUiStatus({});
+    setAllLessonGoalsDone(false);
+    lastPostedGoalsJson.current = "";
+  }, [isMini, miniLessonId, miniBlockId]);
+
+  useEffect(() => {
+    if (!isMini || !miniLessonId || !miniBlockId) {
+      return;
+    }
+    const tick = () => {
+      const goals = miniCoach?.goals ?? [];
+      if (goals.length === 0) {
+        return;
+      }
+      const live = (window as Window & { __nodlyGetBlocklyState?: () => string }).__nodlyGetBlocklyState?.();
+      const summary = summarizeBlocklyState(typeof live === "string" ? live : "");
+      const tel: MiniDevTelemetry = { ...miniTelemetryRef.current };
+      const next: Record<string, boolean> = {};
+      for (const g of goals) {
+        next[g.id] = evalMiniStudioGoal(g, summary, tel);
+      }
+      const allDone = goals.every((g) => next[g.id]);
+      setGoalUiStatus((prev) => (JSON.stringify(prev) === JSON.stringify(next) ? prev : next));
+      setAllLessonGoalsDone((prev) => (prev === allDone ? prev : allDone));
+      const payloadJson = JSON.stringify({ goalStatus: next, allDone });
+      if (payloadJson !== lastPostedGoalsJson.current) {
+        lastPostedGoalsJson.current = payloadJson;
+        window.parent?.postMessage(
+          {
+            source: "nodly-mini-goals",
+            lessonId: miniLessonId,
+            blockId: miniBlockId,
+            goalStatus: next,
+            allDone
+          },
+          window.location.origin
+        );
+      }
+    };
+    tick();
+    const id = window.setInterval(tick, 1200);
+    return () => window.clearInterval(id);
+  }, [isMini, miniLessonId, miniBlockId, miniCoach]);
 
   const refreshProjects = async (nextUserId: string) => {
     const list = await listProjects(nextUserId.trim());
@@ -425,6 +504,12 @@ export function StudioPage() {
     inputRef?: string;
     label?: string | null;
   }) => {
+    if (event.type === "train") {
+      miniTelemetryRef.current.trained = true;
+    }
+    if (event.type === "predict") {
+      miniTelemetryRef.current.predicted = true;
+    }
     if (!isMini || !miniLessonId || !miniBlockId) {
       return;
     }
@@ -468,6 +553,11 @@ export function StudioPage() {
     try {
       const normalizedUserId = resolvedUserId.trim();
       const now = new Date().toISOString();
+      const liveBlocklyState = (window as Window & { __nodlyGetBlocklyState?: () => string }).__nodlyGetBlocklyState?.();
+      if (typeof liveBlocklyState === "string" && liveBlocklyState.trim()) {
+        useAppStore.getState().setBlocklyState(liveBlocklyState);
+      }
+      const snap = getProjectSnapshot();
       await saveProjectSmart({
         meta: {
           id: activeProject.id,
@@ -476,7 +566,13 @@ export function StudioPage() {
           createdAt: activeProject.createdAt,
           updatedAt: now
         },
-        snapshot: getProjectSnapshot()
+        snapshot: {
+          ...snap,
+          blocklyState:
+            typeof liveBlocklyState === "string" && liveBlocklyState.trim()
+              ? liveBlocklyState
+              : snap.blocklyState
+        }
       });
       await apiClient.post(`/api/student/assignments/${submissionCtx.assignmentId}/submit`, {});
       messageApi.success("Работа сохранена и сдана учителю");
@@ -592,7 +688,16 @@ export function StudioPage() {
           </Button>
         ) : null}
       </div> : null}
-      <div className="studio-page__main">
+      <div className={`studio-page__main${isMini ? " studio-page__main--mini" : ""}`}>
+        {isMini && miniLessonId && miniBlockId ? (
+          <StudioStagePanel
+            mode="mini_coach"
+            instructionMarkdown={miniCoach?.instruction ?? ""}
+            goals={miniCoach?.goals ?? []}
+            goalStatus={goalUiStatus}
+            allGoalsDone={allLessonGoalsDone}
+          />
+        ) : null}
         <div className="studio-page__blockly">
           <BlocklyWorkspace
             miniStudioToolbar={isMini}
@@ -601,7 +706,7 @@ export function StudioPage() {
             onMiniStudioActivity={handleMiniStudioActivity}
           />
         </div>
-        <StudioStagePanel />
+        {!isMini ? <StudioStagePanel /> : null}
       </div>
     </div>
   );

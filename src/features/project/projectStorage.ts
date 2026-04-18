@@ -43,6 +43,7 @@ interface StoredNodlyProject {
     tabularPredictionInputs: TabularPredictionInput[];
     savedModels?: SavedModelEntry[];
     blocklyState: string;
+    workspaceLevel?: 1 | 2 | 3;
   };
 }
 
@@ -77,6 +78,82 @@ async function decodeFile(file: EncodedFile): Promise<File> {
   const response = await fetch(file.dataUrl);
   const blob = await response.blob();
   return new File([blob], file.name, { type: file.type });
+}
+
+function isEncodedFile(f: unknown): f is EncodedFile {
+  return Boolean(
+    f &&
+      typeof f === "object" &&
+      typeof (f as EncodedFile).dataUrl === "string" &&
+      (f as EncodedFile).dataUrl.length > 0 &&
+      typeof (f as EncodedFile).name === "string"
+  );
+}
+
+async function decodeFileSafe(f: unknown): Promise<File | null> {
+  if (!isEncodedFile(f)) {
+    return null;
+  }
+  try {
+    return await decodeFile(f);
+  } catch {
+    return null;
+  }
+}
+
+async function decodeImageDatasetsSafe(items: unknown[]): Promise<ImageDataset[]> {
+  return Promise.all(
+    items.map(async (raw) => {
+      const dataset = raw as EncodedImageDataset;
+      return {
+        id: dataset.id,
+        title: dataset.title,
+        taskType: dataset.taskType ?? "classification",
+        classes: await Promise.all(
+          (dataset.classes ?? []).map(async (datasetClass) => ({
+            labelId: datasetClass.labelId,
+            title: datasetClass.title,
+            files: (await Promise.all((datasetClass.files ?? []).map((x) => decodeFileSafe(x)))).filter(
+              (f): f is File => Boolean(f)
+            )
+          }))
+        ),
+        unlabeledFiles: dataset.unlabeledFiles?.length
+          ? (await Promise.all(dataset.unlabeledFiles.map((x) => decodeFileSafe(x)))).filter(
+              (f): f is File => Boolean(f)
+            )
+          : undefined
+      };
+    })
+  );
+}
+
+async function decodeImageInputsSafe(items: unknown[]): Promise<ImagePredictionInput[]> {
+  return Promise.all(
+    items.map(async (raw) => {
+      const item = raw as EncodedImagePredictionInput;
+      const file = await decodeFileSafe(item.file);
+      if (!file) {
+        return { id: item.id, title: item.title, file: new File([], "missing.png", { type: "image/png" }) };
+      }
+      return { id: item.id, title: item.title, file };
+    })
+  );
+}
+
+function firstImageSampleFile(datasets: unknown[]): unknown | null {
+  for (const raw of datasets) {
+    const ds = raw as EncodedImageDataset;
+    for (const c of ds.classes ?? []) {
+      for (const f of c.files ?? []) {
+        return f;
+      }
+    }
+    for (const f of ds.unlabeledFiles ?? []) {
+      return f;
+    }
+  }
+  return null;
 }
 
 async function encodeImageDatasets(items: ImageDataset[]): Promise<EncodedImageDataset[]> {
@@ -150,7 +227,8 @@ export async function saveProject(project: NodlyProject) {
       imagePredictionInputs: await encodeImageInputs(project.snapshot.imagePredictionInputs),
       tabularPredictionInputs: project.snapshot.tabularPredictionInputs,
       savedModels: project.snapshot.savedModels ?? [],
-      blocklyState: project.snapshot.blocklyState
+      blocklyState: project.snapshot.blocklyState,
+      workspaceLevel: project.snapshot.workspaceLevel
     }
   };
   await db.put(STORE_NAME, stored);
@@ -177,9 +255,84 @@ export async function loadProject(projectId: string): Promise<NodlyProject | nul
     imagePredictionInputs: await decodeImageInputs(stored.snapshot.imagePredictionInputs),
     tabularPredictionInputs: stored.snapshot.tabularPredictionInputs,
     savedModels: stored.snapshot.savedModels ?? [],
-    blocklyState: stored.snapshot.blocklyState
+    blocklyState: stored.snapshot.blocklyState,
+    workspaceLevel: stored.snapshot.workspaceLevel
   };
   return { meta: stored.meta, snapshot };
+}
+
+/** Сериализация снимка для JSON (облако): картинки как data URL, иначе File теряется. */
+export async function encodeSnapshotForCloud(snapshot: NodlyProjectSnapshot): Promise<Record<string, unknown>> {
+  return {
+    imageDatasets: await encodeImageDatasets(snapshot.imageDatasets),
+    tabularDatasets: snapshot.tabularDatasets,
+    imagePredictionInputs: await encodeImageInputs(snapshot.imagePredictionInputs),
+    tabularPredictionInputs: snapshot.tabularPredictionInputs,
+    savedModels: snapshot.savedModels ?? [],
+    blocklyState: snapshot.blocklyState,
+    workspaceLevel: snapshot.workspaceLevel ?? 1
+  };
+}
+
+export async function decodeSnapshotFromCloud(raw: unknown): Promise<NodlyProjectSnapshot> {
+  const empty: NodlyProjectSnapshot = {
+    imageDatasets: [],
+    tabularDatasets: [],
+    imagePredictionInputs: [],
+    tabularPredictionInputs: [],
+    savedModels: [],
+    blocklyState: "",
+    workspaceLevel: 1
+  };
+  if (!raw || typeof raw !== "object") {
+    return empty;
+  }
+  const o = raw as Record<string, unknown>;
+  const wlRaw = o.workspaceLevel;
+  const workspaceLevel =
+    wlRaw === 1 || wlRaw === 2 || wlRaw === 3 ? wlRaw : wlRaw === "1" || wlRaw === "2" || wlRaw === "3"
+      ? (Number(wlRaw) as 1 | 2 | 3)
+      : 1;
+  const tabularDatasets = Array.isArray(o.tabularDatasets)
+    ? (o.tabularDatasets as TabularDatasetEntry[])
+    : [];
+  const tabularPredictionInputs = Array.isArray(o.tabularPredictionInputs)
+    ? (o.tabularPredictionInputs as TabularPredictionInput[])
+    : [];
+  const savedModels = Array.isArray(o.savedModels) ? (o.savedModels as SavedModelEntry[]) : [];
+  const blocklyState = typeof o.blocklyState === "string" ? o.blocklyState : "";
+
+  const idRaw = o.imageDatasets;
+  let imageDatasets: ImageDataset[] = [];
+  if (Array.isArray(idRaw) && idRaw.length > 0) {
+    const firstFile = firstImageSampleFile(idRaw);
+    if (isEncodedFile(firstFile)) {
+      imageDatasets = await decodeImageDatasets(idRaw as EncodedImageDataset[]);
+    } else {
+      imageDatasets = await decodeImageDatasetsSafe(idRaw);
+    }
+  }
+
+  const ipRaw = o.imagePredictionInputs;
+  let imagePredictionInputs: ImagePredictionInput[] = [];
+  if (Array.isArray(ipRaw) && ipRaw.length > 0) {
+    const f = (ipRaw[0] as { file?: unknown })?.file;
+    if (isEncodedFile(f)) {
+      imagePredictionInputs = await decodeImageInputs(ipRaw as EncodedImagePredictionInput[]);
+    } else {
+      imagePredictionInputs = await decodeImageInputsSafe(ipRaw);
+    }
+  }
+
+  return {
+    imageDatasets,
+    tabularDatasets,
+    imagePredictionInputs,
+    tabularPredictionInputs,
+    savedModels,
+    blocklyState,
+    workspaceLevel
+  };
 }
 
 export async function deleteProject(projectId: string): Promise<void> {
