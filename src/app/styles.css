@@ -1778,6 +1778,22 @@ html[data-theme="dark"] .lesson-flow__pdf-page-canvas {
   background: #0b1220;
 }
 
+.lesson-flow__mini-dev-placeholder {
+  width: 100%;
+  min-height: min(58vh, 560px);
+  height: min(58vh, 560px);
+  border: 1px solid var(--ant-color-border, rgba(148, 163, 184, 0.45));
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, var(--app-surface, #fff) 96%, #0b1220);
+}
+
+html[data-theme="dark"] .lesson-flow__mini-dev-placeholder {
+  background: color-mix(in srgb, var(--app-surface, #1e293b) 92%, #0b1220);
+}
+
 .studio-mini-host.app-content--workspace {
   padding: 0 !important;
   margin: 0 !important;

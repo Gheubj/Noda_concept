@@ -28,6 +28,7 @@ import type { NodlyProjectMeta, NodlyProjectSnapshot } from "@/shared/types/proj
 import type { StudioGoal } from "@/shared/types/lessonContent";
 import type { MiniDevTelemetry } from "@/shared/types/lessonPlayerState";
 import { evalMiniStudioGoal, summarizeBlocklyState } from "@/shared/miniStudioGoalEval";
+import { NODLY_MINI_BOOTSTRAP, NODLY_MINI_REQUEST_CONTEXT } from "@/shared/miniStudioMessaging";
 import { deleteProjectSmart, loadProjectSmart, listProjects, saveProjectSmart } from "@/features/project/projectRepository";
 import { useSessionStore } from "@/store/useSessionStore";
 import { apiClient } from "@/shared/api/client";
@@ -190,7 +191,7 @@ export function StudioPage() {
         instruction?: string;
         goals?: StudioGoal[];
       };
-      if (!d || d.source !== "nodly-mini-bootstrap") {
+      if (!d || d.source !== NODLY_MINI_BOOTSTRAP) {
         return;
       }
       if (d.lessonId !== miniLessonId || d.blockId !== miniBlockId) {
@@ -203,6 +204,27 @@ export function StudioPage() {
     };
     window.addEventListener("message", handler);
     return () => window.removeEventListener("message", handler);
+  }, [isMini, miniLessonId, miniBlockId]);
+
+  /** Запрос контекста у родителя (LessonFlowView) — срабатывает даже если onLoad iframe раньше слушателя. */
+  useEffect(() => {
+    if (!isMini || !miniLessonId || !miniBlockId) {
+      return;
+    }
+    const origin = window.location.origin;
+    const msg = {
+      source: NODLY_MINI_REQUEST_CONTEXT,
+      lessonId: miniLessonId,
+      blockId: miniBlockId
+    };
+    const send = () => window.parent?.postMessage(msg, origin);
+    send();
+    const t1 = window.setTimeout(send, 200);
+    const t2 = window.setTimeout(send, 800);
+    return () => {
+      window.clearTimeout(t1);
+      window.clearTimeout(t2);
+    };
   }, [isMini, miniLessonId, miniBlockId]);
 
   useEffect(() => {

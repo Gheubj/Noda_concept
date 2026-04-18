@@ -1,9 +1,10 @@
-import { lazy, Suspense, useLayoutEffect } from "react";
+import { lazy, Suspense, useEffect, useLayoutEffect } from "react";
 import { Button, Checkbox, Input, Radio, Space, Spin, Tag, Typography } from "antd";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import type { LessonContentBlock } from "@/shared/types/lessonContent";
 import { resolveLessonMediaUrl } from "@/shared/lessonMediaUrl";
+import { NODLY_MINI_BOOTSTRAP, NODLY_MINI_REQUEST_CONTEXT } from "@/shared/miniStudioMessaging";
 
 const LessonPdfReader = lazy(() =>
   import("@/components/LessonPdfReader").then((m) => ({ default: m.LessonPdfReader }))
@@ -52,7 +53,7 @@ function postMiniBootstrapToFrame(
     return;
   }
   const msg = {
-    source: "nodly-mini-bootstrap" as const,
+    source: NODLY_MINI_BOOTSTRAP,
     lessonId: payload.lessonId,
     blockId: payload.blockId,
     instruction: payload.instruction,
@@ -114,6 +115,49 @@ export function LessonFlowView({
 }: LessonFlowViewProps) {
   let checkpointOrdinal = 0;
   const isColab = variant === "colab";
+
+  useEffect(() => {
+    const handler = (ev: MessageEvent) => {
+      if (ev.origin !== window.location.origin) {
+        return;
+      }
+      const d = ev.data as { source?: string; lessonId?: string; blockId?: string };
+      if (!d || d.source !== NODLY_MINI_REQUEST_CONTEXT) {
+        return;
+      }
+      const blockId = typeof d.blockId === "string" ? d.blockId : "";
+      const lessonKey = typeof d.lessonId === "string" ? d.lessonId : "";
+      if (!blockId || !lessonKey) {
+        return;
+      }
+      const expectedLesson = lessonId?.trim() ? lessonId.trim() : MINI_PREVIEW_LESSON_KEY;
+      if (lessonKey !== expectedLesson) {
+        return;
+      }
+      const block = blocks.find(
+        (b): b is Extract<LessonContentBlock, { type: "studio" }> => b.type === "studio" && b.id === blockId
+      );
+      if (!block) {
+        return;
+      }
+      const target = ev.source as Window | null;
+      if (!target || target === window) {
+        return;
+      }
+      target.postMessage(
+        {
+          source: NODLY_MINI_BOOTSTRAP,
+          lessonId: expectedLesson,
+          blockId,
+          instruction: block.instruction,
+          goals: block.goals ?? []
+        },
+        window.location.origin
+      );
+    };
+    window.addEventListener("message", handler);
+    return () => window.removeEventListener("message", handler);
+  }, [blocks, lessonId]);
 
   const renderMarkdown = (value: string, className?: string) => (
     <div className={className}>
@@ -201,20 +245,12 @@ export function LessonFlowView({
                       });
                     }}
                   />
+                ) : onEnsureMiniDevProject ? (
+                  <div className="lesson-flow__mini-dev-placeholder">
+                    <Spin size="large" tip={creating ? "Создаём проект для мини-разработки…" : "Готовим мини-разработку…"} />
+                  </div>
                 ) : (
-                  <Space direction="vertical" size="small">
-                    <Text type="secondary">
-                      Мини-разработка ещё не сохранена в проекты. Нажми кнопку, чтобы создать проект.
-                    </Text>
-                    <Button
-                      type="primary"
-                      loading={creating}
-                      onClick={() => onEnsureMiniDevProject?.(block.id)}
-                      disabled={!onEnsureMiniDevProject}
-                    >
-                      Сохранить мини-разработку
-                    </Button>
-                  </Space>
+                  <Text type="secondary">В этом превью мини-разработка без привязки к уроку.</Text>
                 )}
               </div>
             );
@@ -238,20 +274,12 @@ export function LessonFlowView({
                       });
                     }}
                   />
+                ) : onEnsureMiniDevProject ? (
+                  <div className="lesson-flow__mini-dev-placeholder">
+                    <Spin size="large" tip={creating ? "Создаём проект для мини-разработки…" : "Готовим мини-разработку…"} />
+                  </div>
                 ) : (
-                  <Space direction="vertical" size="small">
-                    <Text type="secondary">
-                      Мини-разработка ещё не сохранена в проекты. Нажми кнопку, чтобы создать проект.
-                    </Text>
-                    <Button
-                      type="primary"
-                      loading={creating}
-                      onClick={() => onEnsureMiniDevProject?.(block.id)}
-                      disabled={!onEnsureMiniDevProject}
-                    >
-                      Сохранить мини-разработку
-                    </Button>
-                  </Space>
+                  <Text type="secondary">В этом превью мини-разработка без привязки к уроку.</Text>
                 )}
                 <Button
                   type={miniDevDone(block.id) ? "default" : "primary"}
