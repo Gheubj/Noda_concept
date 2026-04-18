@@ -718,6 +718,16 @@ export function StudioPage() {
             onMiniStudioActivity={handleMiniStudioActivity}
           />
         </div>
+        {isMini && miniLessonId && miniBlockId ? (
+          <StudioStagePanel
+            mode="mini_coach"
+            instructionMarkdown={miniCoach?.instruction ?? ""}
+            goals={miniCoach?.goals ?? []}
+            goalStatus={goalUiStatus}
+            allGoalsDone={allLessonGoalsDone}
+            showGoalsInPanel={false}
+          />
+        ) : null}
         {!isMini ? <StudioStagePanel /> : null}
       </div>
     </div>

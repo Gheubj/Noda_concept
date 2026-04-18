@@ -1265,58 +1265,25 @@ html[data-theme="dark"] .blockly-palette-btn {
   display: flex;
 }
 
-.mini-coach-overlay {
+/* Только цели мини-урока поверх сетки Blockly (персонаж — в колонке «Сцена» справа). */
+.mini-workspace-goals-overlay {
   position: absolute;
   top: 8px;
   right: 8px;
-  width: min(320px, 36vw);
-  max-width: 320px;
+  width: min(280px, 34vw);
+  max-width: 300px;
   pointer-events: none;
   z-index: 20;
 }
 
-.mini-coach-overlay__card {
+.mini-workspace-goals-overlay__card {
   pointer-events: none;
-  background: color-mix(in srgb, var(--app-surface, #fff) 92%, transparent);
-  border: 1px solid var(--ant-color-border, rgba(148, 163, 184, 0.45));
-  box-shadow: 0 10px 24px rgba(2, 6, 23, 0.22);
-}
-
-.mini-coach-overlay__row {
-  display: flex;
-  gap: 10px;
-  align-items: flex-start;
-}
-
-.mini-coach-overlay__avatar {
-  flex-shrink: 0;
-  width: 56px;
-  height: auto;
-}
-
-.mini-coach-overlay__bubble {
-  flex: 1;
-  min-width: 0;
-  padding: 8px 10px;
-  border-radius: 10px;
-  background: color-mix(in srgb, var(--app-surface, #fff) 88%, rgba(148, 163, 184, 0.12));
-  border: 1px solid var(--landing-hero-border);
-  line-height: 1.35;
-}
-
-html[data-theme="dark"] .mini-coach-overlay__bubble {
-  border-color: rgba(148, 163, 184, 0.25);
-}
-
-.mini-coach-overlay__goals {
-  margin-top: 10px;
-  padding: 8px 10px;
-  border-radius: 8px;
-  border: 1px dashed var(--ant-color-border, rgba(148, 163, 184, 0.45));
   background: color-mix(in srgb, var(--app-surface, #fff) 94%, transparent);
+  border: 1px dashed var(--ant-color-border, rgba(148, 163, 184, 0.45));
+  box-shadow: 0 8px 20px rgba(2, 6, 23, 0.18);
 }
 
-.mini-coach-overlay__goal-row {
+.mini-workspace-goals-overlay__row {
   display: flex;
   align-items: center;
   gap: 8px;

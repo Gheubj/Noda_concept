@@ -16,7 +16,7 @@ import type { ModelEvaluation, ModelType, SavedModelEntry } from "@/shared/types
 import { trackEvent } from "@/features/analytics/analytics";
 import { useHtmlDataTheme } from "@/hooks/useHtmlDataTheme";
 import type { StudioGoal } from "@/shared/types/lessonContent";
-import { MiniStudioCoachOverlay } from "@/features/blockly/MiniStudioCoachOverlay";
+import { MiniWorkspaceGoalsOverlay } from "@/features/blockly/MiniWorkspaceGoalsOverlay";
 
 const NODLY_BLOCKLY_DARK = Blockly.Theme.defineTheme("nodly_dark", {
   name: "nodly_dark",
@@ -1701,7 +1701,7 @@ export function BlocklyWorkspace({
           <div className="blockly-workspace-surface">
             <div ref={containerRef} className="blockly-container" />
             {miniStudioToolbar && miniCoachGoals ? (
-              <MiniStudioCoachOverlay
+              <MiniWorkspaceGoalsOverlay
                 goals={miniCoachGoals.goals}
                 goalStatus={miniCoachGoals.goalStatus}
                 allGoalsDone={miniCoachGoals.allGoalsDone}

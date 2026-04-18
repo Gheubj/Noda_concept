@@ -1,8 +1,10 @@
 import { Card, Space, Tag, Typography } from "antd";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { useMemo } from "react";
 import { useAppStore } from "@/store/useAppStore";
 import type { StudioGoal } from "@/shared/types/lessonContent";
+import { coachPngForMood, resolveCoachMood } from "@/shared/coachMood";
 
 const { Text } = Typography;
 
@@ -13,6 +15,8 @@ export type StudioStagePanelProps = {
   goals?: StudioGoal[];
   goalStatus?: Record<string, boolean>;
   allGoalsDone?: boolean;
+  /** Если false — цели показываются только на воркспейсе (оверлей), здесь только персонаж и текст. */
+  showGoalsInPanel?: boolean;
 };
 
 /** Панель «сцены»: статус сценария; в мини-студии — персонаж, инструкция и цели. */
@@ -21,9 +25,12 @@ export function StudioStagePanel({
   instructionMarkdown = "",
   goals = [],
   goalStatus = {},
-  allGoalsDone = false
+  allGoalsDone = false,
+  showGoalsInPanel = true
 }: StudioStagePanelProps) {
-  const message = useAppStore((s) => s.training.message);
+  const training = useAppStore((s) => s.training);
+  const message = training.message;
+  const coachSrc = useMemo(() => coachPngForMood(resolveCoachMood(training)), [training]);
 
   if (mode === "mini_coach") {
     return (
@@ -31,7 +38,7 @@ export function StudioStagePanel({
         <Card size="small" title="Сцена" className="studio-stage-card">
           <div className="studio-stage-panel__mini-layout">
             <div className="studio-stage-panel__mini-figure-wrap">
-              <img className="studio-stage-panel__mini-figure" src="/nodly-coach.svg" alt="" width={56} height={56} />
+              <img className="studio-stage-panel__mini-figure" src={coachSrc} alt="" width={56} height={56} />
             </div>
             <div className="studio-stage-panel__mini-copy">
               {instructionMarkdown.trim() ? (
@@ -39,7 +46,7 @@ export function StudioStagePanel({
                   <ReactMarkdown remarkPlugins={[remarkGfm]}>{instructionMarkdown}</ReactMarkdown>
                 </div>
               ) : null}
-              {goals.length > 0 ? (
+              {showGoalsInPanel && goals.length > 0 ? (
                 <div className="studio-stage-panel__mini-goals">
                   <Text strong>Цели</Text>
                   <Space direction="vertical" size={4} style={{ width: "100%" }}>
@@ -54,7 +61,7 @@ export function StudioStagePanel({
                   </Space>
                 </div>
               ) : null}
-              {allGoalsDone ? (
+              {showGoalsInPanel && allGoalsDone ? (
                 <Text type="success">Все цели выполнены — отличная работа!</Text>
               ) : null}
               <div className="studio-stage-panel__mini-status">
