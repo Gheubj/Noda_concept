@@ -1,79 +1,79 @@
-import { Space, Tag, Typography } from "antd";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
+import { Card, Space, Tag, Typography } from "antd";
+import { useMemo } from "react";
 import { useAppStore } from "@/store/useAppStore";
 import type { CoachMood } from "@/shared/types/ai";
 import type { StudioGoal } from "@/shared/types/lessonContent";
 
 const { Text } = Typography;
 
-const MOOD_IMAGE: Record<CoachMood, string> = {
-  idle: "/coach/idle.png",
-  working: "/coach/working.png",
-  talking: "/coach/talking.png",
-  success: "/coach/success.png",
-  error: "/coach/error.png"
-};
-
-export type MiniCoachOverlayProps = {
+export type MiniStudioCoachOverlayProps = {
   goals: StudioGoal[];
   goalStatus: Record<string, boolean>;
   allGoalsDone: boolean;
-  instructionMarkdown: string;
 };
 
-export function MiniStudioCoachOverlay({
-  goals,
-  goalStatus,
-  allGoalsDone,
-  instructionMarkdown
-}: MiniCoachOverlayProps) {
-  const { message, coachMood } = useAppStore((s) => ({
-    message: s.training.message,
-    coachMood: s.training.coachMood
-  }));
+function moodToAsset(mood: CoachMood | undefined): string {
+  switch (mood) {
+    case "working":
+      return "/coach/working.png";
+    case "talking":
+      return "/coach/talking.png";
+    case "success":
+      return "/coach/success.png";
+    case "error":
+      return "/coach/error.png";
+    case "idle":
+    default:
+      return "/coach/idle.png";
+  }
+}
 
-  const imgSrc = MOOD_IMAGE[coachMood] ?? MOOD_IMAGE.idle;
+export function MiniStudioCoachOverlay({ goals, goalStatus, allGoalsDone }: MiniStudioCoachOverlayProps) {
+  const training = useAppStore((s) => s.training);
+  const mood: CoachMood = useMemo(() => {
+    if (training.coachMood) {
+      return training.coachMood;
+    }
+    if (training.isTraining) {
+      return "working";
+    }
+    const msg = (training.message || "").toLowerCase();
+    if (msg.includes("ошиб") || msg.includes("error")) {
+      return "error";
+    }
+    if (msg.trim().length > 0 && msg !== "ожидание") {
+      return "talking";
+    }
+    return "idle";
+  }, [training.coachMood, training.isTraining, training.message]);
 
   return (
-    <div className="mini-coach-overlay" aria-live="polite">
-      <div className="mini-coach-overlay__panel">
+    <div className="mini-coach-overlay mini-coach-overlay--on-workspace" aria-label="Подсказка">
+      <Card size="small" className={`mini-coach-overlay__card mini-coach-overlay__card--${mood}`}>
         <div className="mini-coach-overlay__row">
-          <img className="mini-coach-overlay__avatar" src={imgSrc} alt="" width={72} height={72} />
-          <div className="mini-coach-overlay__body">
-            {instructionMarkdown.trim() ? (
-              <div className="mini-coach-overlay__instruction lesson-flow__markdown">
-                <ReactMarkdown remarkPlugins={[remarkGfm]}>{instructionMarkdown}</ReactMarkdown>
-              </div>
-            ) : null}
-            {goals.length > 0 ? (
-              <div className="mini-coach-overlay__goals">
-                <Text strong className="mini-coach-overlay__goals-title">
-                  Цели
-                </Text>
-                <Space direction="vertical" size={2} style={{ width: "100%" }}>
-                  {goals.map((goal) => (
-                    <div key={goal.id} className="mini-coach-overlay__goal-row">
-                      <Tag color={goalStatus[goal.id] ? "success" : "default"} style={{ margin: 0 }}>
-                        {goalStatus[goal.id] ? "Готово" : "Ждём"}
-                      </Tag>
-                      <Text className="mini-coach-overlay__goal-text">{goal.title}</Text>
-                    </div>
-                  ))}
-                </Space>
-              </div>
-            ) : null}
-            {allGoalsDone ? (
-              <Text type="success" className="mini-coach-overlay__all-done">
-                Все цели выполнены — отличная работа!
-              </Text>
-            ) : null}
-            <div className="mini-coach-overlay__bubble">
-              <Text type="secondary">{message || "Нажми «Старт» в Blockly."}</Text>
-            </div>
+          <img className="mini-coach-overlay__avatar" src={moodToAsset(mood)} alt="" width={56} height={56} />
+          <div className="mini-coach-overlay__bubble">
+            <Text>{training.message || "Ожидание"}</Text>
           </div>
         </div>
-      </div>
+        {goals.length > 0 ? (
+          <div className="mini-coach-overlay__goals">
+            <Text strong>Цели</Text>
+            <Space direction="vertical" size={4} style={{ width: "100%" }}>
+              {goals.map((g) => (
+                <div key={g.id} className="mini-coach-overlay__goal-row">
+                  <Tag color={goalStatus[g.id] ? "success" : "default"}>
+                    {goalStatus[g.id] ? "Готово" : "Ждём"}
+                  </Tag>
+                  <Text>{g.title}</Text>
+                </div>
+              ))}
+            </Space>
+          </div>
+        ) : null}
+        {allGoalsDone ? <Text type="success">Все цели выполнены — отличная работа!</Text> : null}
+      </Card>
     </div>
   );
 }
+

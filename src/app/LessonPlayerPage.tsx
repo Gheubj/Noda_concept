@@ -60,7 +60,6 @@ export function LessonPlayerPage() {
   const [autoCreatingMini, setAutoCreatingMini] = useState<Record<string, boolean>>({});
   const playerStateRef = useRef(playerState);
   playerStateRef.current = playerState;
-  const miniEnsureLockRef = useRef<Set<string>>(new Set());
 
   const lessonContent: LessonContent = useMemo(() => {
     if (!bootstrap?.lessonContent || typeof bootstrap.lessonContent !== "object") {
@@ -73,10 +72,6 @@ export function LessonPlayerPage() {
 
   const checkpointBlockIds = useMemo(
     () => flowBlocks.filter((b): b is Extract<(typeof flowBlocks)[0], { type: "checkpoint" }> => b.type === "checkpoint").map((b) => b.id),
-    [flowBlocks]
-  );
-  const studioBlockIds = useMemo(
-    () => flowBlocks.filter((b): b is Extract<(typeof flowBlocks)[0], { type: "studio" }> => b.type === "studio").map((b) => b.id),
     [flowBlocks]
   );
   const persistState = useCallback(
@@ -195,80 +190,46 @@ export function LessonPlayerPage() {
     await persistState(next);
   };
 
-  const ensureMiniDevProject = useCallback(
-    async (blockId: string) => {
-      if (!bootstrap || !lessonId) {
-        return;
-      }
-      const cur = playerStateRef.current;
-      if (cur.miniDevProjectIds?.[blockId]) {
-        return;
-      }
-      if (miniEnsureLockRef.current.has(blockId)) {
-        return;
-      }
-      miniEnsureLockRef.current.add(blockId);
-      setAutoCreatingMini((prev) => ({ ...prev, [blockId]: true }));
-      setSaving(true);
-      try {
-        const q = assignmentId ? `?assignmentId=${encodeURIComponent(assignmentId)}` : "";
-        const { projectId } = await apiClient.post<{ projectId: string }>(
-          `/api/student/lessons/${encodeURIComponent(lessonId)}/mini-dev-project${q}`,
-          {
-            blockId,
-            title: `${bootstrap.title} · мини-${blockId.slice(0, 6)}`
-          }
-        );
-        const latest = playerStateRef.current;
-        const next: LessonPlayerStateV1 = {
-          ...latest,
-          miniDevProjectIds: {
-            ...(latest.miniDevProjectIds ?? {}),
-            [blockId]: projectId
-          },
-          miniDevGoalStatus: {
-            ...(latest.miniDevGoalStatus ?? {}),
-            [blockId]: {}
-          }
-        };
-        await persistState(next);
-      } catch (e) {
-        messageApi.error(e instanceof Error ? e.message : "Не удалось запустить мини-разработку");
-        setSaving(false);
-      } finally {
-        miniEnsureLockRef.current.delete(blockId);
-        setAutoCreatingMini((prev) => ({ ...prev, [blockId]: false }));
-      }
-    },
-    [assignmentId, bootstrap, lessonId, messageApi, persistState]
-  );
-
-  /** Новый блок «мини-разработка» без projectId: создаём облачный проект автоматически (без кнопки). */
-  useEffect(() => {
-    if (!bootstrap || !lessonId || loading) {
+  const ensureMiniDevProject = async (blockId: string) => {
+    if (!bootstrap) {
       return;
     }
-    const missing = studioBlockIds.filter((id) => !(playerState.miniDevProjectIds ?? {})[id]);
-    if (missing.length === 0) {
+    if (miniDevProjectId(blockId)) {
       return;
     }
-    const first = missing[0];
-    if (!first) {
+    if (autoCreatingMini[blockId]) {
       return;
     }
-    if (autoCreatingMini[first]) {
-      return;
+    setAutoCreatingMini((prev) => ({ ...prev, [blockId]: true }));
+    setSaving(true);
+    try {
+      const q = assignmentId ? `?assignmentId=${encodeURIComponent(assignmentId)}` : "";
+      const { projectId } = await apiClient.post<{ projectId: string }>(
+        `/api/student/lessons/${encodeURIComponent(lessonId)}/mini-dev-project${q}`,
+        {
+          blockId,
+          title: `${bootstrap.title} · мини-${blockId.slice(0, 6)}`
+        }
+      );
+      const next: LessonPlayerStateV1 = {
+        ...playerState,
+        miniDevProjectIds: {
+          ...(playerState.miniDevProjectIds ?? {}),
+          [blockId]: projectId
+        },
+        miniDevGoalStatus: {
+          ...(playerState.miniDevGoalStatus ?? {}),
+          [blockId]: {}
+        }
+      };
+      await persistState(next);
+    } catch (e) {
+      messageApi.error(e instanceof Error ? e.message : "Не удалось запустить мини-разработку");
+      setSaving(false);
+    } finally {
+      setAutoCreatingMini((prev) => ({ ...prev, [blockId]: false }));
     }
-    void ensureMiniDevProject(first);
-  }, [
-    autoCreatingMini,
-    bootstrap,
-    ensureMiniDevProject,
-    lessonId,
-    loading,
-    playerState.miniDevProjectIds,
-    studioBlockIds
-  ]);
+  };
 
   useEffect(() => {
     const handler = (evt: MessageEvent<MiniStudioMessage | MiniGoalsMessage>) => {

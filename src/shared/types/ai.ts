@@ -55,16 +55,13 @@ export interface TabularPredictionInput {
   input: string;
 }
 
-/** Настроение персонажа-подсказчика в студии (в т.ч. мини-урок). */
 export type CoachMood = "idle" | "working" | "talking" | "success" | "error";
 
 export interface TrainingState {
   isTraining: boolean;
   progress: number;
   message: string;
-  coachMood: CoachMood;
-  /** Выполняется цепочка Blockly от «Старт» (не путать с isTraining модели). */
-  isScriptRunning: boolean;
+  coachMood?: CoachMood;
 }
 
 export interface TrainConfig {

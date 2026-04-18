@@ -556,6 +556,78 @@ html[data-theme="dark"] .app-content--workspace {
   align-items: stretch;
 }
 
+/* Мини-урок: Blockly слева на всю ширину, сцена с целями справа */
+.studio-page__main--mini-side {
+  flex-direction: row;
+  align-items: stretch;
+  gap: 10px;
+}
+
+.studio-mini-host .studio-page__main--mini-side .studio-stage-panel {
+  flex-shrink: 0;
+  width: min(288px, 30vw);
+  min-width: 240px;
+  max-width: 320px;
+}
+
+.studio-stage-panel--mini .studio-stage-panel__mini-layout {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.studio-stage-panel--mini .studio-stage-panel__mini-figure-wrap {
+  flex-shrink: 0;
+}
+
+.studio-stage-panel--mini .studio-stage-panel__mini-figure {
+  display: block;
+  width: 56px;
+  height: auto;
+}
+
+.studio-stage-panel--mini .studio-stage-panel__mini-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.studio-stage-panel--mini .studio-stage-panel__mini-instruction {
+  max-height: min(42vh, 320px);
+  overflow: auto;
+  padding: 4px 2px;
+}
+
+@media (max-width: 780px) {
+  .studio-page__main--mini-side {
+    flex-direction: column;
+  }
+
+  .studio-mini-host .studio-page__main--mini-side .studio-stage-panel {
+    width: 100%;
+    max-width: none;
+    min-width: 0;
+  }
+}
+
+.studio-stage-panel--mini .studio-stage-panel__mini-goals {
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px dashed var(--ant-color-border, rgba(148, 163, 184, 0.45));
+  background: color-mix(in srgb, var(--app-surface, #fff) 94%, transparent);
+}
+
+.studio-stage-panel--mini .studio-stage-panel__mini-goal-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.studio-stage-panel--mini .studio-stage-panel__mini-status {
+  font-size: 12px;
+}
+
 .studio-page__blockly {
   flex: 1;
   min-width: 0;
@@ -1176,15 +1248,6 @@ html[data-theme="dark"] .blockly-palette-btn {
   box-shadow: 0 1px 0 rgba(0, 0, 0, 0.35);
 }
 
-.blockly-workspace-surface {
-  flex: 1;
-  min-width: 0;
-  min-height: 0;
-  height: 100%;
-  position: relative;
-  display: flex;
-}
-
 .blockly-container {
   flex: 1;
   min-width: 0;
@@ -1194,34 +1257,34 @@ html[data-theme="dark"] .blockly-palette-btn {
   overscroll-behavior: contain;
 }
 
-/* Мини-урок: персонаж и цели поверх воркспейса (не перехватываем drag блоков) */
+.blockly-workspace-surface {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  position: relative;
+  display: flex;
+}
+
 .mini-coach-overlay {
   position: absolute;
   top: 8px;
   right: 8px;
-  z-index: 30;
-  max-width: min(320px, 42%);
+  width: min(320px, 36vw);
+  max-width: 320px;
   pointer-events: none;
+  z-index: 20;
 }
 
-.mini-coach-overlay__panel {
-  pointer-events: auto;
-  border-radius: 10px;
-  padding: 8px 10px;
-  background: color-mix(in srgb, var(--app-surface, #fff) 94%, transparent);
+.mini-coach-overlay__card {
+  pointer-events: none;
+  background: color-mix(in srgb, var(--app-surface, #fff) 92%, transparent);
   border: 1px solid var(--ant-color-border, rgba(148, 163, 184, 0.45));
-  box-shadow: 0 4px 18px rgba(15, 23, 42, 0.12);
-}
-
-html[data-theme="dark"] .mini-coach-overlay__panel {
-  background: color-mix(in srgb, var(--app-surface, #1e293b) 92%, transparent);
-  border-color: rgba(148, 163, 184, 0.35);
-  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 10px 24px rgba(2, 6, 23, 0.22);
 }
 
 .mini-coach-overlay__row {
   display: flex;
-  gap: 8px;
+  gap: 10px;
   align-items: flex-start;
 }
 
@@ -1229,60 +1292,34 @@ html[data-theme="dark"] .mini-coach-overlay__panel {
   flex-shrink: 0;
   width: 56px;
   height: auto;
-  border-radius: 8px;
-  object-fit: contain;
 }
 
-.mini-coach-overlay__body {
+.mini-coach-overlay__bubble {
   flex: 1;
   min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--app-surface, #fff) 88%, rgba(148, 163, 184, 0.12));
+  border: 1px solid var(--landing-hero-border);
+  line-height: 1.35;
 }
 
-.mini-coach-overlay__instruction {
-  max-height: min(28vh, 200px);
-  overflow: auto;
-  font-size: 12px;
-  line-height: 1.4;
+html[data-theme="dark"] .mini-coach-overlay__bubble {
+  border-color: rgba(148, 163, 184, 0.25);
 }
 
 .mini-coach-overlay__goals {
-  padding: 6px 8px;
+  margin-top: 10px;
+  padding: 8px 10px;
   border-radius: 8px;
   border: 1px dashed var(--ant-color-border, rgba(148, 163, 184, 0.45));
-  background: color-mix(in srgb, var(--app-surface, #fff) 88%, transparent);
-}
-
-html[data-theme="dark"] .mini-coach-overlay__goals {
-  background: color-mix(in srgb, var(--app-surface, #0f172a) 88%, transparent);
-}
-
-.mini-coach-overlay__goals-title {
-  display: block;
-  font-size: 11px;
-  margin-bottom: 4px;
+  background: color-mix(in srgb, var(--app-surface, #fff) 94%, transparent);
 }
 
 .mini-coach-overlay__goal-row {
   display: flex;
-  align-items: flex-start;
-  gap: 6px;
-}
-
-.mini-coach-overlay__goal-text {
-  font-size: 12px;
-  line-height: 1.35;
-}
-
-.mini-coach-overlay__all-done {
-  font-size: 12px;
-}
-
-.mini-coach-overlay__bubble {
-  font-size: 12px;
-  line-height: 1.35;
+  align-items: center;
+  gap: 8px;
 }
 
 /*
@@ -1776,22 +1813,6 @@ html[data-theme="dark"] .lesson-flow__pdf-page-canvas {
   border-radius: 8px;
   display: block;
   background: #0b1220;
-}
-
-.lesson-flow__mini-dev-placeholder {
-  width: 100%;
-  min-height: min(58vh, 560px);
-  height: min(58vh, 560px);
-  border: 1px solid var(--ant-color-border, rgba(148, 163, 184, 0.45));
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: color-mix(in srgb, var(--app-surface, #fff) 96%, #0b1220);
-}
-
-html[data-theme="dark"] .lesson-flow__mini-dev-placeholder {
-  background: color-mix(in srgb, var(--app-surface, #1e293b) 92%, #0b1220);
 }
 
 .studio-mini-host.app-content--workspace {

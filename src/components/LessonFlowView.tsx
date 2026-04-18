@@ -1,10 +1,9 @@
-import { lazy, Suspense, useEffect, useLayoutEffect } from "react";
+import { lazy, Suspense, useLayoutEffect } from "react";
 import { Button, Checkbox, Input, Radio, Space, Spin, Tag, Typography } from "antd";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import type { LessonContentBlock } from "@/shared/types/lessonContent";
 import { resolveLessonMediaUrl } from "@/shared/lessonMediaUrl";
-import { NODLY_MINI_BOOTSTRAP, NODLY_MINI_REQUEST_CONTEXT } from "@/shared/miniStudioMessaging";
 
 const LessonPdfReader = lazy(() =>
   import("@/components/LessonPdfReader").then((m) => ({ default: m.LessonPdfReader }))
@@ -12,14 +11,7 @@ const LessonPdfReader = lazy(() =>
 
 const { Paragraph, Text } = Typography;
 
-const MINI_PREVIEW_LESSON_KEY = "_preview";
-
-function miniLessonStorageKey(lessonId: string | undefined, blockId: string): string {
-  const lid = lessonId?.trim() ? lessonId.trim() : MINI_PREVIEW_LESSON_KEY;
-  return `nodly_mini_ctx__${lid}__${blockId}`;
-}
-
-/** Кладёт инструкцию и цели в sessionStorage (тот же ключ, что в URL iframe) + дубли для postMessage в StudioPage. */
+/** Кладёт инструкцию и цели в sessionStorage — мини-студия в iframe читает их на «сцене». */
 function MiniStudioSessionStore(props: {
   lessonId?: string;
   blockId: string;
@@ -27,9 +19,12 @@ function MiniStudioSessionStore(props: {
   goals: NonNullable<Extract<LessonContentBlock, { type: "studio" }>["goals"]>;
 }) {
   useLayoutEffect(() => {
+    if (!props.lessonId) {
+      return;
+    }
     try {
       sessionStorage.setItem(
-        miniLessonStorageKey(props.lessonId, props.blockId),
+        `nodly_mini_ctx__${props.lessonId}__${props.blockId}`,
         JSON.stringify({ instruction: props.instruction, goals: props.goals })
       );
     } catch {
@@ -37,39 +32,6 @@ function MiniStudioSessionStore(props: {
     }
   }, [props.lessonId, props.blockId, props.instruction, props.goals]);
   return null;
-}
-
-/** Отправляет контекст в iframe: sessionStorage в дочернем контексте часто не совпадает с родителем (partitioned storage). */
-function postMiniBootstrapToFrame(
-  win: Window | null | undefined,
-  payload: {
-    lessonId: string;
-    blockId: string;
-    instruction: string;
-    goals: NonNullable<Extract<LessonContentBlock, { type: "studio" }>["goals"]>;
-  }
-) {
-  if (!win) {
-    return;
-  }
-  const msg = {
-    source: NODLY_MINI_BOOTSTRAP,
-    lessonId: payload.lessonId,
-    blockId: payload.blockId,
-    instruction: payload.instruction,
-    goals: payload.goals
-  };
-  const origin = window.location.origin;
-  const send = () => {
-    try {
-      win.postMessage(msg, origin);
-    } catch {
-      /* ignore */
-    }
-  };
-  send();
-  window.setTimeout(send, 120);
-  window.setTimeout(send, 400);
 }
 
 function isStudioCta(cta: string | null | undefined): boolean {
@@ -115,49 +77,6 @@ export function LessonFlowView({
 }: LessonFlowViewProps) {
   let checkpointOrdinal = 0;
   const isColab = variant === "colab";
-
-  useEffect(() => {
-    const handler = (ev: MessageEvent) => {
-      if (ev.origin !== window.location.origin) {
-        return;
-      }
-      const d = ev.data as { source?: string; lessonId?: string; blockId?: string };
-      if (!d || d.source !== NODLY_MINI_REQUEST_CONTEXT) {
-        return;
-      }
-      const blockId = typeof d.blockId === "string" ? d.blockId : "";
-      const lessonKey = typeof d.lessonId === "string" ? d.lessonId : "";
-      if (!blockId || !lessonKey) {
-        return;
-      }
-      const expectedLesson = lessonId?.trim() ? lessonId.trim() : MINI_PREVIEW_LESSON_KEY;
-      if (lessonKey !== expectedLesson) {
-        return;
-      }
-      const block = blocks.find(
-        (b): b is Extract<LessonContentBlock, { type: "studio" }> => b.type === "studio" && b.id === blockId
-      );
-      if (!block) {
-        return;
-      }
-      const target = ev.source as Window | null;
-      if (!target || target === window) {
-        return;
-      }
-      target.postMessage(
-        {
-          source: NODLY_MINI_BOOTSTRAP,
-          lessonId: expectedLesson,
-          blockId,
-          instruction: block.instruction,
-          goals: block.goals ?? []
-        },
-        window.location.origin
-      );
-    };
-    window.addEventListener("message", handler);
-    return () => window.removeEventListener("message", handler);
-  }, [blocks, lessonId]);
 
   const renderMarkdown = (value: string, className?: string) => (
     <div className={className}>
@@ -215,11 +134,10 @@ export function LessonFlowView({
         if (block.type === "studio") {
           const projectId = miniDevProjectId(block.id);
           const creating = miniDevCreating?.(block.id) ?? false;
-          const miniLessonKey = lessonId?.trim() ? lessonId.trim() : MINI_PREVIEW_LESSON_KEY;
           const frameSrc = projectId
-            ? `/studio?mini=1&project=${encodeURIComponent(projectId)}&miniLessonId=${encodeURIComponent(
-                miniLessonKey
-              )}&miniBlockId=${encodeURIComponent(block.id)}`
+            ? `/studio?mini=1&project=${encodeURIComponent(projectId)}${
+                lessonId ? `&miniLessonId=${encodeURIComponent(lessonId)}&miniBlockId=${encodeURIComponent(block.id)}` : ""
+              }`
             : "";
           if (bareMiniStudio) {
             return (
@@ -235,22 +153,21 @@ export function LessonFlowView({
                     className="lesson-flow__mini-dev-frame"
                     title={`mini-dev-${block.id}`}
                     src={frameSrc}
-                    onLoad={(e) => {
-                      const w = (e.target as HTMLIFrameElement).contentWindow;
-                      postMiniBootstrapToFrame(w, {
-                        lessonId: miniLessonKey,
-                        blockId: block.id,
-                        instruction: block.instruction,
-                        goals: block.goals ?? []
-                      });
-                    }}
                   />
-                ) : onEnsureMiniDevProject ? (
-                  <div className="lesson-flow__mini-dev-placeholder">
-                    <Spin size="large" tip={creating ? "Создаём проект для мини-разработки…" : "Готовим мини-разработку…"} />
-                  </div>
                 ) : (
-                  <Text type="secondary">В этом превью мини-разработка без привязки к уроку.</Text>
+                  <Space direction="vertical" size="small">
+                    <Text type="secondary">
+                      Мини-разработка ещё не сохранена в проекты. Нажми кнопку, чтобы создать проект.
+                    </Text>
+                    <Button
+                      type="primary"
+                      loading={creating}
+                      onClick={() => onEnsureMiniDevProject?.(block.id)}
+                      disabled={!onEnsureMiniDevProject}
+                    >
+                      Сохранить мини-разработку
+                    </Button>
+                  </Space>
                 )}
               </div>
             );
@@ -264,22 +181,21 @@ export function LessonFlowView({
                     className="lesson-flow__mini-dev-frame"
                     title={`mini-dev-${block.id}`}
                     src={frameSrc}
-                    onLoad={(e) => {
-                      const w = (e.target as HTMLIFrameElement).contentWindow;
-                      postMiniBootstrapToFrame(w, {
-                        lessonId: miniLessonKey,
-                        blockId: block.id,
-                        instruction: block.instruction,
-                        goals: block.goals ?? []
-                      });
-                    }}
                   />
-                ) : onEnsureMiniDevProject ? (
-                  <div className="lesson-flow__mini-dev-placeholder">
-                    <Spin size="large" tip={creating ? "Создаём проект для мини-разработки…" : "Готовим мини-разработку…"} />
-                  </div>
                 ) : (
-                  <Text type="secondary">В этом превью мини-разработка без привязки к уроку.</Text>
+                  <Space direction="vertical" size="small">
+                    <Text type="secondary">
+                      Мини-разработка ещё не сохранена в проекты. Нажми кнопку, чтобы создать проект.
+                    </Text>
+                    <Button
+                      type="primary"
+                      loading={creating}
+                      onClick={() => onEnsureMiniDevProject?.(block.id)}
+                      disabled={!onEnsureMiniDevProject}
+                    >
+                      Сохранить мини-разработку
+                    </Button>
+                  </Space>
                 )}
                 <Button
                   type={miniDevDone(block.id) ? "default" : "primary"}

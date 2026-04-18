@@ -28,7 +28,6 @@ import type { NodlyProjectMeta, NodlyProjectSnapshot } from "@/shared/types/proj
 import type { StudioGoal } from "@/shared/types/lessonContent";
 import type { MiniDevTelemetry } from "@/shared/types/lessonPlayerState";
 import { evalMiniStudioGoal, summarizeBlocklyState } from "@/shared/miniStudioGoalEval";
-import { NODLY_MINI_BOOTSTRAP, NODLY_MINI_REQUEST_CONTEXT } from "@/shared/miniStudioMessaging";
 import { deleteProjectSmart, loadProjectSmart, listProjects, saveProjectSmart } from "@/features/project/projectRepository";
 import { useSessionStore } from "@/store/useSessionStore";
 import { apiClient } from "@/shared/api/client";
@@ -103,7 +102,6 @@ export function StudioPage() {
   const [allLessonGoalsDone, setAllLessonGoalsDone] = useState(false);
   const miniTelemetryRef = useRef({ trained: false, predicted: false });
   const lastPostedGoalsJson = useRef<string>("");
-  const prevMiniAllGoalsDone = useRef(false);
   const [messageApi, contextHolder] = message.useMessage();
   const [guestUserId] = useState(() => {
     const stored =
@@ -175,58 +173,6 @@ export function StudioPage() {
     }
   }, [isMini, miniLessonId, miniBlockId]);
 
-  /** Родительский урок шлёт контекст postMessage — иначе в iframe пустой sessionStorage (partitioned). */
-  useEffect(() => {
-    if (!isMini || !miniLessonId || !miniBlockId) {
-      return;
-    }
-    const handler = (ev: MessageEvent) => {
-      if (ev.origin !== window.location.origin) {
-        return;
-      }
-      const d = ev.data as {
-        source?: string;
-        lessonId?: string;
-        blockId?: string;
-        instruction?: string;
-        goals?: StudioGoal[];
-      };
-      if (!d || d.source !== NODLY_MINI_BOOTSTRAP) {
-        return;
-      }
-      if (d.lessonId !== miniLessonId || d.blockId !== miniBlockId) {
-        return;
-      }
-      setMiniCoach({
-        instruction: typeof d.instruction === "string" ? d.instruction : "",
-        goals: Array.isArray(d.goals) ? d.goals : []
-      });
-    };
-    window.addEventListener("message", handler);
-    return () => window.removeEventListener("message", handler);
-  }, [isMini, miniLessonId, miniBlockId]);
-
-  /** Запрос контекста у родителя (LessonFlowView) — срабатывает даже если onLoad iframe раньше слушателя. */
-  useEffect(() => {
-    if (!isMini || !miniLessonId || !miniBlockId) {
-      return;
-    }
-    const origin = window.location.origin;
-    const msg = {
-      source: NODLY_MINI_REQUEST_CONTEXT,
-      lessonId: miniLessonId,
-      blockId: miniBlockId
-    };
-    const send = () => window.parent?.postMessage(msg, origin);
-    send();
-    const t1 = window.setTimeout(send, 200);
-    const t2 = window.setTimeout(send, 800);
-    return () => {
-      window.clearTimeout(t1);
-      window.clearTimeout(t2);
-    };
-  }, [isMini, miniLessonId, miniBlockId]);
-
   useEffect(() => {
     if (!isMini) {
       return;
@@ -276,18 +222,16 @@ export function StudioPage() {
     return () => window.clearInterval(id);
   }, [isMini, miniLessonId, miniBlockId, miniCoach]);
 
+  const lastAllDoneRef = useRef(false);
   useEffect(() => {
     if (!isMini || !miniLessonId || !miniBlockId) {
-      prevMiniAllGoalsDone.current = false;
       return;
     }
-    if (allLessonGoalsDone && !prevMiniAllGoalsDone.current) {
-      prevMiniAllGoalsDone.current = true;
-      useAppStore.getState().setTraining({ coachMood: "success" });
+    if (!lastAllDoneRef.current && allLessonGoalsDone) {
+      // Один раз при выполнении всех целей: подсветим персонажа, не перетирая другие сообщения по таймеру.
+      useAppStore.getState().setTraining({ coachMood: "success", message: "Все цели выполнены!" });
     }
-    if (!allLessonGoalsDone) {
-      prevMiniAllGoalsDone.current = false;
-    }
+    lastAllDoneRef.current = allLessonGoalsDone;
   }, [isMini, miniLessonId, miniBlockId, allLessonGoalsDone]);
 
   const refreshProjects = async (nextUserId: string) => {
@@ -756,19 +700,18 @@ export function StudioPage() {
           </Button>
         ) : null}
       </div> : null}
-      <div className="studio-page__main">
+      <div
+        className={`studio-page__main${
+          isMini && miniLessonId && miniBlockId ? " studio-page__main--mini-side" : ""
+        }`}
+      >
         <div className="studio-page__blockly">
           <BlocklyWorkspace
             miniStudioToolbar={isMini}
-            miniCoachOverlay={
+            miniCoachGoals={
               isMini && miniLessonId && miniBlockId
-                ? {
-                    goals: miniCoach?.goals ?? [],
-                    goalStatus: goalUiStatus,
-                    allGoalsDone: allLessonGoalsDone,
-                    instructionMarkdown: miniCoach?.instruction ?? ""
-                  }
-                : null
+                ? { goals: miniCoach?.goals ?? [], goalStatus: goalUiStatus, allGoalsDone: allLessonGoalsDone }
+                : undefined
             }
             onOpenDataLibrary={isMini ? () => setDataLibraryOpen(true) : undefined}
             onSaveProject={isMini && !readOnly ? () => void handleMiniSaveToProjects() : undefined}
