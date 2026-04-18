@@ -4,6 +4,7 @@ import { randomUUID } from "node:crypto";
 import type { Express, NextFunction, Request, Response } from "express";
 import multer from "multer";
 import { authRequired, adminRequired, type AuthenticatedRequest } from "./auth.js";
+import { isSafeUploadBasename } from "./uploadSafeBasename.js";
 
 function lessonImagesDir() {
   return path.join(process.cwd(), "data", "uploads", "lesson-images");
@@ -26,7 +27,7 @@ function extForMime(mimetype: string): string {
 }
 
 function isSafeImageFilename(name: string): boolean {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.(png|jpg|jpeg|webp|gif)$/i.test(name);
+  return isSafeUploadBasename(name, [".png", ".jpg", ".jpeg", ".webp", ".gif"]);
 }
 
 export function registerLessonImageUploadRoutes(app: Express) {

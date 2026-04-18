@@ -12,6 +12,7 @@ import { randomUUID } from "node:crypto";
 import type { Express, NextFunction, Request, Response } from "express";
 import multer from "multer";
 import { authRequired, adminRequired, type AuthenticatedRequest } from "./auth.js";
+import { isSafeUploadBasename } from "./uploadSafeBasename.js";
 
 const PDF_MAGIC = Buffer.from("%PDF");
 
@@ -30,9 +31,8 @@ function readPdfMagicPrefix(filePath: string): Buffer {
   }
 }
 
-/** Имя файла = uuid + .pdf (без path traversal). */
 function isSafeLessonPdfFilename(name: string): boolean {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.pdf$/i.test(name);
+  return isSafeUploadBasename(name, [".pdf"]);
 }
 
 export function registerLessonPdfUploadRoutes(app: Express) {

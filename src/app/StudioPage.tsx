@@ -688,7 +688,19 @@ export function StudioPage() {
           </Button>
         ) : null}
       </div> : null}
-      <div className={`studio-page__main${isMini ? " studio-page__main--mini" : ""}`}>
+      <div
+        className={`studio-page__main${
+          isMini && miniLessonId && miniBlockId ? " studio-page__main--mini-side" : ""
+        }`}
+      >
+        <div className="studio-page__blockly">
+          <BlocklyWorkspace
+            miniStudioToolbar={isMini}
+            onOpenDataLibrary={isMini ? () => setDataLibraryOpen(true) : undefined}
+            onSaveProject={isMini && !readOnly ? () => void handleMiniSaveToProjects() : undefined}
+            onMiniStudioActivity={handleMiniStudioActivity}
+          />
+        </div>
         {isMini && miniLessonId && miniBlockId ? (
           <StudioStagePanel
             mode="mini_coach"
@@ -698,14 +710,6 @@ export function StudioPage() {
             allGoalsDone={allLessonGoalsDone}
           />
         ) : null}
-        <div className="studio-page__blockly">
-          <BlocklyWorkspace
-            miniStudioToolbar={isMini}
-            onOpenDataLibrary={isMini ? () => setDataLibraryOpen(true) : undefined}
-            onSaveProject={isMini && !readOnly ? () => void handleMiniSaveToProjects() : undefined}
-            onMiniStudioActivity={handleMiniStudioActivity}
-          />
-        </div>
         {!isMini ? <StudioStagePanel /> : null}
       </div>
     </div>

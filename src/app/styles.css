@@ -556,44 +556,43 @@ html[data-theme="dark"] .app-content--workspace {
   align-items: stretch;
 }
 
-.studio-page__main--mini {
-  flex-direction: column;
+/* Мини-урок: Blockly слева на всю ширину, сцена с целями справа */
+.studio-page__main--mini-side {
+  flex-direction: row;
+  align-items: stretch;
   gap: 10px;
 }
 
-.studio-mini-host .studio-page__main--mini .studio-stage-panel {
-  width: 100%;
-  max-width: none;
-}
-
-.studio-stage-panel--mini .studio-stage-panel__mini-layout {
-  display: flex;
-  gap: 14px;
-  align-items: flex-start;
-}
-
-.studio-stage-panel--mini .studio-stage-panel__mini-figure-wrap {
+.studio-mini-host .studio-page__main--mini-side .studio-stage-panel {
   flex-shrink: 0;
-}
-
-.studio-stage-panel--mini .studio-stage-panel__mini-figure {
-  display: block;
-  width: 96px;
-  height: auto;
+  width: min(288px, 30vw);
+  min-width: 240px;
+  max-width: 320px;
 }
 
 .studio-stage-panel--mini .studio-stage-panel__mini-copy {
-  flex: 1;
-  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 8px;
+  min-width: 0;
 }
 
 .studio-stage-panel--mini .studio-stage-panel__mini-instruction {
-  max-height: 180px;
+  max-height: min(42vh, 320px);
   overflow: auto;
   padding: 4px 2px;
+}
+
+@media (max-width: 780px) {
+  .studio-page__main--mini-side {
+    flex-direction: column;
+  }
+
+  .studio-mini-host .studio-page__main--mini-side .studio-stage-panel {
+    width: 100%;
+    max-width: none;
+    min-width: 0;
+  }
 }
 
 .studio-stage-panel--mini .studio-stage-panel__mini-goals {
@@ -1727,7 +1726,8 @@ html[data-theme="dark"] .lesson-flow__pdf-page-canvas {
 
 .lesson-flow__mini-dev-frame {
   width: 100%;
-  height: 360px;
+  height: min(78vh, 820px);
+  min-height: 420px;
   border: 1px solid var(--ant-color-border, rgba(148, 163, 184, 0.45));
   border-radius: 8px;
   display: block;
@@ -1777,10 +1777,6 @@ html[data-theme="dark"] .lesson-flow__pdf-page-canvas {
   min-height: 24px;
   font-size: 12px;
   padding-left: 10px;
-}
-
-.studio-mini-host .lesson-flow__mini-dev-frame {
-  height: 420px;
 }
 
 .lesson-block-editor__card.ant-card {
