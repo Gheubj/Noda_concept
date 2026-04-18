@@ -572,7 +572,7 @@ html[data-theme="dark"] .app-content--workspace {
 
 .studio-stage-panel--mini .studio-stage-panel__mini-layout {
   display: flex;
-  gap: 8px;
+  gap: 10px;
   align-items: flex-start;
 }
 
@@ -582,7 +582,7 @@ html[data-theme="dark"] .app-content--workspace {
 
 .studio-stage-panel--mini .studio-stage-panel__mini-figure {
   display: block;
-  width: 56px;
+  width: 92px;
   height: auto;
 }
 

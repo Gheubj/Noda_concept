@@ -38,7 +38,7 @@ export function StudioStagePanel({
         <Card size="small" title="Сцена" className="studio-stage-card">
           <div className="studio-stage-panel__mini-layout">
             <div className="studio-stage-panel__mini-figure-wrap">
-              <img className="studio-stage-panel__mini-figure" src={coachSrc} alt="" width={56} height={56} />
+              <img className="studio-stage-panel__mini-figure" src={coachSrc} alt="" width={92} height={92} />
             </div>
             <div className="studio-stage-panel__mini-copy">
               {instructionMarkdown.trim() ? (

@@ -222,18 +222,6 @@ export function StudioPage() {
     return () => window.clearInterval(id);
   }, [isMini, miniLessonId, miniBlockId, miniCoach]);
 
-  const lastAllDoneRef = useRef(false);
-  useEffect(() => {
-    if (!isMini || !miniLessonId || !miniBlockId) {
-      return;
-    }
-    if (!lastAllDoneRef.current && allLessonGoalsDone) {
-      // Один раз при выполнении всех целей: подсветим персонажа, не перетирая другие сообщения по таймеру.
-      useAppStore.getState().setTraining({ coachMood: "success", message: "Все цели выполнены!" });
-    }
-    lastAllDoneRef.current = allLessonGoalsDone;
-  }, [isMini, miniLessonId, miniBlockId, allLessonGoalsDone]);
-
   const refreshProjects = async (nextUserId: string) => {
     const list = await listProjects(nextUserId.trim());
     setProjectItems(list);
