@@ -121,6 +121,8 @@ export function StudioPage() {
   const [dataLibraryOpen, setDataLibraryOpen] = useState(false);
   const [saveOpen, setSaveOpen] = useState(false);
   const [saveTitle, setSaveTitle] = useState(DEFAULT_PROJECT_TITLE);
+  const [miniSaveToProjectsOpen, setMiniSaveToProjectsOpen] = useState(false);
+  const [miniSaveToProjectsTitle, setMiniSaveToProjectsTitle] = useState("");
   const [projectItems, setProjectItems] = useState<NodlyProjectMeta[]>([]);
   const [deletingProjectId, setDeletingProjectId] = useState<string | null>(null);
   const [submittingAssignment, setSubmittingAssignment] = useState(false);
@@ -493,8 +495,24 @@ export function StudioPage() {
     setSaveOpen(false);
   };
 
-  const handleMiniSaveToProjects = async () => {
-    await saveProjectToCloud(currentProjectTitle || DEFAULT_PROJECT_TITLE);
+  const handleMiniSaveToProjects = () => {
+    const cur = (activeProject?.title ?? "").trim();
+    setMiniSaveToProjectsTitle(cur && cur !== DEFAULT_PROJECT_TITLE ? cur : "");
+    setMiniSaveToProjectsOpen(true);
+  };
+
+  const submitMiniSaveToProjects = async () => {
+    const t = miniSaveToProjectsTitle.trim();
+    if (!t) {
+      messageApi.error("Введи название — так проект появится в списке «Проекты».");
+      return;
+    }
+    try {
+      await saveProjectToCloud(t);
+      setMiniSaveToProjectsOpen(false);
+    } catch (e) {
+      messageApi.error(e instanceof Error ? e.message : "Не удалось сохранить в проекты");
+    }
   };
 
   const handleMiniStudioActivity = (event: {
@@ -737,18 +755,43 @@ export function StudioPage() {
         projectWorkspace
       )}
       {isMini ? (
-        <Modal
-          title="Данные проекта"
-          open={dataLibraryOpen}
-          onCancel={() => setDataLibraryOpen(false)}
-          footer={null}
-          width="min(1120px, 96vw)"
-          destroyOnClose={false}
-          centered
-          rootClassName="studio-data-modal"
-        >
-          <DataLibrary />
-        </Modal>
+        <>
+          <Modal
+            title="Данные проекта"
+            open={dataLibraryOpen}
+            onCancel={() => setDataLibraryOpen(false)}
+            footer={null}
+            width="min(1120px, 96vw)"
+            destroyOnClose={false}
+            centered
+            rootClassName="studio-data-modal"
+          >
+            <DataLibrary />
+          </Modal>
+          <Modal
+            title="Сохранить в проекты"
+            open={miniSaveToProjectsOpen}
+            okText="Сохранить"
+            cancelText="Отмена"
+            onOk={() => void submitMiniSaveToProjects()}
+            onCancel={() => setMiniSaveToProjectsOpen(false)}
+            destroyOnClose
+            centered
+          >
+            <Space direction="vertical" style={{ width: "100%" }} size="middle">
+              <Paragraph type="secondary" style={{ marginBottom: 0 }}>
+                Придумай имя проекта — оно будет в списке «Проекты» в разработке.
+              </Paragraph>
+              <Input
+                value={miniSaveToProjectsTitle}
+                onChange={(e) => setMiniSaveToProjectsTitle(e.target.value)}
+                placeholder="Например: Практика — ирисы"
+                maxLength={120}
+                autoFocus
+              />
+            </Space>
+          </Modal>
+        </>
       ) : (
         <Drawer
           title="Данные проекта"

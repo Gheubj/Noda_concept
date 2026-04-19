@@ -60,6 +60,8 @@ export function LessonPlayerPage() {
   const [autoCreatingMini, setAutoCreatingMini] = useState<Record<string, boolean>>({});
   const playerStateRef = useRef(playerState);
   playerStateRef.current = playerState;
+  /** Синхронная защита от двойного создания одного и того же mini-проекта (StrictMode / гонки). */
+  const miniCreateLockRef = useRef<Record<string, boolean>>({});
 
   const lessonContent: LessonContent = useMemo(() => {
     if (!bootstrap?.lessonContent || typeof bootstrap.lessonContent !== "object") {
@@ -83,6 +85,7 @@ export function LessonPlayerPage() {
           state: next
         });
         setPlayerState(next);
+        playerStateRef.current = next;
       } catch (e) {
         messageApi.error(e instanceof Error ? e.message : "Не удалось сохранить прогресс");
       } finally {
@@ -103,7 +106,9 @@ export function LessonPlayerPage() {
         `/api/student/lessons/${encodeURIComponent(lessonId)}/player-bootstrap${q}`
       );
       setBootstrap(data);
-      setPlayerState(parseLessonPlayerState(data.state));
+      const parsed = parseLessonPlayerState(data.state);
+      setPlayerState(parsed);
+      playerStateRef.current = parsed;
     } catch (e) {
       messageApi.error(e instanceof Error ? e.message : "Не удалось загрузить урок");
       setBootstrap(null);
@@ -115,6 +120,140 @@ export function LessonPlayerPage() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  const ensureMiniDevProject = useCallback(
+    async (blockId: string) => {
+      if (!bootstrap || !lessonId) {
+        return;
+      }
+      if (miniCreateLockRef.current[blockId]) {
+        return;
+      }
+      if (playerStateRef.current.miniDevProjectIds?.[blockId]) {
+        return;
+      }
+      miniCreateLockRef.current[blockId] = true;
+      setAutoCreatingMini((prev) => ({ ...prev, [blockId]: true }));
+      setSaving(true);
+      try {
+        const q = assignmentId ? `?assignmentId=${encodeURIComponent(assignmentId)}` : "";
+        const { projectId } = await apiClient.post<{ projectId: string }>(
+          `/api/student/lessons/${encodeURIComponent(lessonId)}/mini-dev-project${q}`,
+          {
+            blockId,
+            title: `${bootstrap.title} · мини`
+          }
+        );
+        const prev = playerStateRef.current;
+        const next: LessonPlayerStateV1 = {
+          ...prev,
+          v: 1,
+          miniDevProjectIds: {
+            ...(prev.miniDevProjectIds ?? {}),
+            [blockId]: projectId
+          },
+          miniDevGoalStatus: {
+            ...(prev.miniDevGoalStatus ?? {}),
+            [blockId]: {}
+          }
+        };
+        await persistState(next);
+      } catch (e) {
+        messageApi.error(e instanceof Error ? e.message : "Не удалось запустить мини-разработку");
+      } finally {
+        miniCreateLockRef.current[blockId] = false;
+        setAutoCreatingMini((prev) => ({ ...prev, [blockId]: false }));
+        setSaving(false);
+      }
+    },
+    [assignmentId, bootstrap, lessonId, messageApi, persistState]
+  );
+
+  const miniProjectIdsKey = useMemo(() => JSON.stringify(playerState.miniDevProjectIds ?? {}), [playerState.miniDevProjectIds]);
+
+  useEffect(() => {
+    if (loading || !bootstrap || !lessonId) {
+      return;
+    }
+    const studioIds = flowBlocks.filter((b) => b.type === "studio").map((b) => b.id);
+    if (studioIds.length === 0) {
+      return;
+    }
+    const missing = studioIds.filter((id) => !playerStateRef.current.miniDevProjectIds?.[id]);
+    if (missing.length === 0) {
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      for (const blockId of missing) {
+        if (cancelled) {
+          return;
+        }
+        await ensureMiniDevProject(blockId);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [loading, bootstrap, lessonId, flowBlocks, miniProjectIdsKey, ensureMiniDevProject]);
+
+  useEffect(() => {
+    const handler = (evt: MessageEvent<MiniStudioMessage | MiniGoalsMessage>) => {
+      if (evt.origin !== window.location.origin) {
+        return;
+      }
+      const payload = evt.data;
+      if (!payload || typeof payload !== "object") {
+        return;
+      }
+      if (payload.lessonId !== lessonId) {
+        return;
+      }
+      if (payload.source === "nodly-mini-goals") {
+        const blockId = payload.blockId;
+        const prev = playerStateRef.current;
+        const next: LessonPlayerStateV1 = {
+          ...prev,
+          miniDevGoalStatus: {
+            ...(prev.miniDevGoalStatus ?? {}),
+            [blockId]: payload.goalStatus
+          },
+          miniDevDone: {
+            ...(prev.miniDevDone ?? {}),
+            [blockId]: Boolean(payload.allDone)
+          }
+        };
+        void persistState(next);
+        return;
+      }
+      if (payload.source !== "nodly-mini-studio") {
+        return;
+      }
+      const blockId = payload.blockId;
+      const prev = playerStateRef.current;
+      const current = prev.miniDevTelemetry?.[blockId] ?? {};
+      const nextTelemetry = {
+        ...current,
+        lastModelType: payload.event.modelType ?? current.lastModelType ?? null,
+        lastDatasetRef: payload.event.datasetRef ?? current.lastDatasetRef ?? null,
+        lastInputRef: payload.event.inputRef ?? current.lastInputRef ?? null,
+        lastPredictionLabel: payload.event.label ?? current.lastPredictionLabel ?? null,
+        trained: current.trained || payload.event.type === "train",
+        predicted: current.predicted || payload.event.type === "predict",
+        updatedAt: new Date().toISOString()
+      };
+      const next: LessonPlayerStateV1 = {
+        ...prev,
+        miniDevTelemetry: {
+          ...(prev.miniDevTelemetry ?? {}),
+          [blockId]: nextTelemetry
+        }
+      };
+      void persistState(next);
+    };
+    window.addEventListener("message", handler);
+    return () => window.removeEventListener("message", handler);
+  }, [lessonId, persistState]);
 
   if (!user) {
     return (
@@ -189,105 +328,6 @@ export function LessonPlayerPage() {
     };
     await persistState(next);
   };
-
-  const ensureMiniDevProject = async (blockId: string) => {
-    if (!bootstrap) {
-      return;
-    }
-    if (miniDevProjectId(blockId)) {
-      return;
-    }
-    if (autoCreatingMini[blockId]) {
-      return;
-    }
-    setAutoCreatingMini((prev) => ({ ...prev, [blockId]: true }));
-    setSaving(true);
-    try {
-      const q = assignmentId ? `?assignmentId=${encodeURIComponent(assignmentId)}` : "";
-      const { projectId } = await apiClient.post<{ projectId: string }>(
-        `/api/student/lessons/${encodeURIComponent(lessonId)}/mini-dev-project${q}`,
-        {
-          blockId,
-          title: `${bootstrap.title} · мини-${blockId.slice(0, 6)}`
-        }
-      );
-      const next: LessonPlayerStateV1 = {
-        ...playerState,
-        miniDevProjectIds: {
-          ...(playerState.miniDevProjectIds ?? {}),
-          [blockId]: projectId
-        },
-        miniDevGoalStatus: {
-          ...(playerState.miniDevGoalStatus ?? {}),
-          [blockId]: {}
-        }
-      };
-      await persistState(next);
-    } catch (e) {
-      messageApi.error(e instanceof Error ? e.message : "Не удалось запустить мини-разработку");
-      setSaving(false);
-    } finally {
-      setAutoCreatingMini((prev) => ({ ...prev, [blockId]: false }));
-    }
-  };
-
-  useEffect(() => {
-    const handler = (evt: MessageEvent<MiniStudioMessage | MiniGoalsMessage>) => {
-      if (evt.origin !== window.location.origin) {
-        return;
-      }
-      const payload = evt.data;
-      if (!payload || typeof payload !== "object") {
-        return;
-      }
-      if (payload.lessonId !== lessonId) {
-        return;
-      }
-      if (payload.source === "nodly-mini-goals") {
-        const blockId = payload.blockId;
-        const prev = playerStateRef.current;
-        const next: LessonPlayerStateV1 = {
-          ...prev,
-          miniDevGoalStatus: {
-            ...(prev.miniDevGoalStatus ?? {}),
-            [blockId]: payload.goalStatus
-          },
-          miniDevDone: {
-            ...(prev.miniDevDone ?? {}),
-            [blockId]: Boolean(payload.allDone)
-          }
-        };
-        void persistState(next);
-        return;
-      }
-      if (payload.source !== "nodly-mini-studio") {
-        return;
-      }
-      const blockId = payload.blockId;
-      const prev = playerStateRef.current;
-      const current = prev.miniDevTelemetry?.[blockId] ?? {};
-      const nextTelemetry = {
-        ...current,
-        lastModelType: payload.event.modelType ?? current.lastModelType ?? null,
-        lastDatasetRef: payload.event.datasetRef ?? current.lastDatasetRef ?? null,
-        lastInputRef: payload.event.inputRef ?? current.lastInputRef ?? null,
-        lastPredictionLabel: payload.event.label ?? current.lastPredictionLabel ?? null,
-        trained: current.trained || payload.event.type === "train",
-        predicted: current.predicted || payload.event.type === "predict",
-        updatedAt: new Date().toISOString()
-      };
-      const next: LessonPlayerStateV1 = {
-        ...prev,
-        miniDevTelemetry: {
-          ...(prev.miniDevTelemetry ?? {}),
-          [blockId]: nextTelemetry
-        }
-      };
-      void persistState(next);
-    };
-    window.addEventListener("message", handler);
-    return () => window.removeEventListener("message", handler);
-  }, [lessonId, persistState]);
 
   return (
     <Content className="app-content app-content--workspace lesson-player-page">

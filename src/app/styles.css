@@ -1815,6 +1815,19 @@ html[data-theme="dark"] .lesson-flow__pdf-page-canvas {
   background: #0b1220;
 }
 
+.lesson-flow__mini-dev-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 200px;
+  border: 1px dashed var(--ant-color-border, rgba(148, 163, 184, 0.45));
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--app-surface, #fff) 92%, transparent);
+}
+
 .studio-mini-host.app-content--workspace {
   padding: 0 !important;
   margin: 0 !important;

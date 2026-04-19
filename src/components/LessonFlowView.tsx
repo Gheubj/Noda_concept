@@ -161,18 +161,20 @@ export function LessonFlowView({
                     title={`mini-dev-${block.id}`}
                     src={frameSrc}
                   />
+                ) : creating ? (
+                  <div className="lesson-flow__mini-dev-loading">
+                    <Spin />
+                    <Text type="secondary">Открываем мини-разработку…</Text>
+                  </div>
                 ) : (
                   <Space direction="vertical" size="small">
-                    <Text type="secondary">
-                      Мини-разработка ещё не сохранена в проекты. Нажми кнопку, чтобы создать проект.
-                    </Text>
+                    <Text type="secondary">Не удалось открыть мини-разработку. Попробуй ещё раз.</Text>
                     <Button
                       type="primary"
-                      loading={creating}
                       onClick={() => onEnsureMiniDevProject?.(block.id)}
                       disabled={!onEnsureMiniDevProject}
                     >
-                      Сохранить мини-разработку
+                      Повторить
                     </Button>
                   </Space>
                 )}
@@ -189,18 +191,20 @@ export function LessonFlowView({
                     title={`mini-dev-${block.id}`}
                     src={frameSrc}
                   />
+                ) : creating ? (
+                  <div className="lesson-flow__mini-dev-loading">
+                    <Spin />
+                    <Text type="secondary">Открываем мини-разработку…</Text>
+                  </div>
                 ) : (
                   <Space direction="vertical" size="small">
-                    <Text type="secondary">
-                      Мини-разработка ещё не сохранена в проекты. Нажми кнопку, чтобы создать проект.
-                    </Text>
+                    <Text type="secondary">Не удалось открыть мини-разработку. Попробуй ещё раз.</Text>
                     <Button
                       type="primary"
-                      loading={creating}
                       onClick={() => onEnsureMiniDevProject?.(block.id)}
                       disabled={!onEnsureMiniDevProject}
                     >
-                      Сохранить мини-разработку
+                      Повторить
                     </Button>
                   </Space>
                 )}
