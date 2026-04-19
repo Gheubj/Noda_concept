@@ -178,6 +178,29 @@ export function AdminLessonBlockEditor({ blocks, onChange }: AdminLessonBlockEdi
     onChange(next);
   };
 
+  /** Вставляет `divider` между каждой парой соседних блоков, если между ними ещё нет разделителя. */
+  const insertDividersBetweenAllBlocks = useCallback(() => {
+    if (blocks.length < 2) {
+      return;
+    }
+    const next = [...blocks];
+    let added = 0;
+    for (let i = next.length - 2; i >= 0; i--) {
+      const a = next[i];
+      const b = next[i + 1];
+      if (a && b && a.type !== "divider" && b.type !== "divider") {
+        next.splice(i + 1, 0, { id: newLessonBlockId(), type: "divider" });
+        added += 1;
+      }
+    }
+    if (added === 0) {
+      message.info("Между всеми парами блоков уже стоят разделители или добавлять нечего.");
+      return;
+    }
+    onChange(next);
+    message.success(`Добавлено разделителей: ${added}`);
+  }, [blocks, onChange]);
+
   const uploadImageForMediaBlock = (blockId: string, index: number): UploadProps["customRequest"] => {
     return async (options) => {
       const { file, onError, onSuccess } = options;
@@ -230,6 +253,13 @@ export function AdminLessonBlockEditor({ blocks, onChange }: AdminLessonBlockEdi
 
   return (
     <Space direction="vertical" size="middle" style={{ width: "100%" }} className="lesson-block-editor">
+      {blocks.length >= 2 ? (
+        <div className="lesson-block-editor__bulk-actions">
+          <Button type="default" onClick={insertDividersBetweenAllBlocks}>
+            Разделители между всеми блоками
+          </Button>
+        </div>
+      ) : null}
       {blocks.length === 0 ? (
         <div className="lesson-block-editor__insert-row lesson-block-editor__insert-row--empty">
           <Dropdown
@@ -265,8 +295,11 @@ export function AdminLessonBlockEditor({ blocks, onChange }: AdminLessonBlockEdi
             </Dropdown>
           </div>
           <Card
-            className="lesson-block-editor__card lesson-block-editor__cell"
+            className={`lesson-block-editor__card lesson-block-editor__cell${
+              block.type === "divider" ? " lesson-block-editor__card--divider" : ""
+            }`}
             size="small"
+            bordered={block.type !== "divider"}
             title={
               <Space wrap>
                 <Text type="secondary">#{index + 1}</Text>
@@ -462,12 +495,7 @@ export function AdminLessonBlockEditor({ blocks, onChange }: AdminLessonBlockEdi
                 </Card>
             </Space>
           ) : null}
-          {block.type === "divider" ? (
-            <Space direction="vertical" style={{ width: "100%" }} size="small">
-              <Text type="secondary">Горизонтальная линия между блоками в уроке у ученика.</Text>
-              <hr className="lesson-block-editor__divider-preview" />
-            </Space>
-          ) : null}
+          {block.type === "divider" ? <hr className="lesson-block-editor__divider-line" /> : null}
           {block.type === "checkpoint" ? (
             <Space direction="vertical" style={{ width: "100%" }}>
               <Input.TextArea
