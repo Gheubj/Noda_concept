@@ -1221,6 +1221,9 @@ export function BlocklyWorkspace({
         state.setTrainingRunReport(trainOutcome.report);
         state.setEvaluation(trainOutcome.evaluation);
         state.setTraining({ isTraining: false, progress: 100, message: "", coachMood: "success" });
+        if (miniStudioToolbar) {
+          queueMicrotask(() => window.dispatchEvent(new Event("nodly-persist-studio")));
+        }
         await trackEvent("training_completed", {
           modelType,
           summary: trainOutcome.evaluation.summary
@@ -1303,6 +1306,9 @@ export function BlocklyWorkspace({
           });
           state.setPrediction(result);
           state.setTraining({ isTraining: false, message: "", coachMood: "success" });
+          if (miniStudioToolbar) {
+            queueMicrotask(() => window.dispatchEvent(new Event("nodly-persist-studio")));
+          }
           await trackEvent("prediction_run", {
             modelType,
             label: result?.title ?? null
@@ -1339,6 +1345,9 @@ export function BlocklyWorkspace({
           });
           state.setPrediction(result);
           state.setTraining({ isTraining: false, message: "", coachMood: "success" });
+          if (miniStudioToolbar) {
+            queueMicrotask(() => window.dispatchEvent(new Event("nodly-persist-studio")));
+          }
           await trackEvent("prediction_run", {
             modelType,
             label: result?.title ?? null

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { DatabaseOutlined, FormOutlined } from "@ant-design/icons";
 import {
   Alert,
@@ -92,6 +92,71 @@ function clearUnsavedStudioDraft(userId: string) {
   }
 }
 
+const LAST_STUDIO_PROJECT_PREFIX = "nodly_last_studio_project_v1:";
+
+function readLastStudioProjectId(userId: string): string | null {
+  try {
+    const raw = localStorage.getItem(`${LAST_STUDIO_PROJECT_PREFIX}${userId.trim() || "guest"}`);
+    return typeof raw === "string" && raw.length > 0 ? raw : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeLastStudioProjectId(userId: string, projectId: string) {
+  try {
+    localStorage.setItem(`${LAST_STUDIO_PROJECT_PREFIX}${userId.trim() || "guest"}`, projectId);
+  } catch {
+    /* ignore */
+  }
+}
+
+function clearLastStudioProjectId(userId: string) {
+  try {
+    localStorage.removeItem(`${LAST_STUDIO_PROJECT_PREFIX}${userId.trim() || "guest"}`);
+  } catch {
+    /* ignore */
+  }
+}
+
+/** Немедленный снимок мини-студии в облако (после обучения / предсказания). */
+async function flushMiniProjectToCloud(): Promise<void> {
+  await Promise.resolve();
+  const st = useAppStore.getState();
+  const meta = st.activeProject;
+  if (!meta?.id || meta.readOnly) {
+    return;
+  }
+  if (!useSessionStore.getState().user?.id) {
+    return;
+  }
+  try {
+    const liveBlockly = (window as Window & { __nodlyGetBlocklyState?: () => string }).__nodlyGetBlocklyState?.();
+    if (typeof liveBlockly === "string" && liveBlockly.trim()) {
+      st.setBlocklyState(liveBlockly);
+    }
+    const snap = st.getProjectSnapshot();
+    const now = new Date().toISOString();
+    await saveProjectSmart({
+      meta: {
+        id: meta.id,
+        userId: meta.userId,
+        title: meta.title,
+        createdAt: meta.createdAt,
+        updatedAt: now
+      },
+      snapshot: {
+        ...snap,
+        blocklyState:
+          typeof liveBlockly === "string" && liveBlockly.trim() ? liveBlockly : snap.blocklyState
+      }
+    });
+    useAppStore.getState().setActiveProject({ ...meta, updatedAt: now });
+  } catch (e) {
+    console.warn("[mini studio] snapshot persist failed", e);
+  }
+}
+
 type StudioDraftPayload = {
   snapshot: NodlyProjectSnapshot;
   saveTitle: string;
@@ -164,6 +229,16 @@ export function StudioPage() {
     [resolvedUserId, activeProject?.id]
   );
   const restoringDraftRef = useRef(false);
+  /** После первого запуска bootstrap (облако или черновик __unsaved__). */
+  const studioBootstrapDoneRef = useRef(false);
+  /** После загрузки последнего облачного проекта не затирать его устаревшим локальным черновиком. */
+  const skipNextDraftOverlayRef = useRef(false);
+  const [, bumpPostStudioBootstrap] = useReducer((n: number) => n + 1, 0);
+
+  useEffect(() => {
+    studioBootstrapDoneRef.current = false;
+    skipNextDraftOverlayRef.current = false;
+  }, [resolvedUserId]);
 
   useEffect(() => {
     if (!isMini || !miniLessonId || !miniBlockId) {
@@ -244,7 +319,83 @@ export function StudioPage() {
     void refreshProjects(resolvedUserId);
   }, [resolvedUserId]);
 
+  const projectFromUrlEarly = searchParams.get("project");
+  const reviewSubmissionIdEarly = searchParams.get("reviewSubmission");
+
   useEffect(() => {
+    if (isMini || readOnly || projectFromUrlEarly || reviewSubmissionIdEarly) {
+      return;
+    }
+    if (studioBootstrapDoneRef.current) {
+      return;
+    }
+    let cancelled = false;
+    restoringDraftRef.current = true;
+    const uid = resolvedUserId.trim() || "guest";
+    void (async () => {
+      try {
+        const lastId = readLastStudioProjectId(uid);
+        if (lastId) {
+          const project = await loadProjectSmart(lastId);
+          if (cancelled) {
+            return;
+          }
+          if (project && !project.meta.readOnly) {
+            setActiveProject(project.meta);
+            loadProjectSnapshot(project.snapshot);
+            setSaveTitle(project.meta.title);
+            skipNextDraftOverlayRef.current = true;
+            return;
+          }
+          clearLastStudioProjectId(uid);
+        }
+        const raw = localStorage.getItem(studioDraftStorageKey(uid, null));
+        if (raw) {
+          const parsed = JSON.parse(raw) as StudioDraftPayload;
+          if (parsed?.snapshot && typeof parsed.snapshot === "object") {
+            loadProjectSnapshot(parsed.snapshot);
+          }
+          if (typeof parsed?.saveTitle === "string" && parsed.saveTitle.trim()) {
+            setSaveTitle(parsed.saveTitle);
+          }
+        }
+      } catch {
+        /* ignore */
+      } finally {
+        if (!cancelled) {
+          studioBootstrapDoneRef.current = true;
+          bumpPostStudioBootstrap();
+          queueMicrotask(() => {
+            restoringDraftRef.current = false;
+          });
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    isMini,
+    readOnly,
+    projectFromUrlEarly,
+    reviewSubmissionIdEarly,
+    resolvedUserId,
+    loadProjectSnapshot,
+    setActiveProject,
+    setSaveTitle
+  ]);
+
+  useEffect(() => {
+    if (isMini) {
+      return;
+    }
+    if (!studioBootstrapDoneRef.current) {
+      return;
+    }
+    if (skipNextDraftOverlayRef.current) {
+      skipNextDraftOverlayRef.current = false;
+      return;
+    }
     restoringDraftRef.current = true;
     try {
       const raw = localStorage.getItem(draftKey);
@@ -264,7 +415,7 @@ export function StudioPage() {
         restoringDraftRef.current = false;
       });
     }
-  }, [draftKey, loadProjectSnapshot]);
+  }, [draftKey, isMini, loadProjectSnapshot, bumpPostStudioBootstrap]);
 
   useEffect(() => {
     if (readOnly || restoringDraftRef.current) {
@@ -338,6 +489,9 @@ export function StudioPage() {
       setActiveProject(project.meta);
       loadProjectSnapshot(project.snapshot);
       setSaveTitle(project.meta.title);
+      if (!isMini && !project.meta.readOnly) {
+        writeLastStudioProjectId(resolvedUserId.trim() || "guest", project.meta.id);
+      }
       messageApi.success(`Загружен проект: ${project.meta.title}`);
       setSearchParams(
         (prev) => {
@@ -351,7 +505,16 @@ export function StudioPage() {
     return () => {
       cancelled = true;
     };
-  }, [projectFromUrl, user?.id, setSearchParams, setActiveProject, loadProjectSnapshot, messageApi]);
+  }, [
+    projectFromUrl,
+    user?.id,
+    isMini,
+    resolvedUserId,
+    setSearchParams,
+    setActiveProject,
+    loadProjectSnapshot,
+    messageApi
+  ]);
 
   const reviewSubmissionId = searchParams.get("reviewSubmission");
   useEffect(() => {
@@ -506,6 +669,9 @@ export function StudioPage() {
       createdAt: activeProject?.createdAt ?? now,
       updatedAt: now
     });
+    if (!isMini) {
+      writeLastStudioProjectId(normalizedUserId, projectId);
+    }
     if (!opts?.skipRefreshProjects) {
       await refreshProjects(normalizedUserId);
     }
@@ -514,7 +680,18 @@ export function StudioPage() {
     }
   };
 
-  /** Мини-студия в уроке: автосохранение снимка в облако (блоки, данные, persistedTraining), иначе при перезагрузке iframe теряется обучение. */
+  useEffect(() => {
+    if (!isMini || readOnly) {
+      return;
+    }
+    const onPersist = () => {
+      void flushMiniProjectToCloud();
+    };
+    window.addEventListener("nodly-persist-studio", onPersist);
+    return () => window.removeEventListener("nodly-persist-studio", onPersist);
+  }, [isMini, readOnly]);
+
+  /** Мини-студия: догоняющее автосохранение (редактирование данных / блоков). Сразу после обучения — событие nodly-persist-studio. */
   useEffect(() => {
     if (!isMini || !user?.id || readOnly || !activeProject?.id) {
       return;
@@ -525,40 +702,9 @@ export function StudioPage() {
         if (cancelled) {
           return;
         }
-        const st = useAppStore.getState();
-        const meta = st.activeProject;
-        if (!meta?.id || meta.readOnly) {
-          return;
-        }
-        try {
-          const liveBlockly = (window as Window & { __nodlyGetBlocklyState?: () => string }).__nodlyGetBlocklyState?.();
-          if (typeof liveBlockly === "string" && liveBlockly.trim()) {
-            st.setBlocklyState(liveBlockly);
-          }
-          const snap = st.getProjectSnapshot();
-          const now = new Date().toISOString();
-          await saveProjectSmart({
-            meta: {
-              id: meta.id,
-              userId: meta.userId,
-              title: meta.title,
-              createdAt: meta.createdAt,
-              updatedAt: now
-            },
-            snapshot: {
-              ...snap,
-              blocklyState:
-                typeof liveBlockly === "string" && liveBlockly.trim() ? liveBlockly : snap.blocklyState
-            }
-          });
-          if (!cancelled) {
-            st.setActiveProject({ ...meta, updatedAt: now });
-          }
-        } catch {
-          /* сеть / 403 — не мешаем уроку */
-        }
+        await flushMiniProjectToCloud();
       })();
-    }, 2200);
+    }, 700);
     return () => {
       cancelled = true;
       window.clearTimeout(timer);
@@ -644,11 +790,15 @@ export function StudioPage() {
     }
     setActiveProject(project.meta);
     loadProjectSnapshot(project.snapshot);
+    if (!project.meta.readOnly) {
+      writeLastStudioProjectId(resolvedUserId.trim() || "guest", project.meta.id);
+    }
     setLibraryOpen(false);
     messageApi.success(`Загружен проект: ${project.meta.title}`);
   };
 
   const handleNewProject = () => {
+    clearLastStudioProjectId(resolvedUserId.trim() || "guest");
     clearUnsavedStudioDraft(resolvedUserId);
     setActiveProject(null);
     loadProjectSnapshot(EMPTY_SNAPSHOT);
@@ -927,7 +1077,12 @@ export function StudioPage() {
                       await deleteProjectSmart(item.id);
                       messageApi.success("Проект удалён");
                       await refreshProjects(resolvedUserId);
+                      const uid = resolvedUserId.trim() || "guest";
+                      if (readLastStudioProjectId(uid) === item.id) {
+                        clearLastStudioProjectId(uid);
+                      }
                       if (activeProject?.id === item.id) {
+                        clearLastStudioProjectId(uid);
                         clearUnsavedStudioDraft(resolvedUserId);
                         setActiveProject(null);
                         loadProjectSnapshot(EMPTY_SNAPSHOT);
