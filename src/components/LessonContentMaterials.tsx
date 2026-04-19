@@ -15,9 +15,9 @@ export type LessonContentMaterialsProps = {
   lessonContent: LessonContent;
   /** Дополнительный блок внизу (например кнопки задания) */
   footer?: ReactNode;
-  /** Показывать ожидаемый ответ у контрольных вопросов (только превью для учителя/класса) */
+  /** Показывать ожидаемый ответ у вопросов (только превью для учителя/класса) */
   showCheckpointAnswers?: boolean;
-  /** Скрыть секцию контрольных вопросов (плеер покажет их отдельно) */
+  /** Скрыть секцию вопросов (плеер покажет их отдельно) */
   showCheckpointsSection?: boolean;
 };
 
@@ -107,10 +107,10 @@ export function LessonContentMaterials({
         )}
       </Card>
       {showCheckpointsSection ? (
-        <Card title="Проверка понимания">
+        <Card title="Вопросы">
           {c.checkpoints.length === 0 ? (
             <Paragraph type="secondary" style={{ marginBottom: 0 }}>
-              Контрольные вопросы не добавлены.
+              Вопросы не добавлены.
             </Paragraph>
           ) : (
             <Space direction="vertical" size="small" style={{ width: "100%" }}>

@@ -9,7 +9,7 @@ const LessonPdfReader = lazy(() =>
   import("@/components/LessonPdfReader").then((m) => ({ default: m.LessonPdfReader }))
 );
 
-const { Paragraph, Text } = Typography;
+const { Text } = Typography;
 
 /** Кладёт инструкцию и цели в sessionStorage — мини-студия в iframe читает их на «сцене». */
 function MiniStudioSessionStore(props: {
@@ -229,11 +229,9 @@ export function LessonFlowView({
             .filter(Boolean);
           return (
             <div key={block.id} className={`lesson-flow__segment lesson-flow__checkpoint${isColab ? " lesson-flow__segment--colab" : ""}`}>
-              <Paragraph style={{ marginBottom: 8 }}>
-                <Text strong>
-                  Вопрос {checkpointOrdinal}: {block.question}
-                </Text>
-              </Paragraph>
+              <div className="lesson-flow__checkpoint-prompt">
+                <strong>Вопрос {checkpointOrdinal}:</strong> {block.question}
+              </div>
               {ok ? (
                 <Tag color="success">Верно</Tag>
               ) : (

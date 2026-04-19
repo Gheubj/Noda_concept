@@ -345,7 +345,7 @@ export function LessonPlayerPage() {
                 variant="colab"
               />
               {allCheckpointsDone && checkpointBlockIds.length > 0 ? (
-                <Alert type="success" showIcon message="Все контрольные вопросы пройдены" />
+                <Alert type="success" showIcon message="Все вопросы пройдены" />
               ) : null}
             </>
           ) : null}

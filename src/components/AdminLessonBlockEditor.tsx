@@ -14,7 +14,7 @@ const BLOCK_TYPES: { value: LessonContentBlock["type"]; label: string }[] = [
   { value: "text", label: "Текст" },
   { value: "media", label: "Медиа (картинка/PDF)" },
   { value: "studio", label: "Мини-разработка" },
-  { value: "checkpoint", label: "Контрольный вопрос" },
+  { value: "checkpoint", label: "Вопрос" },
   { value: "divider", label: "Разделитель" }
 ];
 
