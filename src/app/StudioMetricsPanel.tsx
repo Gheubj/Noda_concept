@@ -96,11 +96,11 @@ function EpochCharts({ report }: { report: TrainingRunReport }) {
     <Space direction="vertical" size="middle" style={{ width: "100%" }}>
       <div className="studio-metrics-panel__chart-wrap">
         <Text strong>Потери (loss)</Text>
-        <ResponsiveContainer width="100%" height={160}>
-          <LineChart data={rows} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+        <ResponsiveContainer width="100%" height={200}>
+          <LineChart data={rows} margin={{ top: 8, right: 12, left: 4, bottom: 4 }}>
             <CartesianGrid strokeDasharray="3 3" opacity={0.35} />
             <XAxis dataKey="epoch" tick={{ fontSize: 11 }} />
-            <YAxis tick={{ fontSize: 11 }} width={36} />
+            <YAxis tick={{ fontSize: 11 }} width={40} />
             <Tooltip />
             <Legend />
             <Line type="monotone" dataKey="loss" name="train" stroke="#1677ff" dot={false} strokeWidth={2} />
@@ -111,11 +111,11 @@ function EpochCharts({ report }: { report: TrainingRunReport }) {
       {hasAcc ? (
         <div className="studio-metrics-panel__chart-wrap">
           <Text strong>Точность (accuracy)</Text>
-          <ResponsiveContainer width="100%" height={160}>
-            <LineChart data={rows} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+          <ResponsiveContainer width="100%" height={200}>
+            <LineChart data={rows} margin={{ top: 8, right: 12, left: 4, bottom: 4 }}>
               <CartesianGrid strokeDasharray="3 3" opacity={0.35} />
               <XAxis dataKey="epoch" tick={{ fontSize: 11 }} />
-              <YAxis domain={[0, 1]} tick={{ fontSize: 11 }} width={36} />
+              <YAxis domain={[0, 1]} tick={{ fontSize: 11 }} width={40} />
               <Tooltip formatter={(v: number | string) => [typeof v === "number" ? `${(v * 100).toFixed(1)}%` : v, ""]} />
               <Legend />
               <Line type="monotone" dataKey="accuracy" name="train" stroke="#722ed1" dot={false} strokeWidth={2} />
@@ -127,11 +127,11 @@ function EpochCharts({ report }: { report: TrainingRunReport }) {
       {hasMse && !hasAcc ? (
         <div className="studio-metrics-panel__chart-wrap">
           <Text strong>MSE</Text>
-          <ResponsiveContainer width="100%" height={160}>
-            <LineChart data={rows} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+          <ResponsiveContainer width="100%" height={200}>
+            <LineChart data={rows} margin={{ top: 8, right: 12, left: 4, bottom: 4 }}>
               <CartesianGrid strokeDasharray="3 3" opacity={0.35} />
               <XAxis dataKey="epoch" tick={{ fontSize: 11 }} />
-              <YAxis tick={{ fontSize: 11 }} width={44} />
+              <YAxis tick={{ fontSize: 11 }} width={48} />
               <Tooltip />
               <Legend />
               <Line type="monotone" dataKey="mse" name="train mse" stroke="#eb2f96" dot={false} strokeWidth={2} />

@@ -1,28 +1,38 @@
 import type { ModelEvaluation, PredictionResult } from "@/shared/types/ai";
 
-/** Один текст для пузыря персонажа, если нет блока «показать сообщение». */
-export function buildAutoResultsCaption(
+/** Короткая реплика персонажа, если нет блока «показать сообщение». */
+export const COACH_AUTO_RESULTS_LEAD = "Вот результаты:";
+
+export type CoachBriefLine = { key: string; label: string; value: string };
+
+/** Краткие строки под пузырём (без дублирования длинного summary, если уже есть точность). */
+export function buildCoachBriefLines(
   evaluation: ModelEvaluation | null,
   prediction: PredictionResult | null
-): string {
-  if (!evaluation && !prediction) {
-    return "";
-  }
-  const parts: string[] = ["Вот результаты:"];
+): CoachBriefLine[] {
+  const out: CoachBriefLine[] = [];
   if (evaluation?.metrics?.testAccuracy != null) {
-    const a = evaluation.metrics.testAccuracy;
-    parts.push(`Точность на тесте: ${(a * 100).toFixed(1)}%.`);
+    out.push({
+      key: "acc",
+      label: "Точность (тест)",
+      value: `${(evaluation.metrics.testAccuracy * 100).toFixed(1)}%`
+    });
   } else if (evaluation?.summary?.trim()) {
-    parts.push(evaluation.summary.trim());
+    out.push({ key: "sum", label: "Модель", value: evaluation.summary.trim() });
   }
   if (evaluation?.metrics?.macroF1 != null) {
-    const f = evaluation.metrics.macroF1;
-    parts.push(`F1 (macro): ${(f * 100).toFixed(1)}%.`);
+    out.push({
+      key: "f1",
+      label: "F1 (macro)",
+      value: `${(evaluation.metrics.macroF1 * 100).toFixed(1)}%`
+    });
   }
   if (prediction) {
-    parts.push(
-      `Предсказание: ${prediction.title} (уверенность ${(prediction.confidence * 100).toFixed(0)}%).`
-    );
+    out.push({
+      key: "pred",
+      label: "Предсказание",
+      value: `${prediction.title} (${(prediction.confidence * 100).toFixed(0)}% уверенности)`
+    });
   }
-  return parts.join("\n");
+  return out;
 }

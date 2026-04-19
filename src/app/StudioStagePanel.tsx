@@ -5,7 +5,7 @@ import { useMemo } from "react";
 import { useAppStore } from "@/store/useAppStore";
 import type { StudioGoal } from "@/shared/types/lessonContent";
 import { coachPngForMood, resolveCoachMood } from "@/shared/coachMood";
-import { buildAutoResultsCaption } from "@/shared/coachCaption";
+import { COACH_AUTO_RESULTS_LEAD, buildCoachBriefLines } from "@/shared/coachCaption";
 
 const { Text } = Typography;
 
@@ -24,9 +24,8 @@ function useCoachBubbleText(): string {
     if (coachUserMessage?.trim()) {
       return coachUserMessage.trim();
     }
-    const auto = buildAutoResultsCaption(evaluation, prediction);
-    if (auto) {
-      return auto;
+    if (evaluation || prediction) {
+      return COACH_AUTO_RESULTS_LEAD;
     }
     if (training.message?.trim()) {
       return training.message.trim();
@@ -39,6 +38,31 @@ function useCoachBubbleText(): string {
     evaluation,
     prediction
   ]);
+}
+
+function CoachBriefBlock() {
+  const training = useAppStore((s) => s.training);
+  const evaluation = useAppStore((s) => s.evaluation);
+  const prediction = useAppStore((s) => s.prediction);
+  const lines = useMemo(() => {
+    if (training.isTraining) {
+      return [];
+    }
+    return buildCoachBriefLines(evaluation, prediction);
+  }, [training.isTraining, evaluation, prediction]);
+  if (lines.length === 0) {
+    return null;
+  }
+  return (
+    <div className="studio-stage-panel__brief-data">
+      {lines.map((row) => (
+        <div key={row.key} className="studio-stage-panel__brief-line">
+          <Text strong>{row.label}: </Text>
+          <Text>{row.value}</Text>
+        </div>
+      ))}
+    </div>
+  );
 }
 
 export type StudioStagePanelProps = {
@@ -104,6 +128,7 @@ export function StudioStagePanel({
                   <Text>{caption}</Text>
                 )}
               </div>
+              <CoachBriefBlock />
             </div>
           </div>
         </Card>
@@ -126,6 +151,7 @@ export function StudioStagePanel({
                 <Text>{caption}</Text>
               )}
             </div>
+            <CoachBriefBlock />
           </div>
         </div>
       </Card>
