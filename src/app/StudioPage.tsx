@@ -84,6 +84,14 @@ function studioDraftStorageKey(userId: string, projectId: string | null): string
   return `${STUDIO_DRAFT_PREFIX}:${userId}:${projectId ?? "__unsaved__"}`;
 }
 
+function clearUnsavedStudioDraft(userId: string) {
+  try {
+    localStorage.removeItem(studioDraftStorageKey(userId.trim() || "guest", null));
+  } catch {
+    /* ignore */
+  }
+}
+
 type StudioDraftPayload = {
   snapshot: NodlyProjectSnapshot;
   saveTitle: string;
@@ -142,7 +150,10 @@ export function StudioPage() {
     tabularPredictionInputs,
     savedModels,
     blocklyState,
-    workspaceLevel
+    workspaceLevel,
+    evaluation,
+    trainingRunReport,
+    prediction
   } = useAppStore();
   const { user } = useSessionStore();
   const resolvedUserId = user?.id ?? guestUserId;
@@ -279,7 +290,10 @@ export function StudioPage() {
     tabularPredictionInputs,
     savedModels,
     blocklyState,
-    workspaceLevel
+    workspaceLevel,
+    evaluation,
+    trainingRunReport,
+    prediction
   ]);
 
   useEffect(() => {
@@ -447,7 +461,7 @@ export function StudioPage() {
 
   const saveProjectToCloud = async (
     titleRaw: string,
-    opts?: { detachLessonTemplate?: boolean }
+    opts?: { detachLessonTemplate?: boolean; silent?: boolean; skipRefreshProjects?: boolean }
   ) => {
     if (readOnly) {
       messageApi.warning("Режим только просмотра — сохранение в облако отключено.");
@@ -492,9 +506,82 @@ export function StudioPage() {
       createdAt: activeProject?.createdAt ?? now,
       updatedAt: now
     });
-    await refreshProjects(normalizedUserId);
-    messageApi.success("Проект сохранен");
+    if (!opts?.skipRefreshProjects) {
+      await refreshProjects(normalizedUserId);
+    }
+    if (!opts?.silent) {
+      messageApi.success("Проект сохранен");
+    }
   };
+
+  /** Мини-студия в уроке: автосохранение снимка в облако (блоки, данные, persistedTraining), иначе при перезагрузке iframe теряется обучение. */
+  useEffect(() => {
+    if (!isMini || !user?.id || readOnly || !activeProject?.id) {
+      return;
+    }
+    let cancelled = false;
+    const timer = window.setTimeout(() => {
+      void (async () => {
+        if (cancelled) {
+          return;
+        }
+        const st = useAppStore.getState();
+        const meta = st.activeProject;
+        if (!meta?.id || meta.readOnly) {
+          return;
+        }
+        try {
+          const liveBlockly = (window as Window & { __nodlyGetBlocklyState?: () => string }).__nodlyGetBlocklyState?.();
+          if (typeof liveBlockly === "string" && liveBlockly.trim()) {
+            st.setBlocklyState(liveBlockly);
+          }
+          const snap = st.getProjectSnapshot();
+          const now = new Date().toISOString();
+          await saveProjectSmart({
+            meta: {
+              id: meta.id,
+              userId: meta.userId,
+              title: meta.title,
+              createdAt: meta.createdAt,
+              updatedAt: now
+            },
+            snapshot: {
+              ...snap,
+              blocklyState:
+                typeof liveBlockly === "string" && liveBlockly.trim() ? liveBlockly : snap.blocklyState
+            }
+          });
+          if (!cancelled) {
+            st.setActiveProject({ ...meta, updatedAt: now });
+          }
+        } catch {
+          /* сеть / 403 — не мешаем уроку */
+        }
+      })();
+    }, 2200);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [
+    isMini,
+    user?.id,
+    readOnly,
+    activeProject?.id,
+    activeProject?.title,
+    activeProject?.userId,
+    activeProject?.createdAt,
+    blocklyState,
+    workspaceLevel,
+    evaluation,
+    trainingRunReport,
+    prediction,
+    imageDatasets,
+    tabularDatasets,
+    savedModels,
+    imagePredictionInputs,
+    tabularPredictionInputs
+  ]);
 
   const handleSave = async () => {
     await saveProjectToCloud(saveTitle);
@@ -562,6 +649,7 @@ export function StudioPage() {
   };
 
   const handleNewProject = () => {
+    clearUnsavedStudioDraft(resolvedUserId);
     setActiveProject(null);
     loadProjectSnapshot(EMPTY_SNAPSHOT);
     setSaveTitle(DEFAULT_PROJECT_TITLE);
@@ -840,6 +928,7 @@ export function StudioPage() {
                       messageApi.success("Проект удалён");
                       await refreshProjects(resolvedUserId);
                       if (activeProject?.id === item.id) {
+                        clearUnsavedStudioDraft(resolvedUserId);
                         setActiveProject(null);
                         loadProjectSnapshot(EMPTY_SNAPSHOT);
                         setSaveTitle(DEFAULT_PROJECT_TITLE);

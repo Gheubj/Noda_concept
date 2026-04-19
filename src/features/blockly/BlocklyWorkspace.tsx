@@ -1597,22 +1597,39 @@ export function BlocklyWorkspace({
   }, [htmlTheme]);
 
   useEffect(() => {
-    if (!workspaceRef.current || !blocklyState) {
+    const ws = workspaceRef.current;
+    if (!ws) {
       return;
     }
-    const saved = Blockly.serialization.workspaces.save(workspaceRef.current);
-    const current = JSON.stringify(saved);
-    if (current === blocklyState) {
+    const level = effectiveToolboxLevel(useAppStore.getState().workspaceLevel);
+    const trainType = level === 1 ? "noda_train_model_simple" : "noda_train_model";
+    const defaultJson = getDefaultWorkspaceJson(trainType);
+    const trimmed = blocklyState.trim();
+    let toLoad: unknown = defaultJson;
+    if (trimmed.length > 0) {
+      try {
+        toLoad = JSON.parse(blocklyState);
+      } catch {
+        toLoad = defaultJson;
+      }
+    }
+    const currentJson = JSON.stringify(Blockly.serialization.workspaces.save(ws));
+    const targetJson = JSON.stringify(toLoad);
+    if (currentJson === targetJson) {
       return;
     }
     try {
-      Blockly.serialization.workspaces.load(JSON.parse(blocklyState), workspaceRef.current);
-      Blockly.svgResize(workspaceRef.current);
-      refreshAllPredictL1Blocks(workspaceRef.current);
+      Blockly.serialization.workspaces.load(toLoad as object, ws);
+      Blockly.svgResize(ws);
+      refreshAllPredictL1Blocks(ws);
+      const after = JSON.stringify(Blockly.serialization.workspaces.save(ws));
+      if (after !== trimmed) {
+        useAppStore.getState().setBlocklyState(after);
+      }
     } catch {
-      // Ignore malformed saved state.
+      /* malformed or incompatible saved state */
     }
-  }, [blocklyState]);
+  }, [blocklyState, workspaceLevel]);
 
   return (
     <div className="blockly-root">
