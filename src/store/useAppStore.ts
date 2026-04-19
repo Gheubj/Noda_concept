@@ -59,6 +59,9 @@ interface AppState {
   blocklyState: string;
   workspaceLevel: WorkspaceLevel;
   training: TrainingState;
+  /** Текст из блока «показать сообщение» за текущий прогон (приоритет над авто-подписью). */
+  coachUserMessage: string | null;
+  setCoachUserMessage: (value: string | null) => void;
   setActiveProject: (project: NodlyProjectMeta | null) => void;
   addImageDataset: (title: string, taskType: "classification" | "clustering") => string | null;
   addClassToImageDataset: (datasetId: string, title: string) => void;
@@ -102,12 +105,14 @@ export const useAppStore = create<AppState>((set, get) => ({
   lastModelType: null,
   blocklyState: "",
   workspaceLevel: readWorkspaceLevel(),
+  coachUserMessage: null,
   training: {
     isTraining: false,
     progress: 0,
     message: "Ожидание",
     coachMood: "idle"
   },
+  setCoachUserMessage: (value) => set({ coachUserMessage: value }),
   setActiveProject: (project) => set({ activeProject: project }),
   addImageDataset: (title, taskType) => {
     const normalizedTitle = title.trim();
@@ -252,6 +257,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       prediction: null,
       evaluation: null,
       trainingRunReport: null,
+      coachUserMessage: null,
       training: {
         isTraining: false,
         progress: 0,

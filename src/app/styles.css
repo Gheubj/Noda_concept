@@ -763,11 +763,6 @@ html[data-theme="dark"] .studio-metrics-panel__cm-table td {
   font-size: 12px;
 }
 
-.studio-stage-panel--mini .studio-stage-panel__mini-extra {
-  font-size: 14px;
-  line-height: 1.45;
-  color: var(--app-text);
-}
 
 .studio-page__blockly {
   flex: 1;
@@ -883,6 +878,19 @@ html[data-theme="dark"] .studio-metrics-panel__cm-table td {
   background: var(--app-surface);
   border: 1px solid var(--landing-hero-border);
   min-height: 3.25em;
+  white-space: pre-line;
+}
+
+.studio-stage-panel--mini .studio-stage-panel__mini-bubble {
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--app-text);
+  padding: 10px 10px;
+  margin-top: 4px;
+  border-radius: 8px;
+  background: var(--app-surface);
+  border: 1px solid var(--landing-hero-border);
+  white-space: pre-line;
 }
 
 .studio-stage-panel--full-coach .studio-stage-panel__full-extra {
@@ -892,6 +900,10 @@ html[data-theme="dark"] .studio-metrics-panel__cm-table td {
 }
 
 html[data-theme="dark"] .studio-stage-panel--full-coach .studio-stage-panel__full-bubble {
+  border-color: rgba(148, 163, 184, 0.25);
+}
+
+html[data-theme="dark"] .studio-stage-panel--mini .studio-stage-panel__mini-bubble {
   border-color: rgba(148, 163, 184, 0.25);
 }
 

@@ -1220,7 +1220,7 @@ export function BlocklyWorkspace({
         lastEvaluationRef.current = trainOutcome.evaluation;
         state.setTrainingRunReport(trainOutcome.report);
         state.setEvaluation(trainOutcome.evaluation);
-        state.setTraining({ isTraining: false, progress: 100, message: "Обучение завершено.", coachMood: "success" });
+        state.setTraining({ isTraining: false, progress: 100, message: "", coachMood: "success" });
         await trackEvent("training_completed", {
           modelType,
           summary: trainOutcome.evaluation.summary
@@ -1302,11 +1302,7 @@ export function BlocklyWorkspace({
             tabularInput: ""
           });
           state.setPrediction(result);
-          state.setTraining({
-            isTraining: false,
-            message: result?.title ? `Предсказание: ${result.title}` : "Предсказание выполнено",
-            coachMood: "success"
-          });
+          state.setTraining({ isTraining: false, message: "", coachMood: "success" });
           await trackEvent("prediction_run", {
             modelType,
             label: result?.title ?? null
@@ -1342,11 +1338,7 @@ export function BlocklyWorkspace({
             tabularInput: tabularLine
           });
           state.setPrediction(result);
-          state.setTraining({
-            isTraining: false,
-            message: result?.title ? `Предсказание: ${result.title}` : "Предсказание выполнено",
-            coachMood: "success"
-          });
+          state.setTraining({ isTraining: false, message: "", coachMood: "success" });
           await trackEvent("prediction_run", {
             modelType,
             label: result?.title ?? null
@@ -1363,9 +1355,11 @@ export function BlocklyWorkspace({
         }
       }
       if (command.type === "show_message") {
+        const scriptText = command.text.trim();
+        state.setCoachUserMessage(scriptText.length > 0 ? scriptText : null);
         state.setTraining({
           isTraining: false,
-          message: command.text.trim() || "Сообщение из сценария",
+          message: "",
           coachMood: "talking"
         });
       }
@@ -1383,11 +1377,7 @@ export function BlocklyWorkspace({
       if (command.type === "show_eval") {
         if (lastEvaluationRef.current) {
           state.setEvaluation(lastEvaluationRef.current);
-          state.setTraining({
-            isTraining: false,
-            message: `Оценка: ${lastEvaluationRef.current.summary}`,
-            coachMood: "talking"
-          });
+          state.setTraining({ isTraining: false, message: "", coachMood: "talking" });
         } else {
           state.setTraining({
             isTraining: false,
@@ -1409,6 +1399,8 @@ export function BlocklyWorkspace({
       lastEvaluationRef.current = null;
       state.setEvaluation(null);
       state.setTrainingRunReport(null);
+      state.setCoachUserMessage(null);
+      state.setPrediction(null);
       const workspace = workspaceRef.current;
       if (!workspace) {
         return;

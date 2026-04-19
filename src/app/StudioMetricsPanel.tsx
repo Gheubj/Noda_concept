@@ -290,6 +290,14 @@ export function StudioMetricsPanel({ embedded = false }: StudioMetricsPanelProps
         <>
           <div>
             <Title level={5} style={{ marginTop: 0, marginBottom: 8 }}>
+              По эпохам
+            </Title>
+            <EpochCharts report={report} />
+          </div>
+          <ConfusionTable report={report} />
+          <ExamplesTable report={report} />
+          <div>
+            <Title level={5} style={{ marginTop: 0, marginBottom: 8 }}>
               Итог обучения
             </Title>
             <Text type="secondary" style={{ display: "block", marginBottom: 8 }}>
@@ -298,14 +306,6 @@ export function StudioMetricsPanel({ embedded = false }: StudioMetricsPanelProps
             <MetricsTable report={report} />
             {report.confusionMatrix ? <PerClassQualityTable cm={report.confusionMatrix} /> : null}
           </div>
-          <div>
-            <Title level={5} style={{ marginTop: 0, marginBottom: 8 }}>
-              По эпохам
-            </Title>
-            <EpochCharts report={report} />
-          </div>
-          <ConfusionTable report={report} />
-          <ExamplesTable report={report} />
         </>
       ) : null}
       {prediction ? (

@@ -5,8 +5,41 @@ import { useMemo } from "react";
 import { useAppStore } from "@/store/useAppStore";
 import type { StudioGoal } from "@/shared/types/lessonContent";
 import { coachPngForMood, resolveCoachMood } from "@/shared/coachMood";
+import { buildAutoResultsCaption } from "@/shared/coachCaption";
 
 const { Text } = Typography;
+
+const IDLE_HINT = "Нажми «Старт» в Blockly, чтобы запустить сценарий.";
+
+function useCoachBubbleText(): string {
+  const training = useAppStore((s) => s.training);
+  const coachUserMessage = useAppStore((s) => s.coachUserMessage);
+  const evaluation = useAppStore((s) => s.evaluation);
+  const prediction = useAppStore((s) => s.prediction);
+
+  return useMemo(() => {
+    if (training.isTraining) {
+      return training.message?.trim() || "Выполняю…";
+    }
+    if (coachUserMessage?.trim()) {
+      return coachUserMessage.trim();
+    }
+    const auto = buildAutoResultsCaption(evaluation, prediction);
+    if (auto) {
+      return auto;
+    }
+    if (training.message?.trim()) {
+      return training.message.trim();
+    }
+    return IDLE_HINT;
+  }, [
+    training.isTraining,
+    training.message,
+    coachUserMessage,
+    evaluation,
+    prediction
+  ]);
+}
 
 export type StudioStagePanelProps = {
   /** `mini_coach` — урок; иначе — полная разработка с персонажем. */
@@ -29,10 +62,8 @@ export function StudioStagePanel({
   showGoalsInPanel = true
 }: StudioStagePanelProps) {
   const training = useAppStore((s) => s.training);
-  const evaluation = useAppStore((s) => s.evaluation);
-  const prediction = useAppStore((s) => s.prediction);
-  const message = training.message;
   const coachSrc = useMemo(() => coachPngForMood(resolveCoachMood(training)), [training]);
+  const caption = useCoachBubbleText();
 
   if (mode === "mini_coach") {
     return (
@@ -66,34 +97,12 @@ export function StudioStagePanel({
               {showGoalsInPanel && allGoalsDone ? (
                 <Text type="success">Все цели выполнены — отличная работа!</Text>
               ) : null}
-              {evaluation ? (
-                <div className="studio-stage-panel__mini-extra">
-                  <Text strong>Модель: </Text>
-                  <Text>{evaluation.summary}</Text>
-                </div>
-              ) : null}
-              {evaluation?.metrics?.testAccuracy != null ? (
-                <div className="studio-stage-panel__mini-extra">
-                  <Text strong>Точность (тест): </Text>
-                  <Text>{(evaluation.metrics.testAccuracy * 100).toFixed(1)}%</Text>
-                </div>
-              ) : null}
-              {evaluation?.metrics?.macroF1 != null ? (
-                <div className="studio-stage-panel__mini-extra">
-                  <Text strong>F1 (macro): </Text>
-                  <Text>{(evaluation.metrics.macroF1 * 100).toFixed(1)}%</Text>
-                </div>
-              ) : null}
-              {prediction ? (
-                <div className="studio-stage-panel__mini-extra">
-                  <Text strong>Предсказание: </Text>
-                  <Text>
-                    {prediction.title} ({(prediction.confidence * 100).toFixed(0)}% уверенности)
-                  </Text>
-                </div>
-              ) : null}
-              <div className="studio-stage-panel__mini-status">
-                <Text type="secondary">{message || "Нажми «Старт» в Blockly, чтобы запустить сценарий."}</Text>
+              <div className="studio-stage-panel__mini-bubble">
+                {caption === IDLE_HINT ? (
+                  <Text type="secondary">{caption}</Text>
+                ) : (
+                  <Text>{caption}</Text>
+                )}
               </div>
             </div>
           </div>
@@ -111,34 +120,12 @@ export function StudioStagePanel({
           </div>
           <div className="studio-stage-panel__full-copy">
             <div className="studio-stage-panel__full-bubble">
-              {message || "Нажми «Старт» в Blockly, чтобы запустить сценарий."}
+              {caption === IDLE_HINT ? (
+                <Text type="secondary">{caption}</Text>
+              ) : (
+                <Text>{caption}</Text>
+              )}
             </div>
-            {evaluation ? (
-              <div className="studio-stage-panel__full-extra">
-                <Text strong>Модель: </Text>
-                <Text>{evaluation.summary}</Text>
-              </div>
-            ) : null}
-            {evaluation?.metrics?.testAccuracy != null ? (
-              <div className="studio-stage-panel__full-extra">
-                <Text strong>Точность (тест): </Text>
-                <Text>{(evaluation.metrics.testAccuracy * 100).toFixed(1)}%</Text>
-              </div>
-            ) : null}
-            {evaluation?.metrics?.macroF1 != null ? (
-              <div className="studio-stage-panel__full-extra">
-                <Text strong>F1 (macro): </Text>
-                <Text>{(evaluation.metrics.macroF1 * 100).toFixed(1)}%</Text>
-              </div>
-            ) : null}
-            {prediction ? (
-              <div className="studio-stage-panel__full-extra">
-                <Text strong>Предсказание: </Text>
-                <Text>
-                  {prediction.title} ({(prediction.confidence * 100).toFixed(0)}% уверенности)
-                </Text>
-              </div>
-            ) : null}
           </div>
         </div>
       </Card>
