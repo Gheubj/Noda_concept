@@ -28,6 +28,10 @@ function formatMetricLabel(key: string): string {
     testMSE: "MSE (тест)",
     testMAE: "MAE (тест)",
     testRMSE: "RMSE (тест)",
+    testR2: "R² (тест)",
+    testMedianAE: "MedAE — медиана |y−ŷ| (тест)",
+    testMaxAbsError: "Max |y−ŷ| (тест)",
+    testSMAPE: "sMAPE (тест), %",
     samples: "Примеров",
     macroPrecision: "Precision (macro)",
     macroRecall: "Recall (macro)",
@@ -52,6 +56,9 @@ const METRIC_PERCENT_KEYS = new Set([
 function formatMetricValue(key: string, value: number): string {
   if (METRIC_PERCENT_KEYS.has(key) && value >= 0 && value <= 1) {
     return `${(value * 100).toFixed(1)}%`;
+  }
+  if (key === "testSMAPE") {
+    return `${value.toFixed(2)}%`;
   }
   return value.toFixed(4);
 }

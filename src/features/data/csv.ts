@@ -71,8 +71,8 @@ export async function parseCsvFile(file: File): Promise<TabularDataset> {
   if (lines.length < 2) {
     throw new Error("CSV должен содержать заголовок и минимум одну строку данных.");
   }
-  if (lines.length > 10000) {
-    throw new Error("Слишком много строк (макс 10,000).");
+  if (lines.length > 50000) {
+    throw new Error("Слишком много строк (макс 50,000).");
   }
 
   const headers = bestSplitCsvLine(lines[0]);

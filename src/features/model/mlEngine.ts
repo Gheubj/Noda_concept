@@ -313,6 +313,48 @@ function parseTabular(dataset: TabularDataset) {
   return { x, yRaw, featureCount: encodedFeatureDim };
 }
 
+/** Метрики по фактическим y и предсказаниям на тесте (одномерная регрессия). */
+function regressionMetricsFromVectors(
+  yTrue: Float32Array | Int32Array | Uint8Array,
+  yPred: Float32Array | Int32Array | Uint8Array,
+  n: number
+): {
+  r2: number;
+  medianAe: number;
+  maxAe: number;
+  smape: number;
+} {
+  if (n <= 0) {
+    return { r2: 0, medianAe: 0, maxAe: 0, smape: 0 };
+  }
+  let meanY = 0;
+  for (let i = 0; i < n; i++) {
+    meanY += yTrue[i];
+  }
+  meanY /= n;
+  let sse = 0;
+  let sst = 0;
+  const absErrs: number[] = [];
+  let smapeSum = 0;
+  for (let i = 0; i < n; i++) {
+    const yt = yTrue[i];
+    const yp = yPred[i];
+    const e = yt - yp;
+    sse += e * e;
+    sst += (yt - meanY) * (yt - meanY);
+    absErrs.push(Math.abs(e));
+    smapeSum += (2 * Math.abs(e)) / (Math.abs(yt) + Math.abs(yp) + 1e-8);
+  }
+  const r2 = sst > 1e-12 ? 1 - sse / sst : sse < 1e-12 ? 1 : 0;
+  absErrs.sort((a, b) => a - b);
+  const mid = Math.floor(absErrs.length / 2);
+  const medianAe =
+    absErrs.length % 2 === 1 ? absErrs[mid]! : ((absErrs[mid - 1] ?? 0) + (absErrs[mid] ?? 0)) / 2;
+  const maxAe = absErrs[absErrs.length - 1] ?? 0;
+  const smape = (100 / n) * smapeSum;
+  return { r2, medianAe, maxAe, smape };
+}
+
 function logNumber(logs: tf.Logs | undefined, ...keys: string[]): number | undefined {
   if (!logs || typeof logs !== "object") {
     return undefined;
@@ -470,11 +512,22 @@ async function trainTabularModel(
     preds.dispose();
     maeTensor.dispose();
     const rmseValue = Math.sqrt(mseValue);
+    const extra = regressionMetricsFromVectors(yTestData, predData, nTest);
 
     tabularMode = "regression";
     classIndexToLabel = [];
-    const summary = `Регрессия (тест): MSE ${mseValue.toFixed(4)}, MAE ${maeValue.toFixed(4)}, RMSE ${rmseValue.toFixed(4)}`;
-    const metrics = { testMSE: mseValue, testMAE: maeValue, testRMSE: rmseValue };
+    const summary =
+      `Регрессия (тест): MSE ${mseValue.toFixed(4)}, MAE ${maeValue.toFixed(4)}, RMSE ${rmseValue.toFixed(4)}, ` +
+      `R² ${extra.r2.toFixed(4)}, MedAE ${extra.medianAe.toFixed(4)}, Max|e| ${extra.maxAe.toFixed(4)}, sMAPE ${extra.smape.toFixed(2)}%`;
+    const metrics = {
+      testMSE: mseValue,
+      testMAE: maeValue,
+      testRMSE: rmseValue,
+      testR2: extra.r2,
+      testMedianAE: extra.medianAe,
+      testMaxAbsError: extra.maxAe,
+      testSMAPE: extra.smape
+    };
     const report: TrainingRunReport = {
       kind: "tabular_regression",
       modelType: "tabular_regression",

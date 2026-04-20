@@ -348,7 +348,7 @@ function getPaletteItems(level: 1 | 2): PaletteItem[] {
       group: "model",
       shape: "stack",
       description:
-        "Показывает метрики последнего обучения (после «Обучить модель»). Для регрессии: MSE, MAE, RMSE; для классификации: точность и loss."
+        "Показывает метрики последнего обучения (после «Обучить модель»). Для регрессии: MSE, MAE, RMSE, R², MedAE, max |ошибка|, sMAPE; для классификации: точность и loss."
     },
     {
       type: "noda_save_model",
