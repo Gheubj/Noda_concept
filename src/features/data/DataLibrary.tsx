@@ -34,7 +34,10 @@ const MODEL_TYPE_LABEL: Record<SavedModelEntry["modelType"], string> = {
   image_knn: "Картинки (KNN)",
   tabular_regression: "Таблица, регрессия",
   tabular_classification: "Таблица, классификация",
-  tabular_neural: "Таблица, нейросеть"
+  tabular_neural: "Таблица, нейросеть",
+  tabular_svm: "Таблица, SVM",
+  tabular_random_forest: "Таблица, Random Forest",
+  tabular_orchestrator: "Таблица, Оркестр моделей"
 };
 
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024;

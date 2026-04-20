@@ -1,6 +1,8 @@
 import * as mobilenet from "@tensorflow-models/mobilenet";
 import * as knnClassifier from "@tensorflow-models/knn-classifier";
 import * as tf from "@tensorflow/tfjs";
+import { RandomForestClassifier } from "ml-random-forest";
+import MlSvm from "ml-svm";
 import type {
   DatasetClass,
   ImageDataset,
@@ -26,6 +28,8 @@ let mobileNetModel: mobilenet.MobileNet | null = null;
 const imageClassifier = knnClassifier.create();
 let tabularModel: tf.LayersModel | null = null;
 let tabularMode: "regression" | "classification" | null = null;
+let tabularSvmModel: any | null = null;
+let tabularRfModel: RandomForestClassifier | null = null;
 let classIndexToLabel: string[] = [];
 export type TabularFeatureSpec =
   | { kind: "numeric" }
@@ -279,6 +283,42 @@ function logNumber(logs: tf.Logs | undefined, ...keys: string[]): number | undef
   return undefined;
 }
 
+function buildClassificationArtifacts(args: {
+  trueIdx: number[];
+  predIdx: number[];
+  confidences?: number[];
+  labels: string[];
+}) {
+  const { trueIdx, predIdx, confidences, labels } = args;
+  const n = Math.min(trueIdx.length, predIdx.length);
+  const numClasses = labels.length;
+  const confusion: number[][] = Array.from({ length: numClasses }, () =>
+    Array.from({ length: numClasses }, () => 0)
+  );
+  const examples: { trueLabel: string; predictedLabel: string; confidence: number }[] = [];
+  let correct = 0;
+  for (let i = 0; i < n; i++) {
+    const t = trueIdx[i];
+    const p = predIdx[i];
+    confusion[t][p] += 1;
+    if (t === p) {
+      correct += 1;
+    }
+    if (examples.length < 8) {
+      examples.push({
+        trueLabel: labels[t] ?? `class_${t}`,
+        predictedLabel: labels[p] ?? `class_${p}`,
+        confidence: confidences?.[i] ?? Number(t === p)
+      });
+    }
+  }
+  return {
+    confusion,
+    examples,
+    accuracy: n > 0 ? correct / n : 0
+  };
+}
+
 async function trainTabularModel(
   modelType: ModelType,
   dataset: TabularDataset,
@@ -409,108 +449,184 @@ async function trainTabularModel(
     return acc;
   }, {});
   const yIndices = yRaw.map((value) => labelToIndex[value]);
-  const buildOneHot = (rows: number[]) =>
-    tf.oneHot(tf.tensor1d(rows.map((i) => yIndices[i]), "int32"), uniqueLabels.length);
-  const yTrain = buildOneHot(trainIdx);
-  const yVal = buildOneHot(valIdx);
-  const yTest = buildOneHot(testIdx);
+  const yTrainIdx = trainIdx.map((i) => yIndices[i]);
+  const yValIdx = valIdx.map((i) => yIndices[i]);
+  const yTestIdx = testIdx.map((i) => yIndices[i]);
+  const yTrain = tf.oneHot(tf.tensor1d(yTrainIdx, "int32"), uniqueLabels.length);
+  const yVal = tf.oneHot(tf.tensor1d(yValIdx, "int32"), uniqueLabels.length);
+  const yTest = tf.oneHot(tf.tensor1d(yTestIdx, "int32"), uniqueLabels.length);
 
+  let clsEpochHistory: TrainingEpochLog[] = [];
+  let loss = 0;
+  let acc = 0;
+  let predictedIdx: number[] = [];
+  let confidences: number[] = [];
+
+  tabularSvmModel = null;
+  tabularRfModel = null;
   tabularModel?.dispose();
-  if (modelType === "tabular_neural") {
-    tabularModel = tf.sequential({
-      layers: [
-        tf.layers.dense({ inputShape: [featureCount], units: 16, activation: "relu" }),
-        tf.layers.dense({ units: 8, activation: "relu" }),
-        tf.layers.dense({ units: uniqueLabels.length, activation: "softmax" })
-      ]
+  tabularModel = null;
+
+  if (modelType === "tabular_svm") {
+    if (uniqueLabels.length !== 2) {
+      throw new Error("SVM в пилоте поддерживает бинарную классификацию (2 класса).");
+    }
+    const svm = new (MlSvm as any)({
+      C: 1,
+      tol: 1e-4,
+      maxPasses: 30,
+      maxIterations: 15000,
+      kernel: "rbf",
+      kernelOptions: { sigma: Math.max(0.1, 1 / Math.max(1, featureCount)) }
     });
+    onProgress(15, "SVM: обучение...");
+    const yTrainBinary = yTrainIdx.map((v) => (v === 0 ? -1 : 1));
+    svm.train(trainIdx.map((i) => x[i]), yTrainBinary);
+    const preds = svm.predict(testIdx.map((i) => x[i])) as number[];
+    predictedIdx = preds.map((v) => (Number(v) >= 0 ? 1 : 0));
+    confidences = predictedIdx.map(() => 1);
+    acc =
+      predictedIdx.length > 0
+        ? predictedIdx.reduce((n, p, i) => n + Number(p === yTestIdx[i]), 0) / predictedIdx.length
+        : 0;
+    loss = 1 - acc;
+    onProgress(100, "SVM: готово");
+    tabularSvmModel = svm;
+    tabularMode = "classification";
+  } else if (modelType === "tabular_random_forest") {
+    onProgress(15, "Random Forest: обучение...");
+    const rf = new RandomForestClassifier({
+      nEstimators: 35,
+      maxFeatures: Math.max(1, Math.min(featureCount, Math.round(Math.sqrt(featureCount)))),
+      replacement: true,
+      seed: 42
+    });
+    rf.train(trainIdx.map((i) => x[i]), yTrainIdx);
+    const preds = rf.predict(testIdx.map((i) => x[i]));
+    predictedIdx = preds.map((v) => Math.max(0, Math.min(uniqueLabels.length - 1, Math.round(Number(v) || 0))));
+    confidences = predictedIdx.map(() => 1);
+    acc =
+      predictedIdx.length > 0
+        ? predictedIdx.reduce((n, p, i) => n + Number(p === yTestIdx[i]), 0) / predictedIdx.length
+        : 0;
+    loss = 1 - acc;
+    onProgress(100, "Random Forest: готово");
+    tabularRfModel = rf;
+    tabularMode = "classification";
   } else {
-    tabularModel = tf.sequential({
-      layers: [
-        tf.layers.dense({
-          inputShape: [featureCount],
-          units: uniqueLabels.length,
-          activation: "softmax"
-        })
-      ]
-    });
-  }
-  tabularModel.compile({
-    optimizer: tf.train.adam(config.learningRate),
-    loss: "categoricalCrossentropy",
-    metrics: ["accuracy"]
-  });
-  const clsEpochHistory: TrainingEpochLog[] = [];
-  await tabularModel.fit(xTrain, yTrain, {
-    epochs: config.epochs,
-    validationData: [xVal, yVal],
-    callbacks: {
-      onEpochEnd: async (epoch, logs) => {
-        clsEpochHistory.push({
-          epoch: epoch + 1,
-          loss: logNumber(logs, "loss"),
-          valLoss: logNumber(logs, "val_loss"),
-          accuracy: logNumber(logs, "accuracy"),
-          valAccuracy: logNumber(logs, "val_accuracy", "val_acc")
+    const buildTfClassifier = (kind: "linear" | "neural") => {
+      if (kind === "neural") {
+        return tf.sequential({
+          layers: [
+            tf.layers.dense({ inputShape: [featureCount], units: 16, activation: "relu" }),
+            tf.layers.dense({ units: 8, activation: "relu" }),
+            tf.layers.dense({ units: uniqueLabels.length, activation: "softmax" })
+          ]
         });
-        onProgress(
-          Math.round(((epoch + 1) / config.epochs) * 100),
-          `Эпоха ${epoch + 1}/${config.epochs}`
-        );
-        await tf.nextFrame();
       }
-    }
-  });
-  const evaluationTensors = tabularModel.evaluate(xTest, yTest) as tf.Tensor[];
-  const loss = (await evaluationTensors[0].data())[0] ?? 0;
-  const acc = (await evaluationTensors[1].data())[0] ?? 0;
-  for (const t of evaluationTensors) {
-    t.dispose();
-  }
-
-  const numClasses = uniqueLabels.length;
-  const confusion: number[][] = Array.from({ length: numClasses }, () =>
-    Array.from({ length: numClasses }, () => 0)
-  );
-  const predTensor = tabularModel.predict(xTest) as tf.Tensor;
-  const predArr = await predTensor.data();
-  const yTestFlat = await yTest.data();
-  const nTestRows = testIdx.length;
-  const classificationExamples: {
-    trueLabel: string;
-    predictedLabel: string;
-    confidence: number;
-  }[] = [];
-
-  for (let r = 0; r < nTestRows; r++) {
-    let predIdx = 0;
-    let maxProb = -1;
-    for (let c = 0; c < numClasses; c++) {
-      const p = predArr[r * numClasses + c];
-      if (p > maxProb) {
-        maxProb = p;
-        predIdx = c;
-      }
-    }
-    let trueIdx = 0;
-    for (let c = 0; c < numClasses; c++) {
-      if (yTestFlat[r * numClasses + c] > 0.5) {
-        trueIdx = c;
-        break;
-      }
-    }
-    confusion[trueIdx][predIdx] += 1;
-    if (classificationExamples.length < 8) {
-      const rowIndex = testIdx[r];
-      classificationExamples.push({
-        trueLabel: uniqueLabels[yIndices[rowIndex]],
-        predictedLabel: uniqueLabels[predIdx],
-        confidence: maxProb
+      return tf.sequential({
+        layers: [
+          tf.layers.dense({
+            inputShape: [featureCount],
+            units: uniqueLabels.length,
+            activation: "softmax"
+          })
+        ]
       });
+    };
+    const runTfTrain = async (kind: "linear" | "neural") => {
+      const m = buildTfClassifier(kind);
+      const epochs: TrainingEpochLog[] = [];
+      m.compile({
+        optimizer: tf.train.adam(config.learningRate),
+        loss: "categoricalCrossentropy",
+        metrics: ["accuracy"]
+      });
+      await m.fit(xTrain, yTrain, {
+        epochs: config.epochs,
+        validationData: [xVal, yVal],
+        callbacks: {
+          onEpochEnd: async (epoch, logs) => {
+            epochs.push({
+              epoch: epoch + 1,
+              loss: logNumber(logs, "loss"),
+              valLoss: logNumber(logs, "val_loss"),
+              accuracy: logNumber(logs, "accuracy"),
+              valAccuracy: logNumber(logs, "val_accuracy", "val_acc")
+            });
+            onProgress(
+              Math.round(((epoch + 1) / config.epochs) * 100),
+              `Эпоха ${epoch + 1}/${config.epochs}`
+            );
+            await tf.nextFrame();
+          }
+        }
+      });
+      const evalTensors = m.evaluate(xTest, yTest) as tf.Tensor[];
+      const modelLoss = (await evalTensors[0].data())[0] ?? 0;
+      const modelAcc = (await evalTensors[1].data())[0] ?? 0;
+      for (const t of evalTensors) {
+        t.dispose();
+      }
+      const predTensor = m.predict(xTest) as tf.Tensor;
+      const predArr = await predTensor.data();
+      predTensor.dispose();
+      const predIdx: number[] = [];
+      const conf: number[] = [];
+      for (let r = 0; r < testIdx.length; r++) {
+        let pIdx = 0;
+        let maxProb = -1;
+        for (let c = 0; c < uniqueLabels.length; c++) {
+          const p = predArr[r * uniqueLabels.length + c];
+          if (p > maxProb) {
+            maxProb = p;
+            pIdx = c;
+          }
+        }
+        predIdx.push(pIdx);
+        conf.push(maxProb);
+      }
+      return { model: m, epochs, modelLoss, modelAcc, predIdx, conf };
+    };
+    if (modelType === "tabular_orchestrator") {
+      onProgress(5, "Оркестр: логистическая модель");
+      const linear = await runTfTrain("linear");
+      const linearScore = linear.modelAcc;
+      onProgress(52, "Оркестр: нейросеть MLP");
+      const neural = await runTfTrain("neural");
+      const neuralScore = neural.modelAcc;
+      const best = neuralScore >= linearScore ? neural : linear;
+      if (best !== linear) {
+        linear.model.dispose();
+      }
+      if (best !== neural) {
+        neural.model.dispose();
+      }
+      tabularModel = best.model;
+      clsEpochHistory = best.epochs;
+      loss = best.modelLoss;
+      acc = best.modelAcc;
+      predictedIdx = best.predIdx;
+      confidences = best.conf;
+    } else {
+      const kind = modelType === "tabular_neural" ? "neural" : "linear";
+      const single = await runTfTrain(kind);
+      tabularModel = single.model;
+      clsEpochHistory = single.epochs;
+      loss = single.modelLoss;
+      acc = single.modelAcc;
+      predictedIdx = single.predIdx;
+      confidences = single.conf;
     }
+    tabularMode = "classification";
   }
 
-  predTensor.dispose();
+  const artifacts = buildClassificationArtifacts({
+    trueIdx: yTestIdx,
+    predIdx: predictedIdx,
+    confidences,
+    labels: uniqueLabels
+  });
   tabularMode = "classification";
   classIndexToLabel = uniqueLabels;
   xTrain.dispose();
@@ -521,7 +637,7 @@ async function trainTabularModel(
   yTest.dispose();
 
   const summary = `Classification test accuracy: ${(acc * 100).toFixed(1)}%`;
-  const cmData = { labels: [...uniqueLabels], matrix: confusion };
+  const cmData = { labels: [...uniqueLabels], matrix: artifacts.confusion };
   const metrics = { testLoss: loss, testAccuracy: acc, ...flatAggregateMetrics(cmData) };
   const report: TrainingRunReport = {
     kind: "tabular_classification",
@@ -530,7 +646,7 @@ async function trainTabularModel(
     metrics,
     epochHistory: clsEpochHistory,
     confusionMatrix: cmData,
-    classificationExamples
+    classificationExamples: artifacts.examples
   };
   return { evaluation: { summary, metrics }, report };
 }
@@ -624,6 +740,8 @@ function disposeTabularInMemory() {
   tabularModel?.dispose();
   tabularModel = null;
   tabularMode = null;
+  tabularSvmModel = null;
+  tabularRfModel = null;
   classIndexToLabel = [];
   tabularFeatureSpecs = [];
 }
@@ -745,10 +863,33 @@ function parsePredictionFeatures(input: string) {
 }
 
 async function predictTabularByInput(input: string): Promise<PredictionResult | null> {
-  if (!tabularModel || !tabularMode) {
+  if (!tabularMode || (!tabularModel && !tabularSvmModel && !tabularRfModel)) {
     return null;
   }
   const features = parsePredictionFeatures(input);
+  if (tabularSvmModel && tabularMode === "classification") {
+    const pred = tabularSvmModel.predictOne(features);
+    const idx = Math.max(0, Math.min(classIndexToLabel.length - 1, Math.round(Number(pred) || 0)));
+    const title = classIndexToLabel[idx] ?? `class_${idx}`;
+    return {
+      labelId: title,
+      title,
+      confidence: 1
+    };
+  }
+  if (tabularRfModel && tabularMode === "classification") {
+    const pred = tabularRfModel.predict([features])[0] ?? 0;
+    const idx = Math.max(0, Math.min(classIndexToLabel.length - 1, Math.round(Number(pred) || 0)));
+    const title = classIndexToLabel[idx] ?? `class_${idx}`;
+    return {
+      labelId: title,
+      title,
+      confidence: 1
+    };
+  }
+  if (!tabularModel) {
+    return null;
+  }
   const x = tf.tensor2d([features]);
   const y = tabularModel.predict(x) as tf.Tensor;
   const values = Array.from(await y.data());

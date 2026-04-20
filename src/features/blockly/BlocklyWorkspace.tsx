@@ -90,7 +90,10 @@ function parseModelTypeRef(ref: string): ModelType {
     ref === "image_knn" ||
     ref === "tabular_regression" ||
     ref === "tabular_classification" ||
-    ref === "tabular_neural"
+    ref === "tabular_neural" ||
+    ref === "tabular_svm" ||
+    ref === "tabular_random_forest" ||
+    ref === "tabular_orchestrator"
   ) {
     return ref;
   }
@@ -98,12 +101,23 @@ function parseModelTypeRef(ref: string): ModelType {
 }
 
 /** Варианты типа модели внутри блока «Обучить модель» (отдельные блоки моделей не нужны). */
-function getTrainModelTypeDropdownOptions(): [string, string][] {
+function getTrainModelTypeDropdownOptions(level: 1 | 2): [string, string][] {
+  if (level === 1) {
+    return [
+      ["Картинки (KNN)", "image_knn"],
+      ["Таблица: регрессия", "tabular_regression"],
+      ["Таблица: классификация", "tabular_classification"],
+      ["Таблица: нейросеть (MLP)", "tabular_neural"]
+    ];
+  }
   return [
     ["Картинки (KNN)", "image_knn"],
     ["Таблица: регрессия", "tabular_regression"],
     ["Таблица: классификация", "tabular_classification"],
-    ["Таблица: нейросеть (MLP)", "tabular_neural"]
+    ["Таблица: нейросеть (MLP)", "tabular_neural"],
+    ["Таблица: SVM", "tabular_svm"],
+    ["Таблица: Random Forest", "tabular_random_forest"],
+    ["Таблица: Оркестр моделей", "tabular_orchestrator"]
   ];
 }
 
@@ -144,14 +158,15 @@ function sortBlocklyHatsByWorkspaceOrder(hats: Blockly.Block[]): Blockly.Block[]
 
 function getSavedModelBlocklyOptions(): [string, string][] {
   const level = effectiveToolboxLevel(useAppStore.getState().workspaceLevel);
+  const sessionOpt: [string, string] = ["после обучения (в памяти)", SESSION_TRAINED_MODEL_ID];
   if (level === 1) {
-    return [["после обучения (без библиотеки)", SESSION_TRAINED_MODEL_ID]];
+    return [sessionOpt];
   }
   const models = useAppStore.getState().savedModels;
   if (models.length === 0) {
-    return [["нет сохранённых моделей", "__none__"]];
+    return [sessionOpt];
   }
-  return models.map((m) => [`${m.title} (${m.modelType})`, m.id]);
+  return [sessionOpt, ...models.map((m) => [`${m.title} (${m.modelType})`, m.id] as [string, string])];
 }
 
 function getSavedModelEntryById(id: string): SavedModelEntry | null {
@@ -482,7 +497,12 @@ function registerBlocks() {
     init() {
       this.appendDummyInput()
         .appendField("обучить модель")
-        .appendField(new Blockly.FieldDropdown(getTrainModelTypeDropdownOptions), "MODEL_TYPE")
+        .appendField(
+          new Blockly.FieldDropdown(() =>
+            getTrainModelTypeDropdownOptions(effectiveToolboxLevel(useAppStore.getState().workspaceLevel))
+          ),
+          "MODEL_TYPE"
+        )
         .appendField("данные")
         .appendField(
           new Blockly.FieldDropdown(function () {
@@ -522,7 +542,12 @@ function registerBlocks() {
     init() {
       this.appendDummyInput()
         .appendField("обучить модель")
-        .appendField(new Blockly.FieldDropdown(getTrainModelTypeDropdownOptions), "MODEL_TYPE")
+        .appendField(
+          new Blockly.FieldDropdown(() =>
+            getTrainModelTypeDropdownOptions(effectiveToolboxLevel(useAppStore.getState().workspaceLevel))
+          ),
+          "MODEL_TYPE"
+        )
         .appendField("данные")
         .appendField(
           new Blockly.FieldDropdown(function () {

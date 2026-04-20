@@ -3,7 +3,10 @@ export type ModelType =
   | "image_knn"
   | "tabular_regression"
   | "tabular_classification"
-  | "tabular_neural";
+  | "tabular_neural"
+  | "tabular_svm"
+  | "tabular_random_forest"
+  | "tabular_orchestrator";
 
 export interface DatasetClass {
   labelId: LabelId;
