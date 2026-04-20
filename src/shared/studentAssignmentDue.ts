@@ -1,7 +1,12 @@
 import dayjs from "dayjs";
 
 export function submissionStatusUnfinished(status: string): boolean {
-  return status !== "submitted" && status !== "graded";
+  return (
+    status !== "submitted" &&
+    status !== "auto_checked" &&
+    status !== "pending_teacher_review" &&
+    status !== "graded"
+  );
 }
 
 /** Срок истёк (конец календарного дня сдачи раньше текущего момента), работа ещё не завершена. */

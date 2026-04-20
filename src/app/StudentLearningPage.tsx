@@ -15,6 +15,10 @@ export function StudentLearningPage() {
   const [loading, setLoading] = useState(true);
   const [focusId, setFocusId] = useState<string>("");
   const [detailSummary, setDetailSummary] = useState<string | null>(null);
+  const [directProgress, setDirectProgress] = useState<{
+    threshold: number;
+    modules: { moduleKey: string; avgScore: number; passed: boolean; unlocked: boolean }[];
+  } | null>(null);
 
   useEffect(() => {
     void (async () => {
@@ -65,7 +69,40 @@ export function StudentLearningPage() {
     };
   }, [focusId]);
 
+  useEffect(() => {
+    if (!(user?.role === "student" && user.studentMode === "direct")) {
+      setDirectProgress(null);
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      try {
+        const p = await apiClient.get<{
+          threshold: number;
+          modules: { moduleKey: string; avgScore: number; passed: boolean; unlocked: boolean }[];
+        }>("/api/student/direct/block-progress");
+        if (!cancelled) {
+          setDirectProgress(p);
+        }
+      } catch {
+        if (!cancelled) {
+          setDirectProgress(null);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.role, user?.studentMode]);
+
   const active = useMemo(() => templates.find((t) => t.id === focusId) ?? null, [templates, focusId]);
+  const directModuleStatus = useMemo(() => {
+    const m = new Map<string, { avgScore: number; passed: boolean; unlocked: boolean }>();
+    for (const row of directProgress?.modules ?? []) {
+      m.set(row.moduleKey, { avgScore: row.avgScore, passed: row.passed, unlocked: row.unlocked });
+    }
+    return m;
+  }, [directProgress]);
 
   if (!user) {
     return (
@@ -107,10 +144,25 @@ export function StudentLearningPage() {
                 </Paragraph>
               )}
               <Space wrap>
-                <Button type="primary" size="large" onClick={() => navigate(`/lesson/${encodeURIComponent(active.id)}`)}>
+                <Button
+                  type="primary"
+                  size="large"
+                  disabled={
+                    user.studentMode === "direct" &&
+                    (directModuleStatus.get(active.moduleKey)?.unlocked ?? true) === false
+                  }
+                  onClick={() => navigate(`/lesson/${encodeURIComponent(active.id)}`)}
+                >
                   Открыть урок
                 </Button>
               </Space>
+              {user.studentMode === "direct" ? (
+                <Paragraph type="secondary" style={{ marginTop: 10, marginBottom: 0 }}>
+                  Порог блока: {directProgress?.threshold ?? 80}%.
+                  {" "}
+                  Текущий блок {active.moduleKey}: {directModuleStatus.get(active.moduleKey)?.avgScore ?? 0}%.
+                </Paragraph>
+              ) : null}
             </Card>
           ) : null}
           <List
@@ -125,6 +177,10 @@ export function StudentLearningPage() {
                     key="player"
                     type="primary"
                     size="small"
+                    disabled={
+                      user.studentMode === "direct" &&
+                      (directModuleStatus.get(item.moduleKey)?.unlocked ?? true) === false
+                    }
                     onClick={() => navigate(`/lesson/${encodeURIComponent(item.id)}`)}
                   >
                     Открыть урок

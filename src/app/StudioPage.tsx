@@ -60,6 +60,8 @@ interface SubmissionContext {
   teacherNote: string | null;
   revisionNote: string | null;
   score: number | null;
+  autoScore: number | null;
+  manualScore: number | null;
   maxScore: number;
 }
 
@@ -67,6 +69,8 @@ interface TeacherWorkReview {
   submissionId: string;
   status: string;
   score: number | null;
+  autoScore: number | null;
+  manualScore: number | null;
   maxScore: number;
   studentNickname: string;
   assignmentTitle: string;
@@ -162,7 +166,7 @@ type StudioDraftPayload = {
   saveTitle: string;
 };
 
-const GRADEABLE_STATUSES = ["submitted", "needs_revision", "graded"] as const;
+const GRADEABLE_STATUSES = ["submitted", "pending_teacher_review", "needs_revision", "graded"] as const;
 
 export function StudioPage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -535,7 +539,7 @@ export function StudioPage() {
         setSaveTitle(data.meta.title);
         setTeacherReview(data.review);
         messageApi.success("Открыта работа ученика");
-        if (data.review.status === "submitted") {
+        if (data.review.status === "submitted" || data.review.status === "pending_teacher_review") {
           void apiClient
             .post("/api/teacher/submissions/mark-seen", { submissionIds: [data.review.submissionId] })
             .then(() => window.dispatchEvent(new Event("nodly-refresh-header-summary")))
@@ -882,16 +886,21 @@ export function StudioPage() {
                     <Paragraph style={{ marginBottom: 0, whiteSpace: "pre-wrap" }}>{teacherMessageForStudent}</Paragraph>
                   </div>
                 ) : null}
-                {submissionCtx.status === "graded" && submissionCtx.score != null ? (
+                {(submissionCtx.status === "graded" || submissionCtx.status === "auto_checked") && submissionCtx.score != null ? (
                   <Text>
                     Оценка: {submissionCtx.score} / {submissionCtx.maxScore}
+                  </Text>
+                ) : null}
+                {submissionCtx.status === "pending_teacher_review" && submissionCtx.autoScore != null ? (
+                  <Text>
+                    Предварительный балл (авто): {submissionCtx.autoScore} / {submissionCtx.maxScore}
                   </Text>
                 ) : null}
                 {submissionCtx.canSubmit ? (
                   <Button type="primary" loading={submittingAssignment} onClick={() => void handleSubmitFromStudio()}>
                     Сохранить в облако и сдать учителю
                   </Button>
-                ) : submissionCtx.status === "submitted" ? (
+                ) : submissionCtx.status === "submitted" || submissionCtx.status === "pending_teacher_review" ? (
                   <Text type="secondary">Работа сдана, жди проверки.</Text>
                 ) : null}
               </Space>
@@ -1157,7 +1166,7 @@ export function StudioPage() {
                 <Paragraph type="secondary" style={{ marginTop: 0 }}>
                   Статус сдачи:{" "}
                   <Text strong>
-                    {teacherReview.status === "submitted"
+                    {teacherReview.status === "submitted" || teacherReview.status === "pending_teacher_review"
                       ? "сдано"
                       : teacherReview.status === "needs_revision"
                         ? "доработка"

@@ -28,6 +28,9 @@ interface StudentAssignmentRow {
     id: string;
     status: string;
     score: number | null;
+    autoScore: number | null;
+    manualScore: number | null;
+    scoreBreakdown: unknown;
     projectId: string | null;
     gradedSeenAt: string | null;
     teacherNote: string | null;
@@ -66,6 +69,8 @@ const STATUS_RU: Record<string, string> = {
   not_started: "Не начато",
   draft: "Черновик",
   submitted: "Сдано",
+  auto_checked: "Проверено автоматически",
+  pending_teacher_review: "На проверке у учителя",
   needs_revision: "Нужна доработка",
   graded: "Оценено"
 };
@@ -223,7 +228,7 @@ export function StudentClassPage() {
   const submitWork = async (row: StudentAssignmentRow) => {
     try {
       await apiClient.post(`/api/student/assignments/${row.assignmentId}/submit`, {});
-      messageApi.success("Работа сдана");
+      messageApi.success(user?.studentMode === "school" ? "Работа сдана учителю" : "Работа сдана");
       await loadAssignments();
     } catch (e) {
       messageApi.error(e instanceof Error ? e.message : "Ошибка");
@@ -290,7 +295,13 @@ export function StudentClassPage() {
       render: (_, row) => {
         const st = row.submission?.status ?? "not_started";
         const color =
-          st === "needs_revision" ? "orange" : st === "graded" ? "green" : st === "submitted" ? "blue" : "default";
+          st === "needs_revision"
+            ? "orange"
+            : st === "graded" || st === "auto_checked"
+              ? "green"
+              : st === "submitted" || st === "pending_teacher_review"
+                ? "blue"
+                : "default";
         const overdueHw = row.kind === "homework" && isOverdueByDueAt(row.dueAt, st);
         return (
           <Space size="small" wrap>
@@ -309,14 +320,14 @@ export function StudentClassPage() {
       width: 108,
       render: (_, row) => {
         const st = row.submission?.status ?? "not_started";
-        if (st === "graded" && row.submission?.score != null) {
+        if ((st === "graded" || st === "auto_checked") && row.submission?.score != null) {
           return (
             <Text strong>
               {row.submission.score}/{row.maxScore}
             </Text>
           );
         }
-        if (st === "submitted") {
+        if (st === "submitted" || st === "pending_teacher_review") {
           return (
             <Text type="secondary" style={{ fontSize: 12 }}>
               На проверке
@@ -347,7 +358,7 @@ export function StudentClassPage() {
             ) : null}
             {(st === "draft" || st === "needs_revision") && hasProject ? (
               <Button size="small" type="default" onClick={() => void submitWork(row)}>
-                Сдать
+                {user?.studentMode === "school" ? "Сдать учителю" : "Сдать"}
               </Button>
             ) : null}
             {st === "graded" && needsAttention(row) ? (
@@ -484,10 +495,10 @@ export function StudentClassPage() {
   const filteredAllAssignments = useMemo(() => {
     return assignments.filter((row) => {
       const st = row.submission?.status ?? "not_started";
-      if (allFilterGrade === "graded" && st !== "graded") {
+      if (allFilterGrade === "graded" && st !== "graded" && st !== "auto_checked") {
         return false;
       }
-      if (allFilterGrade === "not_graded" && st === "graded") {
+      if (allFilterGrade === "not_graded" && (st === "graded" || st === "auto_checked")) {
         return false;
       }
       if (allFilterKind !== "all" && row.kind !== allFilterKind) {

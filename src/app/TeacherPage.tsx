@@ -124,6 +124,9 @@ interface TeacherSubmissionRow {
   id: string;
   status: string;
   score: number | null;
+  autoScore: number | null;
+  manualScore: number | null;
+  scoreBreakdown: unknown;
   teacherNote: string | null;
   revisionNote: string | null;
   submittedAt: string | null;
@@ -151,6 +154,8 @@ const SUBMISSION_STATUS_RU: Record<string, string> = {
   not_started: "Не начато",
   draft: "Черновик",
   submitted: "Сдано",
+  auto_checked: "Проверено автоматически",
+  pending_teacher_review: "На проверке у учителя",
   needs_revision: "Доработка",
   graded: "Оценено"
 };
@@ -831,7 +836,7 @@ export function TeacherPage() {
       comment: row.revisionNote || row.teacherNote || ""
     });
     setGradeOpen(true);
-    if (row.status === "submitted") {
+    if (row.status === "submitted" || row.status === "pending_teacher_review") {
       void apiClient.post("/api/teacher/submissions/mark-seen", { submissionIds: [row.id] }).catch(() => {});
     }
   };
@@ -980,8 +985,15 @@ export function TeacherPage() {
     {
       title: "Балл",
       key: "score",
-      render: (_, r) =>
-        r.score != null && r.assignment.maxScore != null ? `${r.score}/${r.assignment.maxScore}` : "—"
+      render: (_, r) => {
+        if (r.score != null && r.assignment.maxScore != null) {
+          return `${r.score}/${r.assignment.maxScore}`;
+        }
+        if (r.status === "pending_teacher_review" && r.autoScore != null) {
+          return `Авто: ${r.autoScore}/${r.assignment.maxScore}`;
+        }
+        return "—";
+      }
     },
     {
       title: "",
@@ -994,6 +1006,7 @@ export function TeacherPage() {
             </Link>
           ) : null}
           {r.status === "submitted" ||
+          r.status === "pending_teacher_review" ||
           r.status === "needs_revision" ||
           r.status === "draft" ||
           (r.status === "not_started" && r.assignment.kind === "classwork") ? (
@@ -1038,7 +1051,7 @@ export function TeacherPage() {
           if (!c || c.status === "not_started") {
             return "—";
           }
-          if (c.status === "graded" && c.score != null) {
+          if ((c.status === "graded" || c.status === "auto_checked") && c.score != null) {
             return `${c.score}`;
           }
           return SUBMISSION_STATUS_RU[c.status] ?? c.status;

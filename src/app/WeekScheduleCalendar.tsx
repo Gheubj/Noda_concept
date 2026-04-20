@@ -62,6 +62,8 @@ export const diaryStatusLabels: Record<string, string> = {
   not_started: "Не начато",
   draft: "Черновик",
   submitted: "Сдано",
+  auto_checked: "Проверено автоматически",
+  pending_teacher_review: "На проверке у учителя",
   needs_revision: "Доработка",
   graded: "Оценено"
 };
@@ -313,7 +315,7 @@ export function WeekScheduleCalendar({
                                         hasProject &&
                                         onStudentSubmitAssignment ? (
                                           <Button size="small" onClick={() => onStudentSubmitAssignment(row)}>
-                                            Сдать
+                                            Сдать учителю
                                           </Button>
                                         ) : null}
                                         {st === "graded" &&

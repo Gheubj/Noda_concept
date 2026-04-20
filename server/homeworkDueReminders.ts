@@ -58,7 +58,12 @@ export async function runHomeworkDueRemindersOnce(): Promise<void> {
       if (sub?.homeworkDueReminderSentAt) {
         continue;
       }
-      if (sub?.status === "submitted" || sub?.status === "graded") {
+      if (
+        sub?.status === "submitted" ||
+        sub?.status === "auto_checked" ||
+        sub?.status === "pending_teacher_review" ||
+        sub?.status === "graded"
+      ) {
         continue;
       }
       try {

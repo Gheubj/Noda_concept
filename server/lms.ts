@@ -225,15 +225,24 @@ function homeworkEndOfLocalDayMs(d: Date): number {
   return x.getTime();
 }
 
+function submissionFinishedForDeadline(st: string): boolean {
+  return (
+    st === "submitted" ||
+    st === "auto_checked" ||
+    st === "pending_teacher_review" ||
+    st === "graded"
+  );
+}
+
 function homeworkOverdueUnfinished(dueAt: Date | null, st: string): boolean {
-  if (!dueAt || st === "submitted" || st === "graded") {
+  if (!dueAt || submissionFinishedForDeadline(st)) {
     return false;
   }
   return homeworkEndOfLocalDayMs(dueAt) < Date.now();
 }
 
 function homeworkDueSoonUnfinished(dueAt: Date | null, st: string, horizonDays: number): boolean {
-  if (!dueAt || st === "submitted" || st === "graded") {
+  if (!dueAt || submissionFinishedForDeadline(st)) {
     return false;
   }
   if (homeworkOverdueUnfinished(dueAt, st)) {
@@ -243,6 +252,114 @@ function homeworkDueSoonUnfinished(dueAt: Date | null, st: string, horizonDays: 
   horizon.setDate(horizon.getDate() + horizonDays);
   horizon.setHours(23, 59, 59, 999);
   return homeworkEndOfLocalDayMs(dueAt) <= horizon.getTime();
+}
+
+type HomeworkTaskSummary = {
+  testCount: number;
+  openCount: number;
+  projectCount: number;
+  testBlockIds: string[];
+};
+
+function summarizeHomeworkTasks(lessonContent: unknown): HomeworkTaskSummary {
+  let testCount = 0;
+  let openCount = 0;
+  let projectCount = 0;
+  const testBlockIds: string[] = [];
+  if (!lessonContent || typeof lessonContent !== "object") {
+    return { testCount, openCount, projectCount, testBlockIds };
+  }
+  const lc = lessonContent as Record<string, unknown>;
+  const blocks = Array.isArray(lc.blocks) ? lc.blocks : [];
+  for (const block of blocks) {
+    if (!block || typeof block !== "object") {
+      continue;
+    }
+    const b = block as Record<string, unknown>;
+    if (b.type === "checkpoint") {
+      const mode = b.answerMode;
+      const blockId = typeof b.id === "string" ? b.id : null;
+      if (mode === "single" || mode === "multi") {
+        testCount += 1;
+        if (blockId) {
+          testBlockIds.push(blockId);
+        }
+      } else {
+        openCount += 1;
+      }
+    } else if (b.type === "studio") {
+      projectCount += 1;
+    }
+  }
+  const checkpoints = Array.isArray(lc.checkpoints) ? lc.checkpoints : [];
+  if (blocks.length === 0 && checkpoints.length > 0) {
+    for (const c of checkpoints) {
+      if (!c || typeof c !== "object") {
+        continue;
+      }
+      const mode = (c as Record<string, unknown>).answerMode;
+      if (mode === "single" || mode === "multi") {
+        testCount += 1;
+      } else {
+        openCount += 1;
+      }
+    }
+  }
+  return { testCount, openCount, projectCount, testBlockIds };
+}
+
+function computeHomeworkAutoPart(
+  maxScore: number,
+  tasks: HomeworkTaskSummary,
+  stateRaw: unknown
+): { autoScore: number; autoMax: number; manualMax: number; solvedTests: number } {
+  const hasTests = tasks.testCount > 0;
+  const hasManual = tasks.openCount + tasks.projectCount > 0;
+  const autoWeight = hasTests ? (hasManual ? 40 : 100) : hasManual ? 0 : 100;
+  const autoMax = Math.round((maxScore * autoWeight) / 100);
+  const manualMax = Math.max(0, maxScore - autoMax);
+  const state =
+    stateRaw && typeof stateRaw === "object"
+      ? (stateRaw as { checkpoints?: Record<string, string> })
+      : null;
+  const checkpoints = state?.checkpoints ?? {};
+  let solvedTests = 0;
+  if (hasTests && tasks.testBlockIds.length > 0) {
+    for (const id of tasks.testBlockIds) {
+      if (checkpoints[id] === "ok") {
+        solvedTests += 1;
+      }
+    }
+  }
+  const autoScore =
+    hasTests && tasks.testCount > 0 ? Math.round((autoMax * solvedTests) / tasks.testCount) : autoMax;
+  return { autoScore, autoMax, manualMax, solvedTests };
+}
+
+function lessonCheckpointIds(lessonContent: unknown): string[] {
+  if (!lessonContent || typeof lessonContent !== "object") {
+    return [];
+  }
+  const lc = lessonContent as Record<string, unknown>;
+  const out: string[] = [];
+  const blocks = Array.isArray(lc.blocks) ? lc.blocks : [];
+  for (const block of blocks) {
+    if (!block || typeof block !== "object") {
+      continue;
+    }
+    const b = block as Record<string, unknown>;
+    if (b.type === "checkpoint" && typeof b.id === "string" && b.id.trim().length > 0) {
+      out.push(b.id);
+    }
+  }
+  if (out.length > 0) {
+    return out;
+  }
+  const checkpoints = Array.isArray(lc.checkpoints) ? lc.checkpoints : [];
+  for (let i = 0; i < checkpoints.length; i++) {
+    out.push(`legacy-checkpoint-${i + 1}`);
+  }
+  return out;
 }
 
 export const COURSE_MODULE_HOURS: Record<CourseModule, number> = {
@@ -430,7 +547,7 @@ export function registerLmsRoutes(app: Express) {
       const [pendingReview, newEnrollmentCount] = await Promise.all([
         prisma.submission.count({
           where: {
-            status: "submitted",
+            status: { in: ["submitted", "pending_teacher_review"] },
             teacherSeenAt: null,
             assignment: { classroomId: { in: ids }, kind: { in: [...assignmentKindsLmsZ] } }
           }
@@ -526,11 +643,11 @@ export function registerLmsRoutes(app: Express) {
       let submittedPendingReviewCount = 0;
       for (const a of homeworkAssignments) {
         const st = a.submissions[0]?.status ?? "not_started";
-        if (st === "submitted") {
+        if (st === "submitted" || st === "pending_teacher_review") {
           submittedPendingReviewCount++;
           continue;
         }
-        if (st === "graded") {
+        if (st === "graded" || st === "auto_checked") {
           continue;
         }
         homeworkTodoCount++;
@@ -1572,6 +1689,9 @@ export function registerLmsRoutes(app: Express) {
           id: s.id,
           status: s.status,
           score: s.score,
+          autoScore: s.autoScore,
+          manualScore: s.manualScore,
+          scoreBreakdown: s.scoreBreakdown,
           teacherNote: s.teacherNote,
           revisionNote: s.revisionNote,
           submittedAt: s.submittedAt?.toISOString() ?? null,
@@ -1619,6 +1739,7 @@ export function registerLmsRoutes(app: Express) {
             revisionNote: parsed.data.revisionNote ?? null,
             teacherNote: parsed.data.teacherNote ?? null,
             score: null,
+            manualScore: null,
             gradedAt: null,
             teacherSeenAt: now
           }
@@ -1635,6 +1756,7 @@ export function registerLmsRoutes(app: Express) {
           data: {
             status: "graded",
             score: sc,
+            manualScore: sub.autoScore != null ? Math.max(0, sc - sub.autoScore) : sc,
             teacherNote: parsed.data.teacherNote ?? null,
             revisionNote: null,
             gradedAt: now,
@@ -1714,7 +1836,7 @@ export function registerLmsRoutes(app: Express) {
       const now = new Date();
       const result = await prisma.submission.updateMany({
         where: {
-          status: "submitted",
+          status: { in: ["submitted", "pending_teacher_review"] },
           teacherSeenAt: null,
           assignment: { ownerId: teacherId }
         },
@@ -1843,6 +1965,9 @@ export function registerLmsRoutes(app: Express) {
         id: string;
         status: string;
         score: number | null;
+        autoScore: number | null;
+        manualScore: number | null;
+        scoreBreakdown: unknown;
         projectId: string | null;
         gradedSeenAt: string | null;
         teacherNote: string | null;
@@ -1868,6 +1993,9 @@ export function registerLmsRoutes(app: Express) {
                 id: sub.id,
                 status: sub.status,
                 score: sub.score,
+                autoScore: sub.autoScore,
+                manualScore: sub.manualScore,
+                scoreBreakdown: sub.scoreBreakdown,
                 projectId: sub.projectId,
                 gradedSeenAt: sub.gradedSeenAt?.toISOString() ?? null,
                 teacherNote: sub.teacherNote,
@@ -1879,6 +2007,61 @@ export function registerLmsRoutes(app: Express) {
     }
     res.json(out);
   });
+
+  app.get(
+    "/api/student/direct/block-progress",
+    authRequired,
+    roleGuard(["student"]),
+    async (req: AuthenticatedRequest, res) => {
+      const student = await prisma.user.findUnique({
+        where: { id: req.session!.sub },
+        select: { studentMode: true }
+      });
+      if (!student || student.studentMode !== "direct") {
+        res.json({ threshold: 80, modules: [] });
+        return;
+      }
+      const lessons = await prisma.lessonTemplate.findMany({
+        where: { published: true },
+        orderBy: [{ moduleKey: "asc" }, { sortOrder: "asc" }],
+        select: { id: true, title: true, moduleKey: true, lessonContent: true }
+      });
+      const progress = await prisma.lessonPlayerProgress.findMany({
+        where: { userId: req.session!.sub, scopeKey: "direct" },
+        select: { lessonTemplateId: true, state: true }
+      });
+      const stateByLesson = new Map(progress.map((p) => [p.lessonTemplateId, p.state]));
+      const moduleMap = new Map<string, { id: string; score: number }[]>();
+      for (const lesson of lessons) {
+        const checkpointIds = lessonCheckpointIds(lesson.lessonContent);
+        const stateRaw = stateByLesson.get(lesson.id);
+        const state =
+          stateRaw && typeof stateRaw === "object"
+            ? (stateRaw as { checkpoints?: Record<string, string> })
+            : null;
+        const checkpoints = state?.checkpoints ?? {};
+        let score = 100;
+        if (checkpointIds.length > 0) {
+          const done = checkpointIds.filter((id) => checkpoints[id] === "ok").length;
+          score = Math.round((done / checkpointIds.length) * 100);
+        }
+        const arr = moduleMap.get(lesson.moduleKey) ?? [];
+        arr.push({ id: lesson.id, score });
+        moduleMap.set(lesson.moduleKey, arr);
+      }
+      const modules = [...moduleMap.entries()].map(([moduleKey, rows], idx) => {
+        const avgScore =
+          rows.length > 0 ? Math.round(rows.reduce((acc, r) => acc + r.score, 0) / rows.length) : 0;
+        const passed = avgScore >= 80;
+        const prev = idx > 0 ? [...moduleMap.entries()][idx - 1] : null;
+        const prevPassed = !prev
+          ? true
+          : Math.round(prev[1].reduce((acc, r) => acc + r.score, 0) / Math.max(1, prev[1].length)) >= 80;
+        return { moduleKey, avgScore, passed, unlocked: prevPassed };
+      });
+      res.json({ threshold: 80, modules });
+    }
+  );
 
   app.post(
     "/api/student/assignments/:assignmentId/start",
@@ -1944,9 +2127,17 @@ export function registerLmsRoutes(app: Express) {
     async (req: AuthenticatedRequest, res) => {
       const assignmentId = String(req.params.assignmentId);
       const studentId = req.session!.sub;
+      const student = await prisma.user.findUnique({
+        where: { id: studentId },
+        select: { studentMode: true }
+      });
+      if (!student) {
+        res.status(404).json({ error: "Student not found" });
+        return;
+      }
       const sub = await prisma.submission.findUnique({
         where: { assignmentId_studentId: { assignmentId, studentId } },
-        include: { assignment: true }
+        include: { assignment: { include: { lessonTemplate: { select: { lessonContent: true } } } } }
       });
       if (!sub?.projectId) {
         res.status(400).json({ error: "Start assignment first" });
@@ -1957,7 +2148,7 @@ export function registerLmsRoutes(app: Express) {
         res.status(403).json({ error: "Not enrolled" });
         return;
       }
-      if (sub.status === "submitted") {
+      if (sub.status === "submitted" || sub.status === "pending_teacher_review") {
         res.status(400).json({ error: "Работа уже сдана. Дождитесь проверки учителя." });
         return;
       }
@@ -1966,11 +2157,60 @@ export function registerLmsRoutes(app: Express) {
         return;
       }
       const now = new Date();
+      let nextStatus: "submitted" | "auto_checked" | "pending_teacher_review" = "submitted";
+      let nextScore: number | null = null;
+      let autoScore: number | null = null;
+      let manualScore: number | null = null;
+      let scoreBreakdown: Prisma.InputJsonValue | typeof Prisma.JsonNull = Prisma.JsonNull;
+      if (sub.assignment.kind === "homework") {
+        const tasks = summarizeHomeworkTasks(sub.assignment.lessonTemplate?.lessonContent);
+        const progress = sub.assignment.lessonTemplateId
+          ? await prisma.lessonPlayerProgress.findUnique({
+              where: {
+                userId_lessonTemplateId_scopeKey: {
+                  userId: studentId,
+                  lessonTemplateId: sub.assignment.lessonTemplateId,
+                  scopeKey: sub.assignmentId
+                }
+              },
+              select: { state: true }
+            })
+          : null;
+        const auto = computeHomeworkAutoPart(sub.assignment.maxScore, tasks, progress?.state);
+        autoScore = auto.autoScore;
+        const needsTeacherManual = student.studentMode === "school" && auto.manualMax > 0;
+        if (needsTeacherManual) {
+          nextStatus = "pending_teacher_review";
+          nextScore = null;
+          manualScore = null;
+        } else {
+          nextStatus = "auto_checked";
+          nextScore = autoScore;
+          manualScore = Math.max(0, sub.assignment.maxScore - autoScore);
+        }
+        scoreBreakdown = {
+          weights: {
+            auto: auto.autoMax,
+            manual: auto.manualMax
+          },
+          tasks: {
+            testCount: tasks.testCount,
+            openCount: tasks.openCount,
+            projectCount: tasks.projectCount
+          },
+          testSolved: auto.solvedTests
+        } as Prisma.InputJsonValue;
+      }
       await prisma.submission.update({
         where: { id: sub.id },
         data: {
-          status: "submitted",
+          status: nextStatus,
           submittedAt: now,
+          gradedAt: nextStatus === "auto_checked" ? now : null,
+          score: nextScore,
+          autoScore,
+          manualScore,
+          scoreBreakdown,
           teacherSeenAt: null
         }
       });
@@ -1991,13 +2231,15 @@ export function registerLmsRoutes(app: Express) {
         prisma.user.findUnique({ where: { id: sub.assignment.ownerId }, select: { email: true } }),
         prisma.user.findUnique({ where: { id: studentId }, select: { nickname: true } })
       ]);
-      if (teacher?.email && studentNick) {
+      if (nextStatus === "submitted" || nextStatus === "pending_teacher_review") {
+        if (teacher?.email && studentNick) {
         const appUrl = `${config.appBaseUrl.replace(/\/$/, "")}/teacher`;
         void sendTeacherSubmissionEmail(teacher.email, {
           studentNickname: studentNick.nickname,
           assignmentTitle: sub.assignment.title,
           appUrl
         }).catch(() => {});
+        }
       }
       res.json({ ok: true });
     }
@@ -2031,6 +2273,8 @@ export function registerLmsRoutes(app: Express) {
         teacherNote: sub.teacherNote,
         revisionNote: sub.revisionNote,
         score: sub.score,
+        autoScore: sub.autoScore,
+        manualScore: sub.manualScore,
         maxScore: sub.assignment.maxScore
       });
     }
@@ -2073,6 +2317,8 @@ export function registerLmsRoutes(app: Express) {
           submissionId: sub.id,
           status: sub.status,
           score: sub.score,
+          autoScore: sub.autoScore,
+          manualScore: sub.manualScore,
           maxScore: sub.assignment.maxScore,
           studentNickname: sub.student.nickname,
           assignmentTitle: sub.assignment.title,

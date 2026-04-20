@@ -34,6 +34,8 @@ enum SubmissionStatus {
   not_started
   draft
   submitted
+  auto_checked
+  pending_teacher_review
   needs_revision
   graded
 }
@@ -323,6 +325,9 @@ model Submission {
   studentId    String
   projectId    String?
   score        Int?
+  autoScore    Int?
+  manualScore  Int?
+  scoreBreakdown Json?
   status       SubmissionStatus @default(not_started)
   teacherNote  String?
   revisionNote String?

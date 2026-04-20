@@ -184,7 +184,7 @@ export function HomeUpcomingHomework({ rows, loading, onRefresh }: Props) {
           ) : null}
           {(st === "draft" || st === "needs_revision") && hasProject ? (
             <Button size="small" onClick={() => void submitWork(row)}>
-              Сдать
+              Сдать учителю
             </Button>
           ) : null}
           {st === "graded" && studentSlotNeedsAttention(row) ? (
