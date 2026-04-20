@@ -22,6 +22,7 @@ import {
   putModelLibraryRecord,
   type TabularModelLibraryPayload
 } from "@/features/model/modelLibraryMeta";
+import { stripLeadingDuplicateHeaderRows } from "@/features/data/csv";
 import { flatAggregateMetrics } from "@/shared/confusionMetrics";
 
 let mobileNetModel: mobilenet.MobileNet | null = null;
@@ -248,7 +249,8 @@ function parseRegressionTargetCell(raw: string): number {
 }
 
 function parseTabular(dataset: TabularDataset) {
-  const rawRows = dataset.rows.filter((row) => row.length >= 1);
+  const rowsAfterHeaderStrip = stripLeadingDuplicateHeaderRows(dataset.headers ?? [], dataset.rows);
+  const rawRows = rowsAfterHeaderStrip.filter((row) => row.length >= 1);
   if (rawRows.length < 2) {
     throw new Error("Для табличных моделей нужно минимум 2 строки данных.");
   }
@@ -399,8 +401,11 @@ async function trainTabularModel(
   if (modelType === "tabular_regression") {
     const y = yRaw.map((value) => parseRegressionTargetCell(value));
     if (y.some((value) => Number.isNaN(value))) {
+      const bad = yRaw.find((v) => Number.isNaN(parseRegressionTargetCell(v))) ?? "";
       throw new Error(
-        "Для регрессии целевая колонка должна содержать числа. Проверь выбранную целевую колонку в «Данные → Таблицы»."
+        `Для регрессии целевая колонка должна содержать числа. Первое нечисловое значение: «${bad.slice(0, 80)}». ` +
+          `Частая причина — вторая строка файла повторяет заголовки; такие строки теперь отбрасываются при загрузке. ` +
+          `Перезагрузи CSV или проверь разделитель (запятая / точка с запятой) и выбор целевой колонки в «Данные»."
       );
     }
     const yTrain = tf.tensor2d(trainIdx.map((i) => [y[i]]));
