@@ -234,18 +234,17 @@ function padTabularRow(row: string[], len: number): string[] {
   return out.slice(0, len);
 }
 
-/** Число для регрессии: поддержка десятичной запятой в CSV. */
+/** Число для регрессии: пробелы; одна запятая и 1–2 знака после — как десятичный разделитель (72,5). */
 function parseRegressionTargetCell(raw: string): number {
-  const t = raw.trim();
+  let t = raw.trim().replace(/\s/g, "");
   if (!t) {
     return NaN;
   }
-  let n = Number(t);
-  if (!Number.isNaN(n)) {
-    return n;
+  if (/^\d+,\d{1,2}$/.test(t)) {
+    t = t.replace(",", ".");
   }
-  n = Number(t.replace(",", "."));
-  return n;
+  const n = Number(t);
+  return Number.isFinite(n) ? n : NaN;
 }
 
 function parseTabular(dataset: TabularDataset) {
@@ -257,10 +256,13 @@ function parseTabular(dataset: TabularDataset) {
   const headerLen = dataset.headers?.length ?? 0;
   const maxRowLen = Math.max(...rawRows.map((r) => r.length), 1);
   const columnCount = Math.max(headerLen, maxRowLen, 1);
-  const ti = dataset.targetColumnIndex;
+  const tiRaw = dataset.targetColumnIndex;
   let targetIndex = columnCount - 1;
-  if (ti !== undefined && ti !== null && Number.isInteger(ti) && ti >= 0 && ti < columnCount) {
-    targetIndex = ti;
+  if (tiRaw !== undefined && tiRaw !== null) {
+    const ti = Math.trunc(Number(tiRaw));
+    if (Number.isFinite(ti) && ti >= 0 && ti < columnCount) {
+      targetIndex = ti;
+    }
   }
   const rows = rawRows.map((r) => padTabularRow(r, columnCount));
   const featureColumnIndices: number[] = [];

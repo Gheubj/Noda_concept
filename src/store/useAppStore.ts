@@ -196,17 +196,29 @@ export const useAppStore = create<AppState>((set, get) => ({
     set((state) => ({
       tabularDatasets: [...state.tabularDatasets, { id: createId(), title: title.trim(), dataset }]
     })),
-  setTabularDatasetTargetColumn: (datasetId, targetColumnIndex) =>
+  setTabularDatasetTargetColumn: (datasetId, targetColumnIndex) => {
+    const idx = Math.trunc(Number(targetColumnIndex));
+    if (!Number.isFinite(idx) || idx < 0) {
+      return;
+    }
     set((state) => ({
-      tabularDatasets: state.tabularDatasets.map((entry) =>
-        entry.id !== datasetId
-          ? entry
-          : {
-              ...entry,
-              dataset: { ...entry.dataset, targetColumnIndex }
-            }
-      )
-    })),
+      tabularDatasets: state.tabularDatasets.map((entry) => {
+        if (entry.id !== datasetId) {
+          return entry;
+        }
+        const colCount = Math.max(
+          entry.dataset.headers?.length ?? 0,
+          entry.dataset.rows.length > 0 ? Math.max(...entry.dataset.rows.map((r) => r.length)) : 0,
+          1
+        );
+        const clamped = Math.min(idx, colCount - 1);
+        return {
+          ...entry,
+          dataset: { ...entry.dataset, targetColumnIndex: clamped }
+        };
+      })
+    }));
+  },
   addImagePredictionInput: (title, file) =>
     set((state) => ({
       imagePredictionInputs: [...state.imagePredictionInputs, { id: createId(), title: title.trim(), file }]

@@ -364,10 +364,15 @@ export function DataLibrary({ variant = "default" }: { variant?: "default" | "dr
             label: "Таблицы (CSV)",
             children: (
               <Space direction="vertical" size={12} style={{ width: "100%" }}>
+                <Alert
+                  type="info"
+                  showIcon
+                  message="Целевая колонка — в карточке каждого набора ниже"
+                  description="Открой вложенный блок «Таблицы (CSV)» в панели данных, прокрути до карточки своего файла: там селект «Целевая колонка». В Blockly только выбор набора, без столбца."
+                />
                 <Paragraph>
-                  CSV с заголовком: все колонки кроме выбранной ниже цели считаются признаками. Целевую колонку
-                  (число для регрессии, метка класса для классификации) выбери для каждого набора. Если вторая
-                  строка файла повторяет названия колонок, она автоматически убирается из данных.
+                  CSV с заголовком: все колонки кроме выбранной цели — признаки. Дубликат строки заголовков в данных
+                  отбрасывается. Разделитель строки выбирается автоматически: запятая, точка с запятой или табуляция.
                 </Paragraph>
                 <Space.Compact style={{ width: "100%" }}>
                   <Input
@@ -435,16 +440,18 @@ export function DataLibrary({ variant = "default" }: { variant?: "default" | "dr
                       Строк: {dataset.dataset.rows.length}, колонок: {tabularColumnCount(dataset.dataset)}
                     </Text>
                     <div style={{ marginTop: 8 }}>
-                      <Text type="secondary" style={{ marginRight: 8 }}>
-                        Целевая колонка:
+                      <Text strong style={{ marginRight: 8 }}>
+                        Целевая колонка (регрессия / классификация):
                       </Text>
                       <Select
                         style={{ minWidth: 280 }}
-                        value={
+                        value={Number(
                           dataset.dataset.targetColumnIndex ??
-                          Math.max(0, tabularColumnCount(dataset.dataset) - 1)
+                            Math.max(0, tabularColumnCount(dataset.dataset) - 1)
+                        )}
+                        onChange={(v) =>
+                          setTabularDatasetTargetColumn(dataset.id, typeof v === "number" ? v : Number(v))
                         }
-                        onChange={(v) => setTabularDatasetTargetColumn(dataset.id, v)}
                         options={Array.from({ length: tabularColumnCount(dataset.dataset) }, (_, i) => {
                           const name = dataset.dataset.headers[i]?.trim();
                           return {

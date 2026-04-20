@@ -21,14 +21,38 @@ export function stripLeadingDuplicateHeaderRows(headers: string[], rows: string[
   return rest;
 }
 
-/** Разбор одной строки CSV: при равном числе полей предпочитаем запятую (Kaggle и т.п.). */
-function splitCsvRecordLine(line: string): string[] {
-  const byComma = line.split(",").map((part) => part.trim());
-  const bySemi = line.split(";").map((part) => part.trim());
-  if (bySemi.length > byComma.length) {
-    return bySemi;
+/** Разбор строки с учётом кавычек и выбором разделителя, дающим больше всего колонок. */
+function splitDelimitedLine(line: string, delimiter: string): string[] {
+  const parts: string[] = [];
+  let cur = "";
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i]!;
+    if (c === '"') {
+      inQuotes = !inQuotes;
+      continue;
+    }
+    if (!inQuotes && c === delimiter) {
+      parts.push(cur.trim());
+      cur = "";
+      continue;
+    }
+    cur += c;
   }
-  return byComma;
+  parts.push(cur.trim());
+  return parts;
+}
+
+function bestSplitCsvLine(line: string): string[] {
+  const delims = ["\t", ";", ","] as const;
+  let best = splitDelimitedLine(line, ",");
+  for (const d of delims) {
+    const parts = splitDelimitedLine(line, d);
+    if (parts.length > best.length) {
+      best = parts;
+    }
+  }
+  return best;
 }
 
 export async function parseCsvFile(file: File): Promise<TabularDataset> {
@@ -51,8 +75,8 @@ export async function parseCsvFile(file: File): Promise<TabularDataset> {
     throw new Error("Слишком много строк (макс 10,000).");
   }
 
-  const headers = splitCsvRecordLine(lines[0]);
-  const rowsRaw = lines.slice(1).map((line) => splitCsvRecordLine(line));
+  const headers = bestSplitCsvLine(lines[0]);
+  const rowsRaw = lines.slice(1).map((line) => bestSplitCsvLine(line));
   const rows = stripLeadingDuplicateHeaderRows(headers, rowsRaw);
   if (rows.length < 1) {
     throw new Error("После заголовка не осталось строк данных (возможно, все строки совпадали с заголовком).");
