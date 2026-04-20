@@ -60,6 +60,18 @@ export async function loadProjectSmart(projectId: string): Promise<NodlyProject 
   return { meta: raw.meta, snapshot };
 }
 
+/** Мини-проект ученика в iframe: учитель смотрит снимок только для проверки сдачи. */
+export async function loadTeacherReviewMiniProject(
+  submissionId: string,
+  projectId: string
+): Promise<NodlyProject | null> {
+  const raw = await apiClient.get<NodlyProject>(
+    `/api/teacher/submissions/${encodeURIComponent(submissionId)}/projects/${encodeURIComponent(projectId)}/for-review`
+  );
+  const snapshot = await decodeSnapshotFromCloud(raw.snapshot as unknown);
+  return { meta: raw.meta, snapshot };
+}
+
 export async function deleteProjectSmart(projectId: string): Promise<void> {
   if (!canUseCloud()) {
     await deleteProject(projectId);

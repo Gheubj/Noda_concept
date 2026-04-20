@@ -57,6 +57,10 @@ export type LessonFlowViewProps = {
   saving: boolean;
   bareMiniStudio?: boolean;
   variant?: "classic" | "colab";
+  /** Режим проверки: без ввода, только просмотр ответов ученика */
+  readOnly?: boolean;
+  /** Для iframe мини-студии: загрузка проекта ученика учителем */
+  teacherReviewSubmissionId?: string | null;
 };
 
 export function LessonFlowView({
@@ -73,7 +77,9 @@ export function LessonFlowView({
   onEnsureMiniDevProject,
   saving,
   bareMiniStudio = false,
-  variant = "classic"
+  variant = "classic",
+  readOnly = false,
+  teacherReviewSubmissionId = null
 }: LessonFlowViewProps) {
   let checkpointOrdinal = 0;
   const isColab = variant === "colab";
@@ -141,10 +147,14 @@ export function LessonFlowView({
         if (block.type === "studio") {
           const projectId = miniDevProjectId(block.id);
           const creating = miniDevCreating?.(block.id) ?? false;
+          const reviewQs =
+            readOnly && teacherReviewSubmissionId && projectId
+              ? `&teacherReviewSubmission=${encodeURIComponent(teacherReviewSubmissionId)}`
+              : "";
           const frameSrc = projectId
             ? `/studio?mini=1&project=${encodeURIComponent(projectId)}${
                 lessonId ? `&miniLessonId=${encodeURIComponent(lessonId)}&miniBlockId=${encodeURIComponent(block.id)}` : ""
-              }`
+              }${reviewQs}`
             : "";
           if (bareMiniStudio) {
             return (
@@ -166,6 +176,8 @@ export function LessonFlowView({
                     <Spin />
                     <Text type="secondary">Открываем мини-разработку…</Text>
                   </div>
+                ) : readOnly ? (
+                  <Text type="secondary">Нет сохранённого проекта в этом блоке.</Text>
                 ) : (
                   <Space direction="vertical" size="small">
                     <Text type="secondary">Не удалось открыть мини-разработку. Попробуй ещё раз.</Text>
@@ -196,6 +208,8 @@ export function LessonFlowView({
                     <Spin />
                     <Text type="secondary">Открываем мини-разработку…</Text>
                   </div>
+                ) : readOnly ? (
+                  <Text type="secondary">Нет сохранённого проекта в этом блоке.</Text>
                 ) : (
                   <Space direction="vertical" size="small">
                     <Text type="secondary">Не удалось открыть мини-разработку. Попробуй ещё раз.</Text>
@@ -208,12 +222,14 @@ export function LessonFlowView({
                     </Button>
                   </Space>
                 )}
-                <Button
-                  type={miniDevDone(block.id) ? "default" : "primary"}
-                  onClick={() => onToggleMiniDevDone(block.id)}
-                >
-                  {miniDevDone(block.id) ? "Отмечено выполненным" : "Отметить мини-разработку выполненной"}
-                </Button>
+                {!readOnly ? (
+                  <Button
+                    type={miniDevDone(block.id) ? "default" : "primary"}
+                    onClick={() => onToggleMiniDevDone(block.id)}
+                  >
+                    {miniDevDone(block.id) ? "Отмечено выполненным" : "Отметить мини-разработку выполненной"}
+                  </Button>
+                ) : null}
                 {isStudioCta(block.ctaAction) ? (
                   <Text type="secondary">Этот блок был импортирован из старого формата Studio и работает как мини-разработка.</Text>
                 ) : null}
@@ -238,6 +254,8 @@ export function LessonFlowView({
               </div>
               {ok ? (
                 <Tag color="success">Верно</Tag>
+              ) : readOnly ? (
+                <Tag color="default">Нет отметки «верно»</Tag>
               ) : (
                 <Space direction="vertical" style={{ width: "100%" }} size="small">
                   {answerMode === "text" ? (

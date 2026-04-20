@@ -259,6 +259,8 @@ type HomeworkTaskSummary = {
   openCount: number;
   projectCount: number;
   testBlockIds: string[];
+  /** Id блоков `studio` в уроке (для проверки мини-проектов при сдаче без основного projectId). */
+  studioBlockIds: string[];
 };
 
 function summarizeHomeworkTasks(lessonContent: unknown): HomeworkTaskSummary {
@@ -266,8 +268,9 @@ function summarizeHomeworkTasks(lessonContent: unknown): HomeworkTaskSummary {
   let openCount = 0;
   let projectCount = 0;
   const testBlockIds: string[] = [];
+  const studioBlockIds: string[] = [];
   if (!lessonContent || typeof lessonContent !== "object") {
-    return { testCount, openCount, projectCount, testBlockIds };
+    return { testCount, openCount, projectCount, testBlockIds, studioBlockIds };
   }
   const lc = lessonContent as Record<string, unknown>;
   const blocks = Array.isArray(lc.blocks) ? lc.blocks : [];
@@ -276,9 +279,9 @@ function summarizeHomeworkTasks(lessonContent: unknown): HomeworkTaskSummary {
       continue;
     }
     const b = block as Record<string, unknown>;
+    const blockId = typeof b.id === "string" ? b.id : null;
     if (b.type === "checkpoint") {
       const mode = b.answerMode;
-      const blockId = typeof b.id === "string" ? b.id : null;
       if (mode === "single" || mode === "multi") {
         testCount += 1;
         if (blockId) {
@@ -289,6 +292,9 @@ function summarizeHomeworkTasks(lessonContent: unknown): HomeworkTaskSummary {
       }
     } else if (b.type === "studio") {
       projectCount += 1;
+      if (blockId) {
+        studioBlockIds.push(blockId);
+      }
     }
   }
   const checkpoints = Array.isArray(lc.checkpoints) ? lc.checkpoints : [];
@@ -305,7 +311,7 @@ function summarizeHomeworkTasks(lessonContent: unknown): HomeworkTaskSummary {
       }
     }
   }
-  return { testCount, openCount, projectCount, testBlockIds };
+  return { testCount, openCount, projectCount, testBlockIds, studioBlockIds };
 }
 
 function computeHomeworkAutoPart(
@@ -1640,6 +1646,34 @@ export function registerLmsRoutes(app: Express) {
     }
   );
 
+  app.delete(
+    "/api/teacher/assignments/:assignmentId",
+    authRequired,
+    roleGuard(["teacher"]),
+    async (req: AuthenticatedRequest, res) => {
+      const assignmentId = String(req.params.assignmentId);
+      const a = await prisma.assignment.findFirst({
+        where: { id: assignmentId, ownerId: req.session!.sub }
+      });
+      if (!a) {
+        res.status(404).json({ error: "Not found" });
+        return;
+      }
+      const c = await assertTeacherClassroom(req.session!.sub, a.classroomId);
+      if (!c) {
+        res.status(403).json({ error: "Forbidden" });
+        return;
+      }
+      await prisma.lessonPlayerProgress.deleteMany({
+        where: a.lessonTemplateId
+          ? { scopeKey: assignmentId, lessonTemplateId: a.lessonTemplateId }
+          : { scopeKey: assignmentId }
+      });
+      await prisma.assignment.delete({ where: { id: assignmentId } });
+      res.json({ ok: true });
+    }
+  );
+
   app.get(
     "/api/teacher/classrooms/:classroomId/submissions",
     authRequired,
@@ -1680,7 +1714,7 @@ export function registerLmsRoutes(app: Express) {
         where,
         include: {
           student: { select: { id: true, nickname: true, email: true } },
-          assignment: { select: { id: true, title: true, maxScore: true, kind: true } }
+          assignment: { select: { id: true, title: true, maxScore: true, kind: true, lessonTemplateId: true } }
         },
         orderBy: { updatedAt: "desc" }
       });
@@ -2139,9 +2173,38 @@ export function registerLmsRoutes(app: Express) {
         where: { assignmentId_studentId: { assignmentId, studentId } },
         include: { assignment: { include: { lessonTemplate: { select: { lessonContent: true } } } } }
       });
-      if (!sub?.projectId) {
-        res.status(400).json({ error: "Start assignment first" });
+      if (!sub) {
+        res.status(404).json({ error: "Submission not found" });
         return;
+      }
+      const tasksForSubmitGate = summarizeHomeworkTasks(sub.assignment.lessonTemplate?.lessonContent);
+      let lessonProgressForSubmit: { state: unknown } | null = null;
+      if (sub.assignment.lessonTemplateId) {
+        lessonProgressForSubmit = await prisma.lessonPlayerProgress.findUnique({
+          where: {
+            userId_lessonTemplateId_scopeKey: {
+              userId: studentId,
+              lessonTemplateId: sub.assignment.lessonTemplateId,
+              scopeKey: sub.assignmentId
+            }
+          },
+          select: { state: true }
+        });
+      }
+      const miniState = lessonProgressForSubmit?.state as
+        | { miniDevProjectIds?: Record<string, string | undefined> }
+        | undefined;
+      const miniMap = miniState?.miniDevProjectIds ?? {};
+      const minisCoverLessonStudios =
+        Boolean(sub.assignment.lessonTemplateId) &&
+        tasksForSubmitGate.projectCount > 0 &&
+        tasksForSubmitGate.studioBlockIds.length === tasksForSubmitGate.projectCount &&
+        tasksForSubmitGate.studioBlockIds.every((id) => Boolean(miniMap[id]?.trim()));
+      if (!sub.projectId) {
+        if (tasksForSubmitGate.projectCount > 0 && !minisCoverLessonStudios) {
+          res.status(400).json({ error: "Start assignment first" });
+          return;
+        }
       }
       const en = await assertStudentInClassroom(studentId, sub.assignment.classroomId);
       if (!en) {
@@ -2163,20 +2226,8 @@ export function registerLmsRoutes(app: Express) {
       let manualScore: number | null = null;
       let scoreBreakdown: Prisma.InputJsonValue | typeof Prisma.JsonNull = Prisma.JsonNull;
       if (sub.assignment.kind === "homework") {
-        const tasks = summarizeHomeworkTasks(sub.assignment.lessonTemplate?.lessonContent);
-        const progress = sub.assignment.lessonTemplateId
-          ? await prisma.lessonPlayerProgress.findUnique({
-              where: {
-                userId_lessonTemplateId_scopeKey: {
-                  userId: studentId,
-                  lessonTemplateId: sub.assignment.lessonTemplateId,
-                  scopeKey: sub.assignmentId
-                }
-              },
-              select: { state: true }
-            })
-          : null;
-        const auto = computeHomeworkAutoPart(sub.assignment.maxScore, tasks, progress?.state);
+        const tasks = tasksForSubmitGate;
+        const auto = computeHomeworkAutoPart(sub.assignment.maxScore, tasks, lessonProgressForSubmit?.state);
         autoScore = auto.autoScore;
         const needsTeacherManual = student.studentMode === "school" && auto.manualMax > 0;
         if (needsTeacherManual) {
@@ -2440,10 +2491,17 @@ export function registerLmsRoutes(app: Express) {
 
       let scopeKey = "direct";
       let assignmentTitle: string | null = null;
+      let assignmentKind: string | null = null;
+      let submissionSummary: {
+        id: string;
+        status: string;
+        projectId: string | null;
+        canSubmit: boolean;
+      } | null = null;
       if (assignmentId) {
         const sub = await prisma.submission.findFirst({
           where: { studentId: req.session!.sub, assignmentId },
-          include: { assignment: { select: { lessonTemplateId: true, title: true } } }
+          include: { assignment: { select: { lessonTemplateId: true, title: true, kind: true } } }
         });
         if (!sub || sub.assignment.lessonTemplateId !== lessonId) {
           res.status(403).json({ error: "Нет доступа к этому заданию или урок не совпадает" });
@@ -2451,6 +2509,13 @@ export function registerLmsRoutes(app: Express) {
         }
         scopeKey = assignmentId;
         assignmentTitle = sub.assignment.title;
+        assignmentKind = sub.assignment.kind;
+        submissionSummary = {
+          id: sub.id,
+          status: sub.status,
+          projectId: sub.projectId,
+          canSubmit: sub.status === "draft" || sub.status === "needs_revision"
+        };
       }
 
       const progress = await prisma.lessonPlayerProgress.findUnique({
@@ -2469,7 +2534,133 @@ export function registerLmsRoutes(app: Express) {
         lessonContent: lesson.lessonContent,
         scopeKey,
         assignmentTitle,
+        assignmentKind,
+        submission: submissionSummary,
         state: progress?.state ?? {}
+      });
+    }
+  );
+
+  app.get(
+    "/api/teacher/lessons/:lessonId/player-review-bootstrap",
+    authRequired,
+    roleGuard(["teacher"]),
+    async (req: AuthenticatedRequest, res) => {
+      const lessonId = String(req.params.lessonId);
+      const submissionIdRaw = req.query.submissionId;
+      const submissionId =
+        typeof submissionIdRaw === "string" && submissionIdRaw.length > 0 ? submissionIdRaw : "";
+      if (!submissionId) {
+        res.status(400).json({ error: "Нужен submissionId" });
+        return;
+      }
+      const sub = await prisma.submission.findFirst({
+        where: { id: submissionId },
+        include: {
+          student: { select: { nickname: true } },
+          assignment: {
+            select: {
+              id: true,
+              lessonTemplateId: true,
+              ownerId: true,
+              title: true,
+              maxScore: true,
+              kind: true
+            }
+          }
+        }
+      });
+      if (!sub || sub.assignment.ownerId !== req.session!.sub) {
+        res.status(404).json({ error: "Not found" });
+        return;
+      }
+      if (sub.assignment.lessonTemplateId !== lessonId) {
+        res.status(400).json({ error: "Урок не совпадает с заданием" });
+        return;
+      }
+      const lesson = await prisma.lessonTemplate.findFirst({
+        where: { id: lessonId, published: true },
+        select: { id: true, title: true, studentSummary: true, lessonContent: true }
+      });
+      if (!lesson) {
+        res.status(404).json({ error: "Урок не найден" });
+        return;
+      }
+      const progress = await prisma.lessonPlayerProgress.findUnique({
+        where: {
+          userId_lessonTemplateId_scopeKey: {
+            userId: sub.studentId,
+            lessonTemplateId: lessonId,
+            scopeKey: sub.assignmentId
+          }
+        }
+      });
+      res.json({
+        title: lesson.title,
+        studentSummary: lesson.studentSummary,
+        lessonContent: lesson.lessonContent,
+        scopeKey: sub.assignmentId,
+        assignmentTitle: sub.assignment.title,
+        assignmentKind: sub.assignment.kind,
+        state: progress?.state ?? {},
+        review: {
+          submissionId: sub.id,
+          studentNickname: sub.student.nickname,
+          status: sub.status,
+          score: sub.score,
+          maxScore: sub.assignment.maxScore,
+          autoScore: sub.autoScore,
+          manualScore: sub.manualScore,
+          teacherNote: sub.teacherNote,
+          revisionNote: sub.revisionNote
+        }
+      });
+    }
+  );
+
+  app.get(
+    "/api/teacher/submissions/:submissionId/projects/:projectId/for-review",
+    authRequired,
+    roleGuard(["teacher"]),
+    async (req: AuthenticatedRequest, res) => {
+      const submissionId = String(req.params.submissionId);
+      const projectId = String(req.params.projectId);
+      const sub = await prisma.submission.findFirst({
+        where: { id: submissionId },
+        include: { assignment: true }
+      });
+      if (!sub || sub.assignment.ownerId !== req.session!.sub) {
+        res.status(404).json({ error: "Not found" });
+        return;
+      }
+      const p = await prisma.project.findFirst({
+        where: { id: projectId },
+        include: { snapshot: true }
+      });
+      if (!p?.snapshot) {
+        res.status(404).json({ error: "Project not found" });
+        return;
+      }
+      if (p.userId !== sub.studentId) {
+        res.status(403).json({ error: "Forbidden" });
+        return;
+      }
+      const ltId = sub.assignment.lessonTemplateId;
+      const allowed = p.id === sub.projectId || (ltId != null && p.lessonTemplateId === ltId);
+      if (!allowed) {
+        res.status(403).json({ error: "Проект не привязан к этой сдаче" });
+        return;
+      }
+      res.json({
+        meta: {
+          id: p.id,
+          userId: p.userId,
+          title: p.title,
+          createdAt: p.createdAt.toISOString(),
+          updatedAt: p.updatedAt.toISOString(),
+          readOnly: true as const
+        },
+        snapshot: p.snapshot.payload
       });
     }
   );

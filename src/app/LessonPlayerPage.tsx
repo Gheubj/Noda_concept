@@ -1,8 +1,21 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Alert, Card, Layout, Space, Spin, Typography, message } from "antd";
+import {
+  Alert,
+  Button,
+  Card,
+  Form,
+  Input,
+  InputNumber,
+  Layout,
+  Select,
+  Space,
+  Spin,
+  Typography,
+  message
+} from "antd";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { useSessionStore } from "@/store/useSessionStore";
-import { apiClient } from "@/shared/api/client";
+import { ApiError, apiClient } from "@/shared/api/client";
 import { LessonFlowView } from "@/components/LessonFlowView";
 import { EMPTY_LESSON_CONTENT, type LessonContent } from "@/shared/types/lessonContent";
 import { expandLessonContentToBlocks } from "@/shared/lessonContentBlocks";
@@ -14,13 +27,36 @@ import {
 
 const { Content } = Layout;
 const { Title, Paragraph } = Typography;
+const { TextArea } = Input;
 
-type Bootstrap = {
+type SubmissionSummary = {
+  id: string;
+  status: string;
+  projectId: string | null;
+  canSubmit: boolean;
+};
+
+type TeacherReviewInfo = {
+  submissionId: string;
+  studentNickname: string;
+  status: string;
+  score: number | null;
+  maxScore: number;
+  autoScore: number | null;
+  manualScore: number | null;
+  teacherNote: string | null;
+  revisionNote: string | null;
+};
+
+type PlayerBootstrap = {
   title: string;
   studentSummary: string | null;
   lessonContent: unknown;
   scopeKey: string;
   assignmentTitle: string | null;
+  assignmentKind?: string | null;
+  submission?: SubmissionSummary | null;
+  review?: TeacherReviewInfo;
   state: unknown;
 };
 
@@ -51,17 +87,23 @@ export function LessonPlayerPage() {
   const { lessonId = "" } = useParams();
   const [searchParams] = useSearchParams();
   const assignmentId = searchParams.get("assignmentId");
+  const reviewSubmissionId = searchParams.get("reviewSubmission");
   const [messageApi, holder] = message.useMessage();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [bootstrap, setBootstrap] = useState<Bootstrap | null>(null);
+  const [submittingToTeacher, setSubmittingToTeacher] = useState(false);
+  const [grading, setGrading] = useState(false);
+  const [bootstrap, setBootstrap] = useState<PlayerBootstrap | null>(null);
   const [playerState, setPlayerState] = useState<LessonPlayerStateV1>({ v: 1, checkpoints: {} });
   const [draftAnswers, setDraftAnswers] = useState<Record<string, string>>({});
   const [autoCreatingMini, setAutoCreatingMini] = useState<Record<string, boolean>>({});
+  const [gradeForm] = Form.useForm();
   const playerStateRef = useRef(playerState);
   playerStateRef.current = playerState;
   /** Синхронная защита от двойного создания одного и того же mini-проекта (StrictMode / гонки). */
   const miniCreateLockRef = useRef<Record<string, boolean>>({});
+
+  const isTeacherReview = Boolean(user?.role === "teacher" && reviewSubmissionId);
 
   const lessonContent: LessonContent = useMemo(() => {
     if (!bootstrap?.lessonContent || typeof bootstrap.lessonContent !== "object") {
@@ -76,8 +118,12 @@ export function LessonPlayerPage() {
     () => flowBlocks.filter((b): b is Extract<(typeof flowBlocks)[0], { type: "checkpoint" }> => b.type === "checkpoint").map((b) => b.id),
     [flowBlocks]
   );
+
   const persistState = useCallback(
     async (next: LessonPlayerStateV1) => {
+      if (isTeacherReview) {
+        return;
+      }
       const q = assignmentId ? `?assignmentId=${encodeURIComponent(assignmentId)}` : "";
       setSaving(true);
       try {
@@ -92,7 +138,7 @@ export function LessonPlayerPage() {
         setSaving(false);
       }
     },
-    [assignmentId, lessonId, messageApi]
+    [assignmentId, isTeacherReview, lessonId, messageApi]
   );
 
   const load = useCallback(async () => {
@@ -101,29 +147,52 @@ export function LessonPlayerPage() {
     }
     setLoading(true);
     try {
-      const q = assignmentId ? `?assignmentId=${encodeURIComponent(assignmentId)}` : "";
-      const data = await apiClient.get<Bootstrap>(
-        `/api/student/lessons/${encodeURIComponent(lessonId)}/player-bootstrap${q}`
-      );
-      setBootstrap(data);
-      const parsed = parseLessonPlayerState(data.state);
-      setPlayerState(parsed);
-      playerStateRef.current = parsed;
+      if (user?.role === "teacher" && reviewSubmissionId) {
+        const data = await apiClient.get<PlayerBootstrap>(
+          `/api/teacher/lessons/${encodeURIComponent(lessonId)}/player-review-bootstrap?submissionId=${encodeURIComponent(reviewSubmissionId)}`
+        );
+        setBootstrap(data);
+        const parsed = parseLessonPlayerState(data.state);
+        setPlayerState(parsed);
+        playerStateRef.current = parsed;
+        void apiClient.post("/api/teacher/submissions/mark-seen", { submissionIds: [reviewSubmissionId] }).catch(() => {});
+      } else {
+        const q = assignmentId ? `?assignmentId=${encodeURIComponent(assignmentId)}` : "";
+        const data = await apiClient.get<PlayerBootstrap>(
+          `/api/student/lessons/${encodeURIComponent(lessonId)}/player-bootstrap${q}`
+        );
+        setBootstrap(data);
+        const parsed = parseLessonPlayerState(data.state);
+        setPlayerState(parsed);
+        playerStateRef.current = parsed;
+      }
     } catch (e) {
       messageApi.error(e instanceof Error ? e.message : "Не удалось загрузить урок");
       setBootstrap(null);
     } finally {
       setLoading(false);
     }
-  }, [assignmentId, lessonId, messageApi]);
+  }, [assignmentId, lessonId, messageApi, reviewSubmissionId, user?.role]);
 
   useEffect(() => {
     void load();
   }, [load]);
 
+  useEffect(() => {
+    const rev = bootstrap?.review;
+    if (!isTeacherReview || !rev) {
+      return;
+    }
+    gradeForm.setFieldsValue({
+      decision: "grade",
+      score: rev.score ?? rev.maxScore,
+      comment: rev.revisionNote || rev.teacherNote || ""
+    });
+  }, [bootstrap?.review?.submissionId, gradeForm, isTeacherReview, bootstrap?.review]);
+
   const ensureMiniDevProject = useCallback(
     async (blockId: string) => {
-      if (!bootstrap || !lessonId) {
+      if (isTeacherReview || !bootstrap || !lessonId) {
         return;
       }
       if (miniCreateLockRef.current[blockId]) {
@@ -166,13 +235,13 @@ export function LessonPlayerPage() {
         setSaving(false);
       }
     },
-    [assignmentId, bootstrap, lessonId, messageApi, persistState]
+    [assignmentId, bootstrap, isTeacherReview, lessonId, messageApi, persistState]
   );
 
   const miniProjectIdsKey = useMemo(() => JSON.stringify(playerState.miniDevProjectIds ?? {}), [playerState.miniDevProjectIds]);
 
   useEffect(() => {
-    if (loading || !bootstrap || !lessonId) {
+    if (isTeacherReview || loading || !bootstrap || !lessonId) {
       return;
     }
     const studioIds = flowBlocks.filter((b) => b.type === "studio").map((b) => b.id);
@@ -195,9 +264,12 @@ export function LessonPlayerPage() {
     return () => {
       cancelled = true;
     };
-  }, [loading, bootstrap, lessonId, flowBlocks, miniProjectIdsKey, ensureMiniDevProject]);
+  }, [isTeacherReview, loading, bootstrap, lessonId, flowBlocks, miniProjectIdsKey, ensureMiniDevProject]);
 
   useEffect(() => {
+    if (isTeacherReview) {
+      return;
+    }
     const handler = (evt: MessageEvent<MiniStudioMessage | MiniGoalsMessage>) => {
       if (evt.origin !== window.location.origin) {
         return;
@@ -253,7 +325,65 @@ export function LessonPlayerPage() {
     };
     window.addEventListener("message", handler);
     return () => window.removeEventListener("message", handler);
-  }, [lessonId, persistState]);
+  }, [isTeacherReview, lessonId, persistState]);
+
+  const submitGradeFromLesson = useCallback(async () => {
+    const rev = bootstrap?.review;
+    if (!rev) {
+      return;
+    }
+    setGrading(true);
+    try {
+      const v = await gradeForm.validateFields();
+      const commentRaw = typeof v.comment === "string" ? v.comment.trim() : "";
+      const comment = commentRaw.length > 0 ? commentRaw : null;
+      await apiClient.post(`/api/teacher/submissions/${encodeURIComponent(rev.submissionId)}/grade`, {
+        decision: v.decision,
+        score: v.decision === "grade" ? v.score : null,
+        teacherNote: v.decision === "grade" ? comment : null,
+        revisionNote: v.decision === "revision" ? comment : null
+      });
+      messageApi.success("Готово");
+      await load();
+      window.dispatchEvent(new Event("nodly-refresh-header-summary"));
+    } catch (e) {
+      if (e instanceof Error) {
+        messageApi.error(e.message);
+      }
+    } finally {
+      setGrading(false);
+    }
+  }, [bootstrap?.review, gradeForm, load, messageApi]);
+
+  const submitToTeacher = useCallback(async () => {
+    if (!assignmentId || !bootstrap?.submission) {
+      return;
+    }
+    setSubmittingToTeacher(true);
+    try {
+      await apiClient.post(`/api/student/assignments/${encodeURIComponent(assignmentId)}/submit`, {});
+      messageApi.success("Сдано учителю");
+      await load();
+      window.dispatchEvent(new Event("nodly-refresh-header-summary"));
+    } catch (e) {
+      const msg = e instanceof ApiError ? e.userMessage : e instanceof Error ? e.message : "Не удалось сдать";
+      if (msg === "Start assignment first") {
+        try {
+          await apiClient.post(`/api/student/assignments/${encodeURIComponent(assignmentId)}/start`, {});
+          await apiClient.post(`/api/student/assignments/${encodeURIComponent(assignmentId)}/submit`, {});
+          messageApi.success("Сдано учителю");
+          await load();
+          window.dispatchEvent(new Event("nodly-refresh-header-summary"));
+        } catch (e2) {
+          messageApi.error(e2 instanceof Error ? e2.message : "Не удалось сдать");
+        }
+      } else {
+        messageApi.error(msg);
+      }
+    } finally {
+      setSubmittingToTeacher(false);
+    }
+  }, [assignmentId, bootstrap?.submission, load, messageApi]);
 
   if (!user) {
     return (
@@ -265,7 +395,18 @@ export function LessonPlayerPage() {
     );
   }
 
-  if (user.role !== "student" && user.role !== "admin") {
+  if (user.role === "teacher" && !reviewSubmissionId) {
+    return (
+      <Content className="app-content">
+        <Card title="Плеер урока">
+          <Paragraph>Для проверки работы откройте ссылку из кабинета учителя («Открыть работу»).</Paragraph>
+          <Link to="/teacher">В кабинет</Link>
+        </Card>
+      </Content>
+    );
+  }
+
+  if (user.role !== "student" && user.role !== "admin" && !isTeacherReview) {
     return (
       <Content className="app-content">
         <Card title="Плеер урока">
@@ -281,6 +422,9 @@ export function LessonPlayerPage() {
   const miniDevProjectId = (blockId: string) => playerState.miniDevProjectIds?.[blockId] ?? null;
 
   const verifyCheckpoint = async (blockId: string, expected: string) => {
+    if (isTeacherReview) {
+      return;
+    }
     const raw = draftAnswers[blockId] ?? "";
     const block = flowBlocks.find((b): b is Extract<(typeof flowBlocks)[0], { type: "checkpoint" }> => b.type === "checkpoint" && b.id === blockId);
     const mode = block?.answerMode ?? "text";
@@ -319,6 +463,9 @@ export function LessonPlayerPage() {
     checkpointBlockIds.length === 0 || checkpointBlockIds.every((id) => checkpointsOk(id));
 
   const toggleMiniDevDone = async (blockId: string) => {
+    if (isTeacherReview) {
+      return;
+    }
     const next: LessonPlayerStateV1 = {
       ...playerState,
       miniDevDone: {
@@ -329,6 +476,16 @@ export function LessonPlayerPage() {
     await persistState(next);
   };
 
+  const submission = bootstrap?.submission;
+  const showSubmitToTeacher =
+    !isTeacherReview &&
+    user.role === "student" &&
+    user.studentMode === "school" &&
+    Boolean(assignmentId) &&
+    Boolean(submission);
+
+  const review = bootstrap?.review;
+
   return (
     <Content className="app-content app-content--workspace lesson-player-page">
       {holder}
@@ -338,13 +495,22 @@ export function LessonPlayerPage() {
             <Title level={4} style={{ marginTop: 0 }}>
               {bootstrap?.title ?? "Урок"}
             </Title>
-            {bootstrap?.studentSummary ? (
+            {isTeacherReview && review ? (
+              <Paragraph type="secondary" style={{ marginBottom: 8 }}>
+                Проверка работы: {review.studentNickname}
+              </Paragraph>
+            ) : null}
+            {bootstrap?.studentSummary && !isTeacherReview ? (
               <Paragraph type="secondary" style={{ marginBottom: 8 }}>
                 {bootstrap.studentSummary}
               </Paragraph>
             ) : null}
             <Space wrap>
-              <Link to="/learning">Назад</Link>
+              {isTeacherReview ? (
+                <Link to="/teacher">Назад в кабинет</Link>
+              ) : (
+                <Link to="/learning">Назад</Link>
+              )}
             </Space>
           </div>
           {/* Для школьных учеников убираем верхний блок «Задание: …», чтобы не дублировать контекст ДЗ. */}
@@ -383,9 +549,67 @@ export function LessonPlayerPage() {
                 saving={saving}
                 bareMiniStudio
                 variant="colab"
+                readOnly={isTeacherReview}
+                teacherReviewSubmissionId={isTeacherReview ? reviewSubmissionId ?? undefined : undefined}
               />
-              {allCheckpointsDone && checkpointBlockIds.length > 0 ? (
+              {allCheckpointsDone && checkpointBlockIds.length > 0 && !isTeacherReview ? (
                 <Alert type="success" showIcon message="Все вопросы пройдены" />
+              ) : null}
+              {showSubmitToTeacher && submission ? (
+                <Card title="Сдача работы">
+                  {submission.canSubmit ? (
+                    <Space direction="vertical">
+                      <Paragraph style={{ marginBottom: 0 }}>
+                        Когда всё готово, отправь работу учителю на проверку.
+                      </Paragraph>
+                      <Button type="primary" loading={submittingToTeacher} onClick={() => void submitToTeacher()}>
+                        Сдать учителю
+                      </Button>
+                    </Space>
+                  ) : submission.status === "submitted" || submission.status === "pending_teacher_review" ? (
+                    <Alert type="info" showIcon message="Работа отправлена учителю" />
+                  ) : submission.status === "graded" ? (
+                    <Alert type="success" showIcon message="Работа проверена" />
+                  ) : (
+                    <Paragraph type="secondary" style={{ marginBottom: 0 }}>
+                      Сдать работу сейчас нельзя (статус: {submission.status}).
+                    </Paragraph>
+                  )}
+                </Card>
+              ) : null}
+              {isTeacherReview && review ? (
+                <Card title="Оценка">
+                  <Form form={gradeForm} layout="vertical">
+                    <Form.Item name="decision" label="Решение">
+                      <Select
+                        options={[
+                          { value: "grade", label: "Поставить оценку" },
+                          { value: "revision", label: "Вернуть на доработку" }
+                        ]}
+                      />
+                    </Form.Item>
+                    <Form.Item noStyle shouldUpdate={(p, c) => p.decision !== c.decision}>
+                      {({ getFieldValue }) =>
+                        getFieldValue("decision") === "grade" ? (
+                          <Form.Item
+                            name="score"
+                            label="Балл"
+                            rules={[{ required: true }]}
+                            extra={`0…${review.maxScore}`}
+                          >
+                            <InputNumber min={0} max={review.maxScore} style={{ width: "100%" }} />
+                          </Form.Item>
+                        ) : null
+                      }
+                    </Form.Item>
+                    <Form.Item name="comment" label="Комментарий для ученика">
+                      <TextArea rows={3} placeholder="Необязательно при оценке, желательно при доработке" />
+                    </Form.Item>
+                    <Button type="primary" loading={grading} onClick={() => void submitGradeFromLesson()}>
+                      Сохранить оценку
+                    </Button>
+                  </Form>
+                </Card>
               ) : null}
             </>
           ) : null}

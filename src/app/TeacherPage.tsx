@@ -133,7 +133,7 @@ interface TeacherSubmissionRow {
   gradedAt: string | null;
   projectId: string | null;
   student: { id: string; nickname: string; email: string };
-  assignment: { id: string; title: string; maxScore: number; kind: string };
+  assignment: { id: string; title: string; maxScore: number; kind: string; lessonTemplateId: string | null };
 }
 
 interface LessonTemplateListItem {
@@ -828,6 +828,45 @@ export function TeacherPage() {
     }
   };
 
+  const deleteAssignment = useCallback(
+    async (assignmentId: string) => {
+      if (!lmsClassroomId) {
+        return;
+      }
+      const clearFilter = filterAssignmentId === assignmentId;
+      try {
+        await apiClient.delete(`/api/teacher/assignments/${encodeURIComponent(assignmentId)}`);
+        messageApi.success("Задание удалено");
+        if (clearFilter) {
+          setFilterAssignmentId(undefined);
+        }
+        if (editingAssignment?.id === assignmentId) {
+          setEditOpen(false);
+          setEditingAssignment(null);
+        }
+        await loadAssignments(lmsClassroomId);
+        await loadSubmissions(lmsClassroomId, clearFilter ? undefined : filterAssignmentId ?? undefined);
+        await loadGradebook(lmsClassroomId);
+        await syncTeacherBadges();
+        window.dispatchEvent(new Event("nodly-refresh-header-summary"));
+      } catch (e) {
+        if (e instanceof Error) {
+          messageApi.error(e.message);
+        }
+      }
+    },
+    [
+      lmsClassroomId,
+      filterAssignmentId,
+      editingAssignment?.id,
+      loadAssignments,
+      loadSubmissions,
+      loadGradebook,
+      messageApi,
+      syncTeacherBadges
+    ]
+  );
+
   const openGrade = (row: TeacherSubmissionRow) => {
     setGradingSubmission(row);
     gradeForm.setFieldsValue({
@@ -960,9 +999,23 @@ export function TeacherPage() {
       title: "",
       key: "actions",
       render: (_, row) => (
-        <Button type="link" size="small" onClick={() => openEdit(row)}>
-          Изменить
-        </Button>
+        <Space size="small" wrap>
+          <Button type="link" size="small" onClick={() => openEdit(row)}>
+            Изменить
+          </Button>
+          <Popconfirm
+            title="Удалить задание?"
+            description="Сдачи и прогресс учеников по этому заданию будут удалены без восстановления."
+            okText="Удалить"
+            cancelText="Отмена"
+            okButtonProps={{ danger: true }}
+            onConfirm={() => void deleteAssignment(row.id)}
+          >
+            <Button danger type="link" size="small">
+              Удалить
+            </Button>
+          </Popconfirm>
+        </Space>
       )
     }
   ];
@@ -1000,9 +1053,17 @@ export function TeacherPage() {
       key: "go",
       render: (_, r) => (
         <Space size="small" wrap>
-          {r.projectId ? (
-            <Link to={`/studio?reviewSubmission=${encodeURIComponent(r.id)}`} target="_blank" rel="noreferrer">
+          {r.assignment.lessonTemplateId ? (
+            <Link
+              to={`/lesson/${encodeURIComponent(r.assignment.lessonTemplateId)}?assignmentId=${encodeURIComponent(r.assignment.id)}&reviewSubmission=${encodeURIComponent(r.id)}`}
+              target="_blank"
+              rel="noreferrer"
+            >
               Открыть работу
+            </Link>
+          ) : r.projectId ? (
+            <Link to={`/studio?reviewSubmission=${encodeURIComponent(r.id)}`} target="_blank" rel="noreferrer">
+              Открыть работу (разработка)
             </Link>
           ) : null}
           {r.status === "submitted" ||

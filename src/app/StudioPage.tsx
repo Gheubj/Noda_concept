@@ -28,7 +28,13 @@ import type { NodlyProjectMeta, NodlyProjectSnapshot } from "@/shared/types/proj
 import type { StudioGoal } from "@/shared/types/lessonContent";
 import type { MiniDevTelemetry } from "@/shared/types/lessonPlayerState";
 import { evalMiniStudioGoal, summarizeBlocklyState } from "@/shared/miniStudioGoalEval";
-import { deleteProjectSmart, loadProjectSmart, listProjects, saveProjectSmart } from "@/features/project/projectRepository";
+import {
+  deleteProjectSmart,
+  loadProjectSmart,
+  loadTeacherReviewMiniProject,
+  listProjects,
+  saveProjectSmart
+} from "@/features/project/projectRepository";
 import { useSessionStore } from "@/store/useSessionStore";
 import { apiClient } from "@/shared/api/client";
 
@@ -476,8 +482,72 @@ export function StudioPage() {
   }, [teacherReview?.submissionId, teacherGradeForm, teacherReview]);
 
   const projectFromUrl = searchParams.get("project");
+  const teacherReviewSubmissionParam = searchParams.get("teacherReviewSubmission");
+
+  useEffect(() => {
+    if (!isMini || !projectFromUrl || !user || user.role !== "teacher" || !teacherReviewSubmissionParam) {
+      return;
+    }
+    let cancelled = false;
+    restoringDraftRef.current = true;
+    void (async () => {
+      try {
+        const project = await loadTeacherReviewMiniProject(teacherReviewSubmissionParam, projectFromUrl);
+        if (cancelled) {
+          return;
+        }
+        if (!project) {
+          messageApi.error("Не удалось открыть проект ученика");
+          return;
+        }
+        setActiveProject(project.meta);
+        loadProjectSnapshot(project.snapshot);
+        setSaveTitle(project.meta.title);
+        studioBootstrapDoneRef.current = true;
+        bumpPostStudioBootstrap();
+        messageApi.success("Проект ученика (только просмотр)");
+        setSearchParams(
+          (prev) => {
+            const next = new URLSearchParams(prev);
+            next.delete("project");
+            return next;
+          },
+          { replace: true }
+        );
+      } catch {
+        if (!cancelled) {
+          messageApi.error("Не удалось открыть проект ученика");
+        }
+      } finally {
+        if (!cancelled) {
+          queueMicrotask(() => {
+            restoringDraftRef.current = false;
+          });
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    isMini,
+    projectFromUrl,
+    teacherReviewSubmissionParam,
+    user?.role,
+    user?.id,
+    loadProjectSnapshot,
+    setActiveProject,
+    setSaveTitle,
+    setSearchParams,
+    messageApi,
+    bumpPostStudioBootstrap
+  ]);
+
   useEffect(() => {
     if (!projectFromUrl || !user) {
+      return;
+    }
+    if (isMini && user.role === "teacher" && teacherReviewSubmissionParam) {
       return;
     }
     let cancelled = false;
@@ -512,7 +582,9 @@ export function StudioPage() {
   }, [
     projectFromUrl,
     user?.id,
+    user?.role,
     isMini,
+    teacherReviewSubmissionParam,
     resolvedUserId,
     setSearchParams,
     setActiveProject,
