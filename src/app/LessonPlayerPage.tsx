@@ -3,7 +3,6 @@ import {
   Alert,
   Button,
   Card,
-  FloatButton,
   Form,
   Input,
   InputNumber,
@@ -14,7 +13,6 @@ import {
   Typography,
   message
 } from "antd";
-import { FullscreenExitOutlined, FullscreenOutlined } from "@ant-design/icons";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { useSessionStore } from "@/store/useSessionStore";
 import { ApiError, apiClient } from "@/shared/api/client";
@@ -102,34 +100,6 @@ export function LessonPlayerPage() {
   const [gradeForm] = Form.useForm();
   const playerStateRef = useRef(playerState);
   playerStateRef.current = playerState;
-  const lessonRootRef = useRef<HTMLDivElement | null>(null);
-  const [isPresentation, setIsPresentation] = useState(false);
-  const isPresentationRef = useRef(false);
-  isPresentationRef.current = isPresentation;
-
-  useEffect(() => {
-    const onFs = () => {
-      setIsPresentation(document.fullscreenElement === lessonRootRef.current);
-    };
-    document.addEventListener("fullscreenchange", onFs);
-    return () => document.removeEventListener("fullscreenchange", onFs);
-  }, []);
-
-  const togglePresentation = useCallback(async () => {
-    const node = lessonRootRef.current;
-    if (!node) {
-      return;
-    }
-    try {
-      if (document.fullscreenElement === node) {
-        await document.exitFullscreen();
-      } else {
-        await node.requestFullscreen();
-      }
-    } catch {
-      messageApi.error("Не удалось включить режим презентации");
-    }
-  }, [messageApi]);
   /** Синхронная защита от двойного создания одного и того же mini-проекта (StrictMode / гонки). */
   const miniCreateLockRef = useRef<Record<string, boolean>>({});
 
@@ -143,16 +113,6 @@ export function LessonPlayerPage() {
   }, [bootstrap]);
 
   const flowBlocks = useMemo(() => expandLessonContentToBlocks(lessonContent), [lessonContent]);
-
-  useEffect(() => {
-    const frames = lessonRootRef.current?.querySelectorAll<HTMLIFrameElement>("iframe.lesson-flow__mini-dev-frame");
-    frames?.forEach((frame) => {
-      frame.contentWindow?.postMessage(
-        { source: "nodly-lesson", type: "presentation", value: isPresentation },
-        window.location.origin
-      );
-    });
-  }, [isPresentation, flowBlocks]);
 
   const checkpointBlockIds = useMemo(
     () => flowBlocks.filter((b): b is Extract<(typeof flowBlocks)[0], { type: "checkpoint" }> => b.type === "checkpoint").map((b) => b.id),
@@ -336,14 +296,6 @@ export function LessonPlayerPage() {
           }
         };
         void persistState(next);
-        return;
-      }
-      if ((payload as { source?: string; type?: string }).source === "nodly-mini-studio" && (payload as { type?: string }).type === "presentation-query") {
-        const target = (evt.source as Window | null) ?? null;
-        target?.postMessage(
-          { source: "nodly-lesson", type: "presentation", value: isPresentationRef.current },
-          window.location.origin
-        );
         return;
       }
       if (payload.source !== "nodly-mini-studio") {
@@ -535,18 +487,8 @@ export function LessonPlayerPage() {
   const review = bootstrap?.review;
 
   return (
-    <Content
-      ref={lessonRootRef as unknown as React.RefObject<HTMLDivElement>}
-      className={`app-content app-content--workspace lesson-player-page${
-        isPresentation ? " lesson-player-page--presentation" : ""
-      }`}
-    >
+    <Content className="app-content app-content--workspace lesson-player-page">
       {holder}
-      <FloatButton
-        icon={isPresentation ? <FullscreenExitOutlined /> : <FullscreenOutlined />}
-        tooltip={isPresentation ? "Выйти из презентации" : "Режим презентации"}
-        onClick={() => void togglePresentation()}
-      />
       <Spin spinning={loading}>
         <Space direction="vertical" size="large" style={{ width: "100%" }}>
           <div className="lesson-player-page__head">
