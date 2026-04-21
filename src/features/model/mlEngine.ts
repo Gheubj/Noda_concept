@@ -37,7 +37,7 @@ export type TabularCategoricalEncoding = "onehot" | "ordinal";
 const OTHER_CATEGORY = "__OTHER__";
 
 export type TabularFeatureSpec =
-  | { kind: "numeric" }
+  | { kind: "numeric"; fillValue?: number }
   | {
       kind: "categorical";
       categories: string[];
@@ -482,9 +482,17 @@ function parseTabular(
   for (let col = 0; col < featureColumnIndices.length; col++) {
     const columnValues = rawX.map((row) => row[col]);
     const numericValues = columnValues.map((value) => parseNumericFeatureCell(value));
-    const allNumeric = numericValues.every((value) => !Number.isNaN(value));
-    if (allNumeric) {
-      specs.push({ kind: "numeric" });
+    const finiteNumericValues = numericValues.filter((value) => !Number.isNaN(value));
+    const numericRatio = finiteNumericValues.length / Math.max(1, numericValues.length);
+    // Реальные CSV часто содержат пропуски/шум в иначе-числовой колонке.
+    // Не переводим такую колонку в категориальную, если чисел подавляющее большинство.
+    const mostlyNumeric = numericRatio >= 0.85 && finiteNumericValues.length > 0;
+    if (mostlyNumeric) {
+      const sorted = [...finiteNumericValues].sort((a, b) => a - b);
+      const mid = Math.floor(sorted.length / 2);
+      const fillValue =
+        sorted.length % 2 === 1 ? sorted[mid]! : ((sorted[mid - 1] ?? 0) + (sorted[mid] ?? 0)) / 2;
+      specs.push({ kind: "numeric", fillValue });
     } else {
       const unique = [...new Set(columnValues)];
       // One-hot в регрессии чувствителен к высокой кардинальности:
@@ -532,7 +540,8 @@ function parseTabular(
       const spec = specs[col];
       const value = rawRow[col];
       if (spec.kind === "numeric") {
-        const num = parseNumericFeatureCell(value);
+        const parsed = parseNumericFeatureCell(value);
+        const num = Number.isNaN(parsed) ? (spec.fillValue ?? NaN) : parsed;
         if (Number.isNaN(num)) {
           throw new Error("Числовой признак содержит нечисловое значение.");
         }
@@ -1206,7 +1215,7 @@ export async function persistCurrentModelToLibrary(modelId: string): Promise<{ m
       classIndexToLabel: [...classIndexToLabel],
       tabularFeatureSpecs: tabularFeatureSpecs.map((s) =>
         s.kind === "numeric"
-          ? { kind: "numeric" }
+          ? { kind: "numeric", ...(s.fillValue !== undefined ? { fillValue: s.fillValue } : {}) }
           : {
               kind: "categorical",
               categories: [...s.categories],
@@ -1250,7 +1259,7 @@ export async function loadModelFromLibraryEntry(entry: SavedModelEntry): Promise
     classIndexToLabel = [...rec.classIndexToLabel];
     tabularFeatureSpecs = rec.tabularFeatureSpecs.map((s) =>
       s.kind === "numeric"
-        ? { kind: "numeric" }
+        ? { kind: "numeric", ...(s.fillValue !== undefined ? { fillValue: s.fillValue } : {}) }
         : {
             kind: "categorical",
             categories: [...s.categories],
@@ -1313,6 +1322,10 @@ function parsePredictionFeatures(input: string) {
     if (spec.kind === "numeric") {
       const num = parseNumericFeatureCell(value);
       if (Number.isNaN(num)) {
+        if (value.trim().length === 0 && spec.fillValue !== undefined) {
+          out.push(spec.fillValue);
+          continue;
+        }
         throw new Error(`Признак #${i + 1} должен быть числом.`);
       }
       out.push(num);

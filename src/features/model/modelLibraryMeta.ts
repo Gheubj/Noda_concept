@@ -2,7 +2,7 @@ import { openDB } from "idb";
 import type { ModelType } from "@/shared/types/ai";
 
 export type TabularFeatureSpecPersist =
-  | { kind: "numeric" }
+  | { kind: "numeric"; fillValue?: number }
   | {
       kind: "categorical";
       categories: string[];
