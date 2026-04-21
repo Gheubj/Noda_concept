@@ -16,6 +16,7 @@ export function LandingGuestPaths() {
       <Row gutter={[16, 16]}>
         <Col xs={24} md={8}>
           <Card size="small" title="Я учитель или веду кружок" className="landing-guest-paths__card">
+            <div className="landing-guest-paths__chip">Для преподавателей</div>
             <Paragraph type="secondary" style={{ marginBottom: 12, minHeight: 56 }}>
               Создайте школу, классы и задавайте работы ученикам. Та же среда разработки, что и у детей.
             </Paragraph>
@@ -29,6 +30,7 @@ export function LandingGuestPaths() {
         </Col>
         <Col xs={24} md={8}>
           <Card size="small" title="Я ученик в классе" className="landing-guest-paths__card">
+            <div className="landing-guest-paths__chip">Школьный режим</div>
             <Paragraph type="secondary" style={{ marginBottom: 12, minHeight: 56 }}>
               Получите код от учителя, введите его в личном кабинете и открывайте задания и расписание.
             </Paragraph>
@@ -42,6 +44,7 @@ export function LandingGuestPaths() {
         </Col>
         <Col xs={24} md={8}>
           <Card size="small" title="Учусь сам" className="landing-guest-paths__card">
+            <div className="landing-guest-paths__chip">Self-paced</div>
             <Paragraph type="secondary" style={{ marginBottom: 12, minHeight: 56 }}>
               Уроки из каталога и свободные проекты в Blockly без привязки к школе.
             </Paragraph>

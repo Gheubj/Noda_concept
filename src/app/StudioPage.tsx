@@ -1040,6 +1040,7 @@ export function StudioPage() {
             {!readOnly && activeProject ? (
               <Button
                 size="small"
+                className="studio-page__btn-tertiary"
                 icon={<FormOutlined />}
                 onClick={() => openRenameProjectModal(activeProject.id, activeProject.title)}
               >
@@ -1049,6 +1050,7 @@ export function StudioPage() {
             <Button
               type="primary"
               size="small"
+              className="studio-page__btn-primary"
               disabled={readOnly}
               onClick={() => {
                 if (activeProject) {
@@ -1061,18 +1063,24 @@ export function StudioPage() {
             >
               Сохранить
             </Button>
-            <Button size="small" onClick={() => setLibraryOpen(true)}>
+            <Button size="small" className="studio-page__btn-secondary" onClick={() => setLibraryOpen(true)}>
               Проекты
             </Button>
-            <Button size="small" onClick={handleNewProject}>
+            <Button size="small" className="studio-page__btn-secondary" onClick={handleNewProject}>
               Новый
             </Button>
-            <Button size="small" icon={<DatabaseOutlined />} onClick={() => setDataLibraryOpen(true)}>
+            <Button
+              size="small"
+              className="studio-page__btn-secondary"
+              icon={<DatabaseOutlined />}
+              onClick={() => setDataLibraryOpen(true)}
+            >
               Данные
             </Button>
             {user && activeProject && !readOnly ? (
               <Button
                 size="small"
+                className="studio-page__btn-tertiary"
                 onClick={() =>
                   void (async () => {
                     try {

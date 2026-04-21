@@ -15,7 +15,7 @@ const BLOCK_TYPES: { value: LessonContentBlock["type"]; label: string }[] = [
   { value: "media", label: "Медиа (картинка/PDF)" },
   { value: "studio", label: "Мини-разработка" },
   { value: "checkpoint", label: "Вопрос" },
-  { value: "divider", label: "Разделитель" }
+  { value: "divider", label: "Разделитель (legacy)" }
 ];
 
 const STUDIO_GOAL_TYPES: Array<{ value: StudioGoal["type"]; label: string }> = [
@@ -322,12 +322,12 @@ export function AdminLessonBlockEditor({ blocks, onChange }: AdminLessonBlockEdi
             }
           >
           {block.type === "text" ? (
-            <Space direction="vertical" style={{ width: "100%" }}>
+            <Space direction="vertical" style={{ width: "100%" }} className="lesson-block-editor__section">
               <Input.TextArea rows={6} value={block.body} onChange={(e) => setBlock(index, { body: e.target.value })} />
             </Space>
           ) : null}
           {block.type === "media" ? (
-            <Space direction="vertical" style={{ width: "100%" }}>
+            <Space direction="vertical" style={{ width: "100%" }} className="lesson-block-editor__section">
               <Select
                 value={block.kind}
                 options={[
@@ -372,7 +372,8 @@ export function AdminLessonBlockEditor({ blocks, onChange }: AdminLessonBlockEdi
             </Space>
           ) : null}
           {block.type === "studio" ? (
-            <Space direction="vertical" style={{ width: "100%" }}>
+            <Space direction="vertical" style={{ width: "100%" }} className="lesson-block-editor__section">
+              <Text type="secondary">Инструкция и параметры мини-разработки</Text>
               <Input.TextArea
                 rows={3}
                 value={block.instruction}
@@ -496,7 +497,7 @@ export function AdminLessonBlockEditor({ blocks, onChange }: AdminLessonBlockEdi
           ) : null}
           {block.type === "divider" ? <hr className="lesson-block-editor__divider-line" /> : null}
           {block.type === "checkpoint" ? (
-            <Space direction="vertical" style={{ width: "100%" }}>
+            <Space direction="vertical" style={{ width: "100%" }} className="lesson-block-editor__section">
               <Input.TextArea
                 rows={2}
                 value={block.question}

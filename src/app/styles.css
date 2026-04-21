@@ -26,6 +26,7 @@ html[data-theme="light"] {
   --app-focus-ring: rgba(37, 99, 235, 0.28);
   --app-gradient-top: radial-gradient(1200px 520px at 10% -20%, rgba(37, 99, 235, 0.1), transparent 55%),
     radial-gradient(900px 420px at 90% -25%, rgba(14, 165, 233, 0.09), transparent 58%);
+  --density-space: 1;
 }
 
 html[data-theme="dark"] {
@@ -48,6 +49,7 @@ html[data-theme="dark"] {
   --app-focus-ring: rgba(96, 165, 250, 0.35);
   --app-gradient-top: radial-gradient(900px 440px at 10% -20%, rgba(37, 99, 235, 0.18), transparent 55%),
     radial-gradient(900px 480px at 90% -20%, rgba(59, 130, 246, 0.12), transparent 58%);
+  --density-space: 0.96;
 }
 
 * {
@@ -495,6 +497,12 @@ a.app-header-account-slot {
   background: var(--app-surface-elevated);
 }
 
+html[data-theme="light"] .app-content:not(.app-content--workspace) .ant-card {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, rgba(248, 250, 252, 0.96) 100%),
+    var(--app-surface-elevated);
+}
+
 .app-content:not(.app-content--workspace) .ant-btn {
   border-radius: 10px;
 }
@@ -616,6 +624,19 @@ html[data-theme="dark"] .app-content--workspace {
   flex-wrap: wrap;
   justify-content: flex-end;
   gap: 8px;
+}
+
+.studio-page__btn-primary.ant-btn {
+  box-shadow: 0 6px 16px rgba(37, 99, 235, 0.3);
+}
+
+.studio-page__btn-secondary.ant-btn {
+  background: color-mix(in srgb, var(--app-surface-soft) 88%, transparent);
+  border-color: var(--app-border-soft);
+}
+
+.studio-page__btn-tertiary.ant-btn {
+  color: var(--app-muted);
 }
 
 .studio-page__toolbar-title {
@@ -1227,6 +1248,37 @@ html[data-theme="dark"] .landing-hero__eyebrow {
   gap: 12px;
 }
 
+.landing-hero__highlights {
+  margin-top: 18px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.landing-hero__highlight {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--app-border-soft);
+  background: color-mix(in srgb, var(--app-surface-elevated) 85%, transparent);
+  box-shadow: var(--app-shadow-soft);
+}
+
+.landing-hero__highlight-k {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--app-accent);
+  font-weight: 700;
+}
+
+.landing-hero__highlight-v {
+  font-size: 13px;
+  color: var(--app-text);
+}
+
 .landing-hero__session-placeholder {
   display: flex;
   align-items: center;
@@ -1258,7 +1310,56 @@ html[data-theme="dark"] .landing-hero__quick-start-title.ant-typography {
   width: 100%;
 }
 
+.landing-showcase {
+  position: relative;
+  margin-bottom: 34px;
+  border-radius: 18px;
+  overflow: hidden;
+  border: 1px solid var(--app-border-soft);
+  box-shadow: var(--app-shadow-hover);
+  background: linear-gradient(140deg, #0f172a 0%, #1e293b 40%, #0f172a 100%);
+}
+
+.landing-showcase__texture {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 20% 20%, rgba(59, 130, 246, 0.35) 0%, transparent 36%),
+    radial-gradient(circle at 80% 65%, rgba(14, 165, 233, 0.28) 0%, transparent 32%),
+    repeating-linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.06) 0,
+      rgba(255, 255, 255, 0.06) 1px,
+      transparent 1px,
+      transparent 14px
+    );
+  opacity: 0.88;
+}
+
+.landing-showcase__content {
+  position: relative;
+  z-index: 1;
+  padding: 26px 24px;
+}
+
+.landing-showcase__title.ant-typography {
+  margin-top: 0 !important;
+  margin-bottom: 10px !important;
+  color: #fff !important;
+}
+
+.landing-showcase__text {
+  margin: 0;
+  max-width: 72ch;
+  color: rgba(241, 245, 249, 0.94);
+  line-height: 1.62;
+}
+
 @media (max-width: 1024px) {
+  .landing-hero__highlights {
+    grid-template-columns: 1fr;
+  }
+
   .landing-features {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -1362,6 +1463,21 @@ html[data-theme="dark"] .landing-feature-card__icon {
   box-shadow: var(--landing-card-shadow);
   background: var(--app-surface);
   transition: transform 170ms ease, box-shadow 170ms ease, border-color 170ms ease;
+}
+
+.landing-guest-paths__chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--app-accent) 26%, transparent);
+  background: color-mix(in srgb, var(--app-accent) 12%, transparent);
+  color: var(--app-accent);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  margin-bottom: 10px;
 }
 
 .landing-guest-paths__card.ant-card:hover {
@@ -2119,6 +2235,10 @@ html[data-theme="dark"] .week-schedule-slot__diary-grade-mark {
   padding: 14px 16px;
   background: color-mix(in srgb, var(--app-surface-elevated) 95%, transparent);
   box-shadow: var(--app-shadow-soft);
+  position: sticky;
+  top: 8px;
+  z-index: 20;
+  backdrop-filter: blur(6px);
 }
 
 .lesson-player-page__stack {
@@ -2279,7 +2399,7 @@ html[data-theme="dark"] .lesson-flow__pdf-page-canvas {
 }
 
 .lesson-flow__segment--divider {
-  padding: 4px 0;
+  display: none;
 }
 
 .lesson-flow__divider {
@@ -2299,9 +2419,10 @@ html[data-theme="dark"] .lesson-flow__pdf-page-canvas {
   height: min(58vh, 560px);
   min-height: 380px;
   border: 1px solid var(--ant-color-border, rgba(148, 163, 184, 0.45));
-  border-radius: 8px;
+  border-radius: 12px;
   display: block;
   background: #0b1220;
+  box-shadow: var(--app-shadow-soft);
 }
 
 .lesson-flow__mini-dev-loading {
@@ -2461,4 +2582,63 @@ html[data-theme="dark"] .lesson-flow__pdf-page-canvas {
 
 .admin-lesson-editor__header {
   margin-bottom: -8px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px 14px;
+}
+
+.admin-lesson-editor {
+  max-width: min(1380px, 100%);
+  margin: 0 auto;
+}
+
+.admin-lesson-editor__stack {
+  gap: 12px !important;
+}
+
+.admin-lesson-editor__panel {
+  border: 1px solid var(--app-border-soft);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--app-surface-elevated) 95%, transparent);
+  box-shadow: var(--app-shadow-soft);
+  padding: 12px;
+}
+
+.admin-lesson-editor__header-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.admin-lesson-editor__header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+.admin-lesson-editor__header-actions .ant-alert {
+  margin: 0;
+}
+
+.admin-lesson-editor__footer-actions {
+  position: sticky;
+  bottom: 10px;
+  z-index: 15;
+  padding: 10px 12px;
+  border: 1px solid var(--app-border-soft);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--app-surface-elevated) 92%, transparent);
+  backdrop-filter: blur(6px);
+  box-shadow: var(--app-shadow-soft);
+}
+
+.lesson-block-editor__section {
+  gap: 10px !important;
+}
+
+.lesson-block-editor__card.ant-card {
+  border-radius: 12px;
 }

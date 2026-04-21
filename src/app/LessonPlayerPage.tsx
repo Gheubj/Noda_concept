@@ -95,6 +95,7 @@ export function LessonPlayerPage() {
   const [grading, setGrading] = useState(false);
   const [bootstrap, setBootstrap] = useState<PlayerBootstrap | null>(null);
   const [playerState, setPlayerState] = useState<LessonPlayerStateV1>({ v: 1, checkpoints: {} });
+  const [miniProjectIdsLocal, setMiniProjectIdsLocal] = useState<Record<string, string>>({});
   const [draftAnswers, setDraftAnswers] = useState<Record<string, string>>({});
   const [autoCreatingMini, setAutoCreatingMini] = useState<Record<string, boolean>>({});
   const [gradeForm] = Form.useForm();
@@ -154,6 +155,7 @@ export function LessonPlayerPage() {
         setBootstrap(data);
         const parsed = parseLessonPlayerState(data.state);
         setPlayerState(parsed);
+        setMiniProjectIdsLocal(parsed.miniDevProjectIds ?? {});
         playerStateRef.current = parsed;
         void apiClient.post("/api/teacher/submissions/mark-seen", { submissionIds: [reviewSubmissionId] }).catch(() => {});
       } else {
@@ -164,6 +166,7 @@ export function LessonPlayerPage() {
         setBootstrap(data);
         const parsed = parseLessonPlayerState(data.state);
         setPlayerState(parsed);
+        setMiniProjectIdsLocal(parsed.miniDevProjectIds ?? {});
         playerStateRef.current = parsed;
       }
     } catch (e) {
@@ -213,6 +216,8 @@ export function LessonPlayerPage() {
             title: `${bootstrap.title} · мини`
           }
         );
+        // Отображаем iframe сразу после создания, даже если сохранение прогресса задержалось.
+        setMiniProjectIdsLocal((prev) => ({ ...prev, [blockId]: projectId }));
         const prev = playerStateRef.current;
         const next: LessonPlayerStateV1 = {
           ...prev,
@@ -419,7 +424,8 @@ export function LessonPlayerPage() {
 
   const checkpointsOk = (blockId: string) => playerState.checkpoints?.[blockId] === "ok";
   const miniDevDone = (blockId: string) => Boolean(playerState.miniDevDone?.[blockId]);
-  const miniDevProjectId = (blockId: string) => playerState.miniDevProjectIds?.[blockId] ?? null;
+  const miniDevProjectId = (blockId: string) =>
+    playerState.miniDevProjectIds?.[blockId] ?? miniProjectIdsLocal[blockId] ?? null;
 
   const verifyCheckpoint = async (blockId: string, expected: string) => {
     if (isTeacherReview) {

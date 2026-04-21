@@ -80,27 +80,34 @@ export function AdminLessonTemplateEditorPage() {
   }
 
   return (
-    <div className="app-content">
+    <div className="app-content admin-lesson-editor">
       {holder}
       <Spin spinning={loading || saving}>
-        <Space direction="vertical" size="middle" style={{ width: "100%" }}>
-          <div className="admin-lesson-editor__header">
-            <Title level={4} style={{ marginTop: 0, marginBottom: 4 }}>
-              {title}
-            </Title>
-            <Space wrap size={10}>
+        <Space direction="vertical" size="middle" style={{ width: "100%" }} className="admin-lesson-editor__stack">
+          <div className="admin-lesson-editor__header admin-lesson-editor__panel">
+            <div className="admin-lesson-editor__header-main">
+              <Title level={4} style={{ marginTop: 0, marginBottom: 4 }}>
+                {title}
+              </Title>
+              {template ? (
+                <Text type="secondary">
+                  {template.moduleKey} · #{template.sortOrder}
+                </Text>
+              ) : null}
+            </div>
+            <div className="admin-lesson-editor__header-actions">
               <Button type="link" style={{ paddingInline: 0 }} onClick={() => navigate("/admin/templates")}>
                 Назад
               </Button>
               <Alert type="warning" showIcon message="Не забудь сохранить изменения перед выходом." />
-            </Space>
+            </div>
           </div>
 
-          <div>
+          <div className="admin-lesson-editor__panel">
             <AdminLessonBlockEditor blocks={blocks} onChange={setBlocks} />
           </div>
 
-          <Space>
+          <Space className="admin-lesson-editor__footer-actions">
             <Button
               type="primary"
               onClick={async () => {
@@ -124,11 +131,6 @@ export function AdminLessonTemplateEditorPage() {
               Сохранить
             </Button>
             <Button onClick={() => navigate("/admin/templates")}>К списку шаблонов</Button>
-            {template ? (
-              <Text type="secondary">
-                {template.moduleKey} · #{template.sortOrder}
-              </Text>
-            ) : null}
           </Space>
         </Space>
       </Spin>

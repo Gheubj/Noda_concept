@@ -139,6 +139,20 @@ export function LandingPage() {
                   Уже есть аккаунт? Используй «Войти» в шапке или кнопку выше
                 </Text>
               </div>
+              <div className="landing-hero__highlights" role="list" aria-label="Ключевые преимущества">
+                <div className="landing-hero__highlight" role="listitem">
+                  <span className="landing-hero__highlight-k">No Install</span>
+                  <span className="landing-hero__highlight-v">Работает сразу в браузере</span>
+                </div>
+                <div className="landing-hero__highlight" role="listitem">
+                  <span className="landing-hero__highlight-k">For Classroom</span>
+                  <span className="landing-hero__highlight-v">Классы, задания, проверка</span>
+                </div>
+                <div className="landing-hero__highlight" role="listitem">
+                  <span className="landing-hero__highlight-k">ML in Blockly</span>
+                  <span className="landing-hero__highlight-v">ИИ без сложного входа</span>
+                </div>
+              </div>
             </>
           ) : null}
         </section>
@@ -197,6 +211,20 @@ export function LandingPage() {
               </p>
             </Card>
           </div>
+        ) : null}
+        {showGuestMarketing ? (
+          <section className="landing-showcase" aria-label="Возможности платформы">
+            <div className="landing-showcase__texture" aria-hidden />
+            <div className="landing-showcase__content">
+              <Title level={4} className="landing-showcase__title">
+                Среда, где обучение и практика связаны в один поток
+              </Title>
+              <p className="landing-showcase__text">
+                Ученики проходят урок, сразу пробуют в мини-разработке и отправляют результат учителю. Без переключения
+                между разными сервисами и без потери контекста.
+              </p>
+            </div>
+          </section>
         ) : null}
       </div>
       <LandingFooter />
