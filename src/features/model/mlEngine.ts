@@ -756,51 +756,117 @@ async function trainTabularModel(
     const yTrain = tf.tensor2d(trainIdx.map((i) => [y[i]]));
     const yVal = tf.tensor2d(valIdx.map((i) => [y[i]]));
     const yTest = tf.tensor2d(testIdx.map((i) => [y[i]]));
+    tabularSvmModel = null;
+    tabularRfModel = null;
     tabularModel?.dispose();
-    tabularModel = tf.sequential({
-      layers: [tf.layers.dense({ inputShape: [featureCount], units: 1 })]
-    });
-    // Пилот: в блоках был LR 0.02; дефолт сменили на 0.001 для табличной классификации — для одного Dense+MSE этого мало.
-    const regressionLr = config.learningRate < 0.004 ? 0.02 : config.learningRate;
-    tabularModel.compile({
-      optimizer: tf.train.adam(regressionLr),
-      loss: "meanSquaredError",
-      metrics: ["mse"]
-    });
-    const regEpochHistory: TrainingEpochLog[] = [];
-    await tabularModel.fit(xTrain, yTrain, {
-      epochs: config.epochs,
-      validationData: [xVal, yVal],
-      callbacks: {
-        onEpochEnd: async (epoch, logs) => {
-          regEpochHistory.push({
-            epoch: epoch + 1,
-            loss: logNumber(logs, "loss"),
-            valLoss: logNumber(logs, "val_loss"),
-            mse: logNumber(logs, "mse"),
-            valMse: logNumber(logs, "val_mse", "val_mean_squared_error")
-          });
-          onProgress(
-            Math.round(((epoch + 1) / config.epochs) * 100),
-            `Эпоха ${epoch + 1} / ${config.epochs}`
-          );
-          await tf.nextFrame();
-        }
-      }
-    });
-    const testEval = tabularModel.evaluate(xTest, yTest) as tf.Tensor | tf.Tensor[];
-    const evalTensors = Array.isArray(testEval) ? testEval : [testEval];
-    const evalTensor = evalTensors[0];
-    const mseValue = (await evalTensor.data())[0] ?? 0;
-    for (const t of evalTensors) {
-      t.dispose();
-    }
+    tabularModel = null;
 
-    const preds = tabularModel.predict(xTest) as tf.Tensor;
-    const maeTensor = tf.mean(tf.abs(tf.sub(preds, yTest)));
-    const maeValue = (await maeTensor.data())[0] ?? 0;
-    const predData = await preds.data();
-    const yTestData = await yTest.data();
+    const regressionLr = config.learningRate < 0.004 ? 0.02 : config.learningRate;
+    const trainRegressionCandidate = async (args: {
+      xTrainTensor: tf.Tensor2D;
+      xValTensor: tf.Tensor2D;
+      xTestTensor: tf.Tensor2D;
+      progressFrom: number;
+      progressTo: number;
+      modeTitle: string;
+    }) => {
+      const model = tf.sequential({
+        layers: [tf.layers.dense({ inputShape: [featureCount], units: 1 })]
+      });
+      model.compile({
+        optimizer: tf.train.adam(regressionLr),
+        loss: "meanSquaredError",
+        metrics: ["mse"]
+      });
+      const epochHistory: TrainingEpochLog[] = [];
+      await model.fit(args.xTrainTensor, yTrain, {
+        epochs: config.epochs,
+        validationData: [args.xValTensor, yVal],
+        callbacks: {
+          onEpochEnd: async (epoch, logs) => {
+            epochHistory.push({
+              epoch: epoch + 1,
+              loss: logNumber(logs, "loss"),
+              valLoss: logNumber(logs, "val_loss"),
+              mse: logNumber(logs, "mse"),
+              valMse: logNumber(logs, "val_mse", "val_mean_squared_error")
+            });
+            const p = args.progressFrom + ((epoch + 1) / config.epochs) * (args.progressTo - args.progressFrom);
+            onProgress(
+              Math.round(p),
+              `${args.modeTitle}: эпоха ${epoch + 1} / ${config.epochs}`
+            );
+            await tf.nextFrame();
+          }
+        }
+      });
+
+      const valPreds = model.predict(args.xValTensor) as tf.Tensor;
+      const valMaeTensor = tf.mean(tf.abs(tf.sub(valPreds, yVal)));
+      const valMae = (await valMaeTensor.data())[0] ?? Number.POSITIVE_INFINITY;
+      valPreds.dispose();
+      valMaeTensor.dispose();
+
+      const testEval = model.evaluate(args.xTestTensor, yTest) as tf.Tensor | tf.Tensor[];
+      const evalTensors = Array.isArray(testEval) ? testEval : [testEval];
+      const mseValue = (await evalTensors[0].data())[0] ?? 0;
+      for (const t of evalTensors) {
+        t.dispose();
+      }
+
+      const preds = model.predict(args.xTestTensor) as tf.Tensor;
+      const maeTensor = tf.mean(tf.abs(tf.sub(preds, yTest)));
+      const maeValue = (await maeTensor.data())[0] ?? 0;
+      const predData = Float32Array.from(await preds.data());
+      const yTestData = Float32Array.from(await yTest.data());
+      preds.dispose();
+      maeTensor.dispose();
+
+      return { model, epochHistory, valMae, mseValue, maeValue, predData, yTestData };
+    };
+
+    onProgress(2, "Регрессия: режим A (без нормализации X)");
+    const rawCandidate = await trainRegressionCandidate({
+      xTrainTensor: xTrain,
+      xValTensor: xVal,
+      xTestTensor: xTest,
+      progressFrom: 2,
+      progressTo: 48,
+      modeTitle: "Режим A"
+    });
+
+    const xNorm = x.map((row) => [...row]);
+    const prevNorm = tabularNorm;
+    const normStats = computeAndApplyTabularNorm(xNorm, trainIdx, featureCount);
+    tabularNorm = prevNorm;
+    const xTrainNorm = tf.tensor2d(trainIdx.map((i) => xNorm[i]!));
+    const xValNorm = tf.tensor2d(valIdx.map((i) => xNorm[i]!));
+    const xTestNorm = tf.tensor2d(testIdx.map((i) => xNorm[i]!));
+    onProgress(52, "Регрессия: режим B (z-score X)");
+    const normCandidate = await trainRegressionCandidate({
+      xTrainTensor: xTrainNorm,
+      xValTensor: xValNorm,
+      xTestTensor: xTestNorm,
+      progressFrom: 52,
+      progressTo: 98,
+      modeTitle: "Режим B"
+    });
+    xTrainNorm.dispose();
+    xValNorm.dispose();
+    xTestNorm.dispose();
+
+    const pickNorm = normCandidate.valMae < rawCandidate.valMae;
+    const chosen = pickNorm ? normCandidate : rawCandidate;
+    const dropped = pickNorm ? rawCandidate : normCandidate;
+    dropped.model.dispose();
+    tabularModel = chosen.model;
+    tabularNorm = pickNorm ? normStats : null;
+
+    const regEpochHistory = chosen.epochHistory;
+    const mseValue = chosen.mseValue;
+    const maeValue = chosen.maeValue;
+    const predData = chosen.predData;
+    const yTestData = chosen.yTestData;
     const regressionExamples: { trueY: number; predictedY: number; absError: number }[] = [];
     const nTest = testIdx.length;
     for (let r = 0; r < Math.min(8, nTest); r++) {
@@ -812,8 +878,6 @@ async function trainTabularModel(
         absError: Math.abs(trueY - predictedY)
       });
     }
-    preds.dispose();
-    maeTensor.dispose();
     const rmseValue = Math.sqrt(mseValue);
     const extra = regressionMetricsFromVectors(yTestData, predData, nTest);
 
