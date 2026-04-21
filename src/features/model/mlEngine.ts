@@ -474,10 +474,15 @@ function parseTabular(
       specs.push({ kind: "numeric" });
     } else {
       const unique = [...new Set(columnValues)];
-      const maxUnique = Math.min(80, Math.max(12, Math.floor(rawRows.length / 6)));
+      // One-hot в регрессии чувствителен к высокой кардинальности:
+      // редкие категории порождают шумные разреженные признаки.
+      const maxUnique =
+        categoricalEncoding === "onehot"
+          ? Math.min(140, Math.max(20, Math.floor(rawRows.length / 5)))
+          : Math.min(80, Math.max(12, Math.floor(rawRows.length / 6)));
       let categories: string[];
       let rareBucketTop: string[] | undefined;
-      if (unique.length > maxUnique && categoricalEncoding === "ordinal") {
+      if (unique.length > maxUnique) {
         const freq = new Map<string, number>();
         for (const v of columnValues) {
           freq.set(v, (freq.get(v) ?? 0) + 1);
@@ -493,9 +498,12 @@ function parseTabular(
           .slice(0, maxUnique - 1)
           .map(([s]) => s);
         rareBucketTop = top;
-        categories = [...top, OTHER_CATEGORY].sort((a, b) =>
-          a.localeCompare(b, "en", { sensitivity: "base" })
-        );
+        categories =
+          categoricalEncoding === "ordinal"
+            ? [...top, OTHER_CATEGORY].sort((a, b) =>
+                a.localeCompare(b, "en", { sensitivity: "base" })
+              )
+            : [...top, OTHER_CATEGORY];
       } else {
         categories =
           categoricalEncoding === "ordinal"
@@ -522,8 +530,10 @@ function parseTabular(
         const j = spec.categories.indexOf(cell);
         out.push(j < 0 ? 0 : j);
       } else {
+        const cell =
+          spec.rareBucketTop && !spec.rareBucketTop.includes(value) ? OTHER_CATEGORY : value;
         for (const category of spec.categories) {
-          out.push(value === category ? 1 : 0);
+          out.push(cell === category ? 1 : 0);
         }
       }
     }
