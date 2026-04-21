@@ -245,13 +245,13 @@ function padTabularRow(row: string[], len: number): string[] {
   return out.slice(0, len);
 }
 
-/** Число для регрессии: пробелы; одна запятая и 1–2 знака после — как десятичный разделитель (72,5). */
+/** Число для регрессии: пробелы; запятая как десятичный разделитель (72,5). */
 function parseRegressionTargetCell(raw: string): number {
   let t = raw.trim().replace(/\s/g, "");
   if (!t) {
     return NaN;
   }
-  if (/^\d+,\d{1,2}$/.test(t)) {
+  if (/^-?\d+,\d+$/.test(t)) {
     t = t.replace(",", ".");
   }
   const n = Number(t);

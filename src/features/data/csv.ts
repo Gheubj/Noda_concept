@@ -43,16 +43,26 @@ function splitDelimitedLine(line: string, delimiter: string): string[] {
   return parts;
 }
 
-function bestSplitCsvLine(line: string): string[] {
+/** Выбираем один разделитель на весь файл, чтобы колонки не "плавали" между строками. */
+function pickCsvDelimiter(lines: string[]): "\t" | ";" | "," {
   const delims = ["\t", ";", ","] as const;
-  let best = splitDelimitedLine(line, ",");
+  const sample = lines.slice(0, Math.min(lines.length, 300));
+  let bestDelim: "\t" | ";" | "," = ",";
+  let bestScore = -1;
+  let bestHeaderCols = 1;
   for (const d of delims) {
-    const parts = splitDelimitedLine(line, d);
-    if (parts.length > best.length) {
-      best = parts;
+    const counts = sample.map((line) => splitDelimitedLine(line, d).length);
+    const headerCols = counts[0] ?? 1;
+    const consistent = counts.reduce((n, c) => n + Number(c === headerCols), 0);
+    // Приоритет: согласованность с заголовком, затем число колонок.
+    const score = consistent * 1000 + headerCols;
+    if (score > bestScore || (score === bestScore && headerCols > bestHeaderCols)) {
+      bestScore = score;
+      bestHeaderCols = headerCols;
+      bestDelim = d;
     }
   }
-  return best;
+  return bestDelim;
 }
 
 export async function parseCsvFile(file: File): Promise<TabularDataset> {
@@ -75,8 +85,9 @@ export async function parseCsvFile(file: File): Promise<TabularDataset> {
     throw new Error("Слишком много строк (макс 50,000).");
   }
 
-  const headers = bestSplitCsvLine(lines[0]);
-  const rowsRaw = lines.slice(1).map((line) => bestSplitCsvLine(line));
+  const delimiter = pickCsvDelimiter(lines);
+  const headers = splitDelimitedLine(lines[0], delimiter);
+  const rowsRaw = lines.slice(1).map((line) => splitDelimitedLine(line, delimiter));
   const rows = stripLeadingDuplicateHeaderRows(headers, rowsRaw);
   if (rows.length < 1) {
     throw new Error("После заголовка не осталось строк данных (возможно, все строки совпадали с заголовком).");
