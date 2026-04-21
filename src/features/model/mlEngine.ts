@@ -536,6 +536,30 @@ function parseTabular(
   return { x, yRaw, featureCount: encodedFeatureDim };
 }
 
+/** Порядок классов для one-hot/softmax: сначала числовые метки (в т.ч. «3%», «3,5%») по величине, иначе localeCompare. */
+function orderedUniqueClassificationLabels(yRaw: string[]): string[] {
+  const raw = [...new Set(yRaw)];
+  if (raw.length <= 1) {
+    return raw;
+  }
+  const numericKey = (s: string): number | null => {
+    let t = s.trim().replace(/\s/g, "").replace(",", ".");
+    if (t.endsWith("%")) {
+      t = t.slice(0, -1);
+    }
+    if (!/^-?\d+(\.\d+)?$/.test(t)) {
+      return null;
+    }
+    const n = Number(t);
+    return Number.isFinite(n) ? n : null;
+  };
+  const keys = raw.map(numericKey);
+  if (keys.every((k) => k !== null)) {
+    return [...raw].sort((a, b) => numericKey(a)! - numericKey(b)!);
+  }
+  return [...raw].sort((a, b) => a.localeCompare(b, "en", { sensitivity: "base" }));
+}
+
 /** Метрики по фактическим y и предсказаниям на тесте (одномерная регрессия). */
 function regressionMetricsFromVectors(
   yTrue: Float32Array | Int32Array | Uint8Array,
@@ -662,7 +686,7 @@ async function trainTabularModel(
     valIdx = indices.slice(trainCount, trainCount + valCount);
     testIdx = indices.slice(trainCount + valCount, trainCount + valCount + testCount);
   } else {
-    uniqueLabels = [...new Set(yRaw)];
+    uniqueLabels = orderedUniqueClassificationLabels(yRaw);
     for (let li = 0; li < uniqueLabels.length; li++) {
       labelToIndexForSplit[uniqueLabels[li]!] = li;
     }
@@ -928,7 +952,9 @@ async function trainTabularModel(
     const runTfTrain = async (kind: "linear" | "neural") => {
       const m = buildTfClassifier(kind);
       const epochs: TrainingEpochLog[] = [];
-      const lr = Math.min(config.learningRate, tabularSmallN ? 0.0008 : 0.002);
+      // Раньше для n<512 кап был 0.0008 (стабильность на Iris): на маленьких таблицах softmax почти не
+      // двигается от glorot-инициализации → частый argmax=0 и точность ≈ доле «класса 0» на тесте (кажется «учится наоборот»).
+      const lr = Math.min(config.learningRate, 0.002);
       m.compile({
         optimizer: tf.train.adam(lr),
         loss: "categoricalCrossentropy",
