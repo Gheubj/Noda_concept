@@ -417,7 +417,7 @@ export function StudentClassPage() {
 
   const classPicker =
     enrollments.length > 1 ? (
-      <Card size="small" style={{ marginBottom: 16 }}>
+      <Card size="small" style={{ marginBottom: 16 }} className="student-class-page__picker-card">
         <Space wrap align="center">
           <Text type="secondary">Класс:</Text>
           <Select
@@ -434,9 +434,9 @@ export function StudentClassPage() {
     ) : null;
 
   const infoTab = (
-    <Space direction="vertical" size="large" style={{ width: "100%" }}>
+    <Space direction="vertical" size="large" style={{ width: "100%" }} className="student-class-page__info-tab">
       {enrollments.map((e) => (
-        <Card key={e.id} title={e.classroomTitle}>
+        <Card key={e.id} title={e.classroomTitle} className="student-class-page__info-card">
           <Space direction="vertical" size="small">
             <div>
               <Text type="secondary">Школа / организация: </Text>
@@ -457,38 +457,41 @@ export function StudentClassPage() {
   );
 
   const courseTab = (
-    <Spin spinning={courseScheduleLoading}>
-      <Paragraph type="secondary">
-        Модуль {courseData?.courseModule ?? "—"} · план {courseData?.courseHours ?? "—"} ч.
-      </Paragraph>
-      <Table<StudentCourseLesson>
-        size="small"
-        rowKey="id"
-        dataSource={courseData?.lessons ?? []}
-        pagination={false}
-        locale={{ emptyText: "Нет данных курса" }}
-        columns={[
-          {
-            title: "",
-            key: "passed",
-            width: 40,
-            align: "center",
-            render: (_, row: StudentCourseLesson) =>
-              passedLessonTemplateIds.has(row.id) ? (
-                <CheckOutlined style={{ color: "var(--ant-color-success)" }} aria-label="Урок проведён" />
-              ) : null
-          },
-          { title: "№", width: 48, render: (_, __, i) => i + 1 },
-          { title: "Урок", dataIndex: "title", key: "title" },
-          {
-            title: "О чём урок",
-            dataIndex: "studentSummary",
-            key: "sum",
-            render: (t: string | null) => t ?? "—"
-          }
-        ]}
-      />
-    </Spin>
+    <Card className="student-class-page__course-card">
+      <Spin spinning={courseScheduleLoading}>
+        <Paragraph type="secondary" className="student-class-page__course-meta">
+          Модуль {courseData?.courseModule ?? "—"} · план {courseData?.courseHours ?? "—"} ч.
+        </Paragraph>
+        <Table<StudentCourseLesson>
+          size="small"
+          rowKey="id"
+          className="student-class-page__table student-class-page__table--course"
+          dataSource={courseData?.lessons ?? []}
+          pagination={false}
+          locale={{ emptyText: "Нет данных курса" }}
+          columns={[
+            {
+              title: "",
+              key: "passed",
+              width: 40,
+              align: "center",
+              render: (_, row: StudentCourseLesson) =>
+                passedLessonTemplateIds.has(row.id) ? (
+                  <CheckOutlined style={{ color: "var(--ant-color-success)" }} aria-label="Урок проведён" />
+                ) : null
+            },
+            { title: "№", width: 48, render: (_, __, i) => i + 1 },
+            { title: "Урок", dataIndex: "title", key: "title" },
+            {
+              title: "О чём урок",
+              dataIndex: "studentSummary",
+              key: "sum",
+              render: (t: string | null) => t ?? "—"
+            }
+          ]}
+        />
+      </Spin>
+    </Card>
   );
 
 
@@ -516,8 +519,8 @@ export function StudentClassPage() {
   }, [assignments, allFilterGrade, allFilterKind, allFilterOverdue]);
 
   const diaryTab = (
-    <Space direction="vertical" size="large" style={{ width: "100%" }}>
-      <div>
+    <Card className="student-class-page__diary-card">
+      <Space direction="vertical" size="large" style={{ width: "100%" }}>
         <Title level={5} style={{ marginTop: 0 }}>
           Расписание и работы на занятиях
         </Title>
@@ -555,13 +558,14 @@ export function StudentClassPage() {
             onStudentMarkGradedSeen={(row) => void markGradedSeen(row as unknown as StudentAssignmentRow)}
           />
         </Spin>
-      </div>
-    </Space>
+      </Space>
+    </Card>
   );
 
   const allAssignmentsTab = (
-    <Space direction="vertical" size="middle" style={{ width: "100%" }}>
-      <Space wrap align="center">
+    <Card className="student-class-page__assignments-card">
+      <Space direction="vertical" size="middle" style={{ width: "100%" }}>
+      <Space wrap align="center" className="student-class-page__filters">
         <Text type="secondary">Фильтры:</Text>
         <Select
           value={allFilterGrade}
@@ -596,6 +600,7 @@ export function StudentClassPage() {
       </Space>
       <Table<StudentAssignmentRow>
         size="small"
+        className="student-class-page__table student-class-page__table--assignments"
         rowKey="assignmentId"
         loading={loading}
         columns={[
@@ -609,13 +614,15 @@ export function StudentClassPage() {
         expandable={expandableConfig}
       />
     </Space>
+    </Card>
   );
 
   return (
-    <>
+    <div className="student-class-page">
       {contextHolder}
       {classPicker}
       <Tabs
+        className="student-class-page__tabs"
         defaultActiveKey="diary"
         items={[
           { key: "course", label: "Курс", children: courseTab },
@@ -624,6 +631,6 @@ export function StudentClassPage() {
           { key: "info", label: "Мой класс", children: infoTab }
         ]}
       />
-    </>
+    </div>
   );
 }

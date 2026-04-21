@@ -490,22 +490,22 @@ export function LessonPlayerPage() {
     <Content className="app-content app-content--workspace lesson-player-page">
       {holder}
       <Spin spinning={loading}>
-        <Space direction="vertical" size="large" style={{ width: "100%" }}>
+        <Space direction="vertical" size="large" style={{ width: "100%" }} className="lesson-player-page__stack">
           <div className="lesson-player-page__head">
-            <Title level={4} style={{ marginTop: 0 }}>
+            <Title level={4} style={{ marginTop: 0 }} className="lesson-player-page__title">
               {bootstrap?.title ?? "Урок"}
             </Title>
             {isTeacherReview && review ? (
-              <Paragraph type="secondary" style={{ marginBottom: 8 }}>
+              <Paragraph type="secondary" style={{ marginBottom: 8 }} className="lesson-player-page__meta">
                 Проверка работы: {review.studentNickname}
               </Paragraph>
             ) : null}
             {bootstrap?.studentSummary && !isTeacherReview ? (
-              <Paragraph type="secondary" style={{ marginBottom: 8 }}>
+              <Paragraph type="secondary" style={{ marginBottom: 8 }} className="lesson-player-page__meta">
                 {bootstrap.studentSummary}
               </Paragraph>
             ) : null}
-            <Space wrap>
+            <Space wrap className="lesson-player-page__head-actions">
               {isTeacherReview ? (
                 <Link to="/teacher">Назад в кабинет</Link>
               ) : (
@@ -516,6 +516,7 @@ export function LessonPlayerPage() {
           {/* Для школьных учеников убираем верхний блок «Задание: …», чтобы не дублировать контекст ДЗ. */}
           {bootstrap?.assignmentTitle && !(user?.role === "student" && user.studentMode === "school") ? (
             <Alert
+              className="lesson-player-page__assignment-alert"
               type="info"
               showIcon
               message={`Задание: ${bootstrap.assignmentTitle}`}
@@ -556,7 +557,7 @@ export function LessonPlayerPage() {
                 <Alert type="success" showIcon message="Все вопросы пройдены" />
               ) : null}
               {showSubmitToTeacher && submission ? (
-                <Card title="Сдача работы">
+                <Card title="Сдача работы" className="lesson-player-page__submit-card">
                   {submission.canSubmit ? (
                     <Space direction="vertical">
                       <Paragraph style={{ marginBottom: 0 }}>
@@ -578,7 +579,7 @@ export function LessonPlayerPage() {
                 </Card>
               ) : null}
               {isTeacherReview && review ? (
-                <Card title="Оценка">
+                <Card title="Оценка" className="lesson-player-page__grade-card">
                   <Form form={gradeForm} layout="vertical">
                     <Form.Item name="decision" label="Решение">
                       <Select

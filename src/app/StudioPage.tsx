@@ -988,6 +988,7 @@ export function StudioPage() {
   const submissionBanner =
     !readOnly && submissionCtx ? (
       <Alert
+        className="studio-page__submission-banner"
         type={submissionCtx.status === "needs_revision" ? "warning" : "info"}
         showIcon
         message={
@@ -1028,66 +1029,72 @@ export function StudioPage() {
   const projectWorkspace = (
     <div className="studio-page">
       {submissionBanner ? <div className="studio-page__chrome">{submissionBanner}</div> : null}
-      {!isMini ? <div className="studio-page__toolbar">
-        <span className="studio-page__toolbar-title" title={currentProjectTitle}>
-          {currentProjectTitle}
-        </span>
-        {!readOnly && activeProject ? (
-          <Button
-            size="small"
-            icon={<FormOutlined />}
-            onClick={() => openRenameProjectModal(activeProject.id, activeProject.title)}
-          >
-            Переименовать
-          </Button>
-        ) : null}
-        <Button
-          type="primary"
-          size="small"
-          disabled={readOnly}
-          onClick={() => {
-            if (activeProject) {
-              void saveProjectToCloud(currentProjectTitle || saveTitle || DEFAULT_PROJECT_TITLE);
-              return;
-            }
-            setSaveTitle(currentProjectTitle);
-            setSaveOpen(true);
-          }}
-        >
-          Сохранить
-        </Button>
-        <Button size="small" onClick={() => setLibraryOpen(true)}>
-          Проекты
-        </Button>
-        <Button size="small" onClick={handleNewProject}>
-          Новый
-        </Button>
-        <Button size="small" icon={<DatabaseOutlined />} onClick={() => setDataLibraryOpen(true)}>
-          Данные
-        </Button>
-        {user && activeProject && !readOnly ? (
-          <Button
-            size="small"
-            onClick={() =>
-              void (async () => {
-                try {
-                  const { token } = await apiClient.post<{ token: string }>(
-                    `/api/projects/${activeProject.id}/share-link`,
-                    {}
-                  );
-                  const url = `${window.location.origin}/share/${token}`;
-                  await navigator.clipboard.writeText(url);
-                  messageApi.success("Ссылка для копии проекта скопирована");
-                } catch {
-                  messageApi.error("Не удалось создать ссылку (сохрани проект в облако)");
+      {!isMini ? (
+        <div className="studio-page__toolbar">
+          <div className="studio-page__toolbar-main">
+            <span className="studio-page__toolbar-title" title={currentProjectTitle}>
+              {currentProjectTitle}
+            </span>
+          </div>
+          <div className="studio-page__toolbar-actions">
+            {!readOnly && activeProject ? (
+              <Button
+                size="small"
+                icon={<FormOutlined />}
+                onClick={() => openRenameProjectModal(activeProject.id, activeProject.title)}
+              >
+                Переименовать
+              </Button>
+            ) : null}
+            <Button
+              type="primary"
+              size="small"
+              disabled={readOnly}
+              onClick={() => {
+                if (activeProject) {
+                  void saveProjectToCloud(currentProjectTitle || saveTitle || DEFAULT_PROJECT_TITLE);
+                  return;
                 }
-              })()
-            }
-          >
-            Поделиться
-          </Button>
-        ) : null}
-      </div> : null}
+                setSaveTitle(currentProjectTitle);
+                setSaveOpen(true);
+              }}
+            >
+              Сохранить
+            </Button>
+            <Button size="small" onClick={() => setLibraryOpen(true)}>
+              Проекты
+            </Button>
+            <Button size="small" onClick={handleNewProject}>
+              Новый
+            </Button>
+            <Button size="small" icon={<DatabaseOutlined />} onClick={() => setDataLibraryOpen(true)}>
+              Данные
+            </Button>
+            {user && activeProject && !readOnly ? (
+              <Button
+                size="small"
+                onClick={() =>
+                  void (async () => {
+                    try {
+                      const { token } = await apiClient.post<{ token: string }>(
+                        `/api/projects/${activeProject.id}/share-link`,
+                        {}
+                      );
+                      const url = `${window.location.origin}/share/${token}`;
+                      await navigator.clipboard.writeText(url);
+                      messageApi.success("Ссылка для копии проекта скопирована");
+                    } catch {
+                      messageApi.error("Не удалось создать ссылку (сохрани проект в облако)");
+                    }
+                  })()
+                }
+              >
+                Поделиться
+              </Button>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
       <div
         className={`studio-page__main${
           isMini && miniLessonId && miniBlockId ? " studio-page__main--mini-side" : ""

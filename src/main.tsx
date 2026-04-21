@@ -54,15 +54,28 @@ function ThemedProviders({ children }: { children: React.ReactNode }) {
     colorPrimary: "#2563eb",
     colorPrimaryHover: "#3b82f6",
     colorSplit: "#eef1f6",
-    borderRadius: 8
+    borderRadius: 10,
+    borderRadiusLG: 14,
+    controlHeight: 38,
+    boxShadow: "0 8px 24px rgba(15, 23, 42, 0.08)",
+    boxShadowSecondary: "0 12px 28px rgba(15, 23, 42, 0.12)"
   };
 
   const darkTokens = {
     colorBgBase: "#0f172a",
+    colorBgLayout: "#0f172a",
     colorBgContainer: "#111827",
+    colorBgElevated: "#0f1b2f",
     colorText: "#e5e7eb",
     colorBorder: "#334155",
-    colorPrimary: "#1677ff"
+    colorTextSecondary: "#9fb0c8",
+    colorPrimary: "#3b82f6",
+    colorPrimaryHover: "#60a5fa",
+    borderRadius: 10,
+    borderRadiusLG: 14,
+    controlHeight: 38,
+    boxShadow: "0 10px 26px rgba(2, 6, 23, 0.4)",
+    boxShadowSecondary: "0 16px 34px rgba(2, 6, 23, 0.52)"
   };
 
   return (
