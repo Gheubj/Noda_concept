@@ -367,6 +367,10 @@ function stratifiedTrainValTestIndices(
   testNeed: number
 ): { trainIdx: number[]; valIdx: number[]; testIdx: number[] } {
   const n = yIndices.length;
+  const totalNeed = Math.max(1, trainNeed + valNeed + testNeed);
+  const trainRatio = trainNeed / totalNeed;
+  const valRatio = valNeed / totalNeed;
+  const testRatio = testNeed / totalNeed;
   const classIds = [...new Set(yIndices)].sort((a, b) => a - b);
   const queues = classIds.map((c) => {
     const q: number[] = [];
@@ -378,57 +382,103 @@ function stratifiedTrainValTestIndices(
     tf.util.shuffle(q);
     return q;
   });
-
-  const takeRoundRobin = (target: number[], need: number) => {
-    let k = 0;
-    while (target.length < need) {
-      let advanced = false;
-      for (let t = 0; t < queues.length; t++) {
-        const idx = (k + t) % queues.length;
-        if (queues[idx].length > 0) {
-          target.push(queues[idx].shift()!);
-          advanced = true;
-          k = (idx + 1) % queues.length;
-          break;
-        }
+  const perClassCounts = (classCount: number): [number, number, number] => {
+    const rawTrain = classCount * trainRatio;
+    const rawVal = classCount * valRatio;
+    const rawTest = classCount * testRatio;
+    let cTrain = Math.floor(rawTrain);
+    let cVal = Math.floor(rawVal);
+    let cTest = Math.floor(rawTest);
+    let rem = classCount - cTrain - cVal - cTest;
+    const fracs: Array<{ key: "train" | "val" | "test"; frac: number }> = [
+      { key: "train" as const, frac: rawTrain - cTrain },
+      { key: "val" as const, frac: rawVal - cVal },
+      { key: "test" as const, frac: rawTest - cTest }
+    ].sort((a, b) => b.frac - a.frac);
+    let p = 0;
+    while (rem > 0) {
+      const key = fracs[p % fracs.length]!.key;
+      if (key === "train") {
+        cTrain += 1;
+      } else if (key === "val") {
+        cVal += 1;
+      } else {
+        cTest += 1;
       }
-      if (!advanced) {
-        break;
-      }
+      rem -= 1;
+      p += 1;
     }
+    // Если примеров класса достаточно, постараемся не занулять test/val.
+    if (classCount >= 3 && testNeed > 0 && cTest === 0) {
+      if (cTrain > cVal && cTrain > 1) {
+        cTrain -= 1;
+      } else if (cVal > 1) {
+        cVal -= 1;
+      } else if (cTrain > 1) {
+        cTrain -= 1;
+      }
+      cTest += 1;
+    }
+    if (classCount >= 3 && valNeed > 0 && cVal === 0) {
+      if (cTrain > cTest && cTrain > 1) {
+        cTrain -= 1;
+      } else if (cTest > 1) {
+        cTest -= 1;
+      } else if (cTrain > 1) {
+        cTrain -= 1;
+      }
+      cVal += 1;
+    }
+    return [cTrain, cVal, cTest];
   };
 
   const trainIdx: number[] = [];
   const valIdx: number[] = [];
   const testIdx: number[] = [];
-  takeRoundRobin(trainIdx, trainNeed);
-  takeRoundRobin(valIdx, valNeed);
-  takeRoundRobin(testIdx, testNeed);
-  const targetWithMostNeed = () => {
-    const needs: Array<{ key: "train" | "val" | "test"; need: number; have: number }> = [
-      { key: "train", need: trainNeed, have: trainIdx.length },
-      { key: "val", need: valNeed, have: valIdx.length },
-      { key: "test", need: testNeed, have: testIdx.length }
-    ];
-    needs.sort((a, b) => {
-      const ar = a.need > 0 ? a.have / a.need : Infinity;
-      const br = b.need > 0 ? b.have / b.need : Infinity;
-      return ar - br;
-    });
-    return needs[0]!.key;
-  };
   for (const q of queues) {
+    const [cTrain, cVal, cTest] = perClassCounts(q.length);
+    for (let i = 0; i < cTrain && q.length > 0; i++) {
+      trainIdx.push(q.shift()!);
+    }
+    for (let i = 0; i < cVal && q.length > 0; i++) {
+      valIdx.push(q.shift()!);
+    }
+    for (let i = 0; i < cTest && q.length > 0; i++) {
+      testIdx.push(q.shift()!);
+    }
     while (q.length > 0) {
-      const idx = q.shift()!;
-      const target = targetWithMostNeed();
-      if (target === "train") {
-        trainIdx.push(idx);
-      } else if (target === "val") {
-        valIdx.push(idx);
+      // Остаток от округлений распределяем в недозаполненный фолд.
+      if (trainIdx.length < trainNeed) {
+        trainIdx.push(q.shift()!);
+      } else if (valIdx.length < valNeed) {
+        valIdx.push(q.shift()!);
       } else {
-        testIdx.push(idx);
+        testIdx.push(q.shift()!);
       }
     }
+  }
+  const rebalance = (src: number[], dst: number[], dstNeed: number) => {
+    while (dst.length < dstNeed && src.length > 1) {
+      dst.push(src.pop()!);
+    }
+  };
+  rebalance(trainIdx, valIdx, valNeed);
+  rebalance(trainIdx, testIdx, testNeed);
+  rebalance(valIdx, testIdx, testNeed);
+  rebalance(testIdx, valIdx, valNeed);
+  while (trainIdx.length > trainNeed && (valIdx.length < valNeed || testIdx.length < testNeed)) {
+    const moved = trainIdx.pop()!;
+    if (valIdx.length < valNeed) {
+      valIdx.push(moved);
+    } else {
+      testIdx.push(moved);
+    }
+  }
+  while (valIdx.length > valNeed && testIdx.length < testNeed) {
+    testIdx.push(valIdx.pop()!);
+  }
+  while (testIdx.length > testNeed && valIdx.length < valNeed) {
+    valIdx.push(testIdx.pop()!);
   }
   return { trainIdx, valIdx, testIdx };
 }
