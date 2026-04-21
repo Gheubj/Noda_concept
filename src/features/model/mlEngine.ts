@@ -385,20 +385,6 @@ function stratifiedTrainValTestIndices(
   return { trainIdx, valIdx, testIdx };
 }
 
-function balancedClassSampleWeights1d(yIdx: number[], numClasses: number): Float32Array {
-  const counts = new Array(numClasses).fill(0);
-  for (const y of yIdx) {
-    counts[y] += 1;
-  }
-  const n = yIdx.length;
-  const w = new Float32Array(n);
-  for (let i = 0; i < n; i++) {
-    const c = yIdx[i]!;
-    w[i] = n / (numClasses * Math.max(1, counts[c]!));
-  }
-  return w;
-}
-
 /** По умолчанию ordinal: компактные признаки для всех табличных моделей (деревья, SVM, TF). */
 function parseTabular(
   dataset: TabularDataset,
@@ -844,8 +830,6 @@ async function trainTabularModel(
       });
     };
     const runTfTrain = async (kind: "linear" | "neural") => {
-      const swTrain = tf.tensor1d(balancedClassSampleWeights1d(yTrainIdx, uniqueLabels.length));
-      const swVal = tf.tensor1d(balancedClassSampleWeights1d(yValIdx, uniqueLabels.length));
       const m = buildTfClassifier(kind);
       const epochs: TrainingEpochLog[] = [];
       const lr = Math.min(config.learningRate, 0.002);
@@ -854,10 +838,11 @@ async function trainTabularModel(
         loss: "categoricalCrossentropy",
         metrics: ["accuracy"]
       });
+      // sampleWeight в tfjs LayersModel.fit не поддерживается (ошибка в рантайме).
+      // Баланс классов дают стратифицированный сплит, нормализация признаков и кап LR.
       await m.fit(xTrain, yTrain, {
         epochs: config.epochs,
-        validationData: [xVal, yVal, swVal],
-        sampleWeight: swTrain,
+        validationData: [xVal, yVal],
         callbacks: {
           onEpochEnd: async (epoch, logs) => {
             epochs.push({
@@ -875,8 +860,6 @@ async function trainTabularModel(
           }
         }
       });
-      swTrain.dispose();
-      swVal.dispose();
       const evalTensors = m.evaluate(xTest, yTest) as tf.Tensor[];
       const modelLoss = (await evalTensors[0].data())[0] ?? 0;
       const modelAcc = (await evalTensors[1].data())[0] ?? 0;
