@@ -1,4 +1,4 @@
-import { Card, Empty, Space, Table, Typography } from "antd";
+import { Card, Empty, Space, Table, Tabs, Typography } from "antd";
 import {
   Bar,
   BarChart,
@@ -289,6 +289,12 @@ function ComparisonPanel({ comparison }: { comparison: ModelComparisonReport }) 
         : row.primaryMetricValue.toFixed(4),
     scorePct: Number((row.universalScore * 100).toFixed(1))
   }));
+  const accuracyRows = rows.reduce<Array<{ modelType: string; testAccuracy: number }>>((acc, r) => {
+    if (typeof r.metrics?.testAccuracy === "number") {
+      acc.push({ modelType: r.modelType, testAccuracy: r.metrics.testAccuracy });
+    }
+    return acc;
+  }, []);
   const maxEpoch = rows.reduce((m, r) => Math.max(m, r.epochHistory?.length ?? 0), 0);
   const overlayRows = Array.from({ length: maxEpoch }, (_, i) => {
     const epoch = i + 1;
@@ -318,6 +324,31 @@ function ComparisonPanel({ comparison }: { comparison: ModelComparisonReport }) 
   if (!rows.length) {
     return null;
   }
+  const tabs = rows.map((row) => {
+    const report: TrainingRunReport = {
+      kind: row.kind,
+      modelType: row.modelType,
+      summary: row.summary,
+      metrics: row.metrics ?? {},
+      epochHistory: row.epochHistory ?? [],
+      confusionMatrix: row.confusionMatrix,
+      classificationExamples: row.classificationExamples,
+      regressionExamples: row.regressionExamples
+    };
+    return {
+      key: row.modelType,
+      label: row.modelType,
+      children: (
+        <Space direction="vertical" size="middle" style={{ width: "100%" }}>
+          <Text type="secondary">{row.summary}</Text>
+          <EpochCharts report={report} />
+          <ConfusionTable report={report} />
+          <ExamplesTable report={report} />
+          <MetricsTable report={report} />
+        </Space>
+      )
+    };
+  });
   return (
     <Space direction="vertical" size="middle" style={{ width: "100%" }}>
       <div>
@@ -341,6 +372,21 @@ function ComparisonPanel({ comparison }: { comparison: ModelComparisonReport }) 
           </BarChart>
         </ResponsiveContainer>
       </div>
+      {accuracyRows.length > 0 ? (
+        <div className="studio-metrics-panel__chart-wrap">
+          <Text strong>Сравнение test accuracy</Text>
+          <ResponsiveContainer width="100%" height={220}>
+            <BarChart data={accuracyRows} margin={{ top: 8, right: 12, left: 4, bottom: 4 }}>
+              <CartesianGrid strokeDasharray="3 3" opacity={0.35} />
+              <XAxis dataKey="modelType" tick={{ fontSize: 11 }} />
+              <YAxis domain={[0, 1]} tick={{ fontSize: 11 }} width={40} />
+              <Tooltip formatter={(v: number | string) => [typeof v === "number" ? `${(v * 100).toFixed(1)}%` : v, "accuracy"]} />
+              <Legend />
+              <Bar dataKey="testAccuracy" name="test accuracy" fill="#52c41a" />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      ) : null}
       {hasLossOverlay ? (
         <div className="studio-metrics-panel__chart-wrap">
           <Text strong>Сравнение loss (наложение)</Text>
@@ -410,6 +456,15 @@ function ComparisonPanel({ comparison }: { comparison: ModelComparisonReport }) 
         ]}
         dataSource={rows}
       />
+      <div>
+        <Text strong>Детали по моделям</Text>
+        <Tabs
+          style={{ marginTop: 8 }}
+          size="small"
+          items={tabs}
+          tabBarGutter={8}
+        />
+      </div>
     </Space>
   );
 }

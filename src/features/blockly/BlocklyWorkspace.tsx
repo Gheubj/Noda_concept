@@ -1687,7 +1687,10 @@ export function BlocklyWorkspace({
             primaryMetricValue: r.primaryMetricValue,
             universalScore: r.universalScore,
             metrics: r.evaluation.metrics,
-            epochHistory: r.report.epochHistory
+            epochHistory: r.report.epochHistory,
+            confusionMatrix: r.report.confusionMatrix,
+            classificationExamples: r.report.classificationExamples,
+            regressionExamples: r.report.regressionExamples
           })),
           bestModelType: best?.modelType ?? null,
           generatedAt: new Date().toISOString()
@@ -1773,7 +1776,10 @@ export function BlocklyWorkspace({
             primaryMetricValue: r.primaryMetricValue,
             universalScore: r.universalScore,
             metrics: r.evaluation.metrics,
-            epochHistory: r.report.epochHistory
+            epochHistory: r.report.epochHistory,
+            confusionMatrix: r.report.confusionMatrix,
+            classificationExamples: r.report.classificationExamples,
+            regressionExamples: r.report.regressionExamples
           })),
           bestModelType: best?.modelType ?? null,
           generatedAt: new Date().toISOString()

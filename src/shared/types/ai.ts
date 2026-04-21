@@ -148,6 +148,9 @@ export interface ModelComparisonRow {
   universalScore: number;
   metrics?: Record<string, number>;
   epochHistory?: TrainingEpochLog[];
+  confusionMatrix?: ConfusionMatrixData;
+  classificationExamples?: ClassificationExampleRow[];
+  regressionExamples?: RegressionExampleRow[];
 }
 
 export interface ModelComparisonReport {

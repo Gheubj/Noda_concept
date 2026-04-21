@@ -26,6 +26,17 @@ export function buildCoachBriefLines(
         value: `${best.modelType} (${(best.universalScore * 100).toFixed(1)}%)`
       });
     }
+    for (const row of comparison.rows) {
+      const primary =
+        row.primaryMetricKey === "testAccuracy"
+          ? `${(row.primaryMetricValue * 100).toFixed(1)}%`
+          : row.primaryMetricValue.toFixed(4);
+      out.push({
+        key: `cmp_${row.modelType}_${row.primaryMetricKey}`,
+        label: row.modelType,
+        value: `${row.primaryMetricKey}: ${primary}, score ${(row.universalScore * 100).toFixed(1)}%`
+      });
+    }
   }
   if (evaluation?.metrics?.testAccuracy != null) {
     out.push({
