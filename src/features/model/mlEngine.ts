@@ -34,10 +34,19 @@ let tabularRfModel: RandomForestClassifier | null = null;
 let classIndexToLabel: string[] = [];
 export type TabularCategoricalEncoding = "onehot" | "ordinal";
 
+const OTHER_CATEGORY = "__OTHER__";
+
 export type TabularFeatureSpec =
   | { kind: "numeric" }
-  | { kind: "categorical"; categories: string[]; categoricalEncoding: TabularCategoricalEncoding };
+  | {
+      kind: "categorical";
+      categories: string[];
+      categoricalEncoding: TabularCategoricalEncoding;
+      /** Частые значения; прочие кодируются как OTHER_CATEGORY (см. categories). */
+      rareBucketTop?: string[];
+    };
 let tabularFeatureSpecs: TabularFeatureSpec[] = [];
+let tabularNorm: { mean: number[]; std: number[] } | null = null;
 /** Подписи для KNN по картинкам (в т.ч. кластеры cluster_0 … после обучения без учителя) */
 let imageKnnExtraLabels: Record<string, string> = {};
 /** Последняя успешно обученная модель (для сохранения в библиотеку). */
@@ -249,6 +258,147 @@ function parseRegressionTargetCell(raw: string): number {
   return Number.isFinite(n) ? n : NaN;
 }
 
+function computeTrainValTestCounts(
+  total: number,
+  trainSplit: number,
+  valSplit: number,
+  testSplit: number
+): { trainCount: number; valCount: number; testCount: number } {
+  let trainCount = Math.max(1, Math.floor(total * trainSplit));
+  let valCount = Math.max(1, Math.floor(total * valSplit));
+  let testCount = total - trainCount - valCount;
+  if (testCount < 1) {
+    testCount = 1;
+  }
+  while (trainCount + valCount + testCount > total) {
+    if (trainCount >= valCount && trainCount >= testCount && trainCount > 1) {
+      trainCount -= 1;
+    } else if (valCount >= testCount && valCount > 1) {
+      valCount -= 1;
+    } else if (testCount > 1) {
+      testCount -= 1;
+    } else {
+      break;
+    }
+  }
+  return { trainCount, valCount, testCount };
+}
+
+/** Z-score по train; сохраняет параметры в tabularNorm для предсказания. */
+function computeAndApplyTabularNorm(
+  x: number[][],
+  trainIdx: number[],
+  featureCount: number
+): { mean: number[]; std: number[] } {
+  const mean: number[] = [];
+  const std: number[] = [];
+  if (trainIdx.length < 1 || featureCount < 1) {
+    tabularNorm = null;
+    return { mean: [], std: [] };
+  }
+  for (let j = 0; j < featureCount; j++) {
+    let sum = 0;
+    let sumSq = 0;
+    const m = trainIdx.length;
+    for (const i of trainIdx) {
+      const v = x[i]![j] ?? 0;
+      sum += v;
+      sumSq += v * v;
+    }
+    const mu = sum / m;
+    const variance = Math.max(sumSq / m - mu * mu, 1e-10);
+    const s = Math.sqrt(variance);
+    mean.push(mu);
+    std.push(s);
+  }
+  for (let i = 0; i < x.length; i++) {
+    const row = x[i];
+    if (!row) {
+      continue;
+    }
+    for (let j = 0; j < featureCount; j++) {
+      row[j] = (row[j]! - mean[j]!) / std[j]!;
+    }
+  }
+  tabularNorm = { mean, std };
+  return { mean, std };
+}
+
+function applyTabularNormToVector(vec: number[]): number[] {
+  if (!tabularNorm || tabularNorm.mean.length !== vec.length) {
+    return vec;
+  }
+  const { mean, std } = tabularNorm;
+  return vec.map((v, j) => (v - mean[j]!) / std[j]!);
+}
+
+/** Стратификация по классам, чтобы в train/val/test попали оба класса при дисбалансе. */
+function stratifiedTrainValTestIndices(
+  yIndices: number[],
+  trainNeed: number,
+  valNeed: number,
+  testNeed: number
+): { trainIdx: number[]; valIdx: number[]; testIdx: number[] } {
+  const n = yIndices.length;
+  const classIds = [...new Set(yIndices)].sort((a, b) => a - b);
+  const queues = classIds.map((c) => {
+    const q: number[] = [];
+    for (let i = 0; i < n; i++) {
+      if (yIndices[i] === c) {
+        q.push(i);
+      }
+    }
+    tf.util.shuffle(q);
+    return q;
+  });
+
+  const takeRoundRobin = (target: number[], need: number) => {
+    let k = 0;
+    while (target.length < need) {
+      let advanced = false;
+      for (let t = 0; t < queues.length; t++) {
+        const idx = (k + t) % queues.length;
+        if (queues[idx].length > 0) {
+          target.push(queues[idx].shift()!);
+          advanced = true;
+          k = (idx + 1) % queues.length;
+          break;
+        }
+      }
+      if (!advanced) {
+        break;
+      }
+    }
+  };
+
+  const trainIdx: number[] = [];
+  const valIdx: number[] = [];
+  const testIdx: number[] = [];
+  takeRoundRobin(trainIdx, trainNeed);
+  takeRoundRobin(valIdx, valNeed);
+  takeRoundRobin(testIdx, testNeed);
+  for (const q of queues) {
+    while (q.length > 0) {
+      testIdx.push(q.shift()!);
+    }
+  }
+  return { trainIdx, valIdx, testIdx };
+}
+
+function balancedClassSampleWeights1d(yIdx: number[], numClasses: number): Float32Array {
+  const counts = new Array(numClasses).fill(0);
+  for (const y of yIdx) {
+    counts[y] += 1;
+  }
+  const n = yIdx.length;
+  const w = new Float32Array(n);
+  for (let i = 0; i < n; i++) {
+    const c = yIdx[i]!;
+    w[i] = n / (numClasses * Math.max(1, counts[c]!));
+  }
+  return w;
+}
+
 /** По умолчанию ordinal: компактные признаки для всех табличных моделей (деревья, SVM, TF). */
 function parseTabular(
   dataset: TabularDataset,
@@ -290,11 +440,35 @@ function parseTabular(
       specs.push({ kind: "numeric" });
     } else {
       const unique = [...new Set(columnValues)];
-      const categories =
-        categoricalEncoding === "ordinal"
-          ? unique.sort((a, b) => a.localeCompare(b, "en", { sensitivity: "base" }))
-          : unique;
-      specs.push({ kind: "categorical", categories, categoricalEncoding });
+      const maxUnique = Math.min(80, Math.max(12, Math.floor(rawRows.length / 6)));
+      let categories: string[];
+      let rareBucketTop: string[] | undefined;
+      if (unique.length > maxUnique && categoricalEncoding === "ordinal") {
+        const freq = new Map<string, number>();
+        for (const v of columnValues) {
+          freq.set(v, (freq.get(v) ?? 0) + 1);
+        }
+        const top = [...freq.entries()]
+          .sort(
+            (a, b) =>
+              b[1] - a[1] ||
+              a[0].localeCompare(b[0], "en", {
+                sensitivity: "base"
+              })
+          )
+          .slice(0, maxUnique - 1)
+          .map(([s]) => s);
+        rareBucketTop = top;
+        categories = [...top, OTHER_CATEGORY].sort((a, b) =>
+          a.localeCompare(b, "en", { sensitivity: "base" })
+        );
+      } else {
+        categories =
+          categoricalEncoding === "ordinal"
+            ? unique.sort((a, b) => a.localeCompare(b, "en", { sensitivity: "base" }))
+            : unique;
+      }
+      specs.push({ kind: "categorical", categories, categoricalEncoding, rareBucketTop });
     }
   }
   const encode = (rawRow: string[]) => {
@@ -309,7 +483,9 @@ function parseTabular(
         }
         out.push(num);
       } else if (spec.categoricalEncoding === "ordinal") {
-        const j = spec.categories.indexOf(value);
+        const cell =
+          spec.rareBucketTop && !spec.rareBucketTop.includes(value) ? OTHER_CATEGORY : value;
+        const j = spec.categories.indexOf(cell);
         out.push(j < 0 ? 0 : j);
       } else {
         for (const category of spec.categories) {
@@ -425,35 +601,49 @@ async function trainTabularModel(
   onProgress: (progress: number, message: string) => void
 ): Promise<{ evaluation: ModelEvaluation; report: TrainingRunReport }> {
   const { x, yRaw, featureCount } = parseTabular(dataset);
-  const indices = x.map((_, index) => index);
-  tf.util.shuffle(indices);
-  const total = indices.length;
+  const total = x.length;
   if (total < 3) {
     throw new Error("Для train/val/test нужно минимум 3 строки в CSV.");
   }
-  let trainCount = Math.max(1, Math.floor(total * config.trainSplit));
-  let valCount = Math.max(1, Math.floor(total * config.valSplit));
-  let testCount = total - trainCount - valCount;
-  if (testCount < 1) {
-    testCount = 1;
-  }
-  while (trainCount + valCount + testCount > total) {
-    if (trainCount >= valCount && trainCount >= testCount && trainCount > 1) {
-      trainCount -= 1;
-    } else if (valCount >= testCount && valCount > 1) {
-      valCount -= 1;
-    } else if (testCount > 1) {
-      testCount -= 1;
-    } else {
-      break;
+  const { trainCount, valCount, testCount } = computeTrainValTestCounts(
+    total,
+    config.trainSplit,
+    config.valSplit,
+    config.testSplit
+  );
+
+  let trainIdx: number[];
+  let valIdx: number[];
+  let testIdx: number[];
+  let uniqueLabels: string[] = [];
+  const labelToIndexForSplit: Record<string, number> = {};
+  let yIndicesForSplit: number[] = [];
+
+  if (modelType === "tabular_regression") {
+    const indices = x.map((_, index) => index);
+    tf.util.shuffle(indices);
+    trainIdx = indices.slice(0, trainCount);
+    valIdx = indices.slice(trainCount, trainCount + valCount);
+    testIdx = indices.slice(trainCount + valCount, trainCount + valCount + testCount);
+  } else {
+    uniqueLabels = [...new Set(yRaw)];
+    for (let li = 0; li < uniqueLabels.length; li++) {
+      labelToIndexForSplit[uniqueLabels[li]!] = li;
     }
+    yIndicesForSplit = yRaw.map((value) => labelToIndexForSplit[value]!);
+    ({ trainIdx, valIdx, testIdx } = stratifiedTrainValTestIndices(
+      yIndicesForSplit,
+      trainCount,
+      valCount,
+      testCount
+    ));
   }
-  const trainIdx = indices.slice(0, trainCount);
-  const valIdx = indices.slice(trainCount, trainCount + valCount);
-  const testIdx = indices.slice(trainCount + valCount, trainCount + valCount + testCount);
-  const xTrain = tf.tensor2d(trainIdx.map((i) => x[i]));
-  const xVal = tf.tensor2d(valIdx.map((i) => x[i]));
-  const xTest = tf.tensor2d(testIdx.map((i) => x[i]));
+
+  computeAndApplyTabularNorm(x, trainIdx, featureCount);
+
+  const xTrain = tf.tensor2d(trainIdx.map((i) => x[i]!));
+  const xVal = tf.tensor2d(valIdx.map((i) => x[i]!));
+  const xTest = tf.tensor2d(testIdx.map((i) => x[i]!));
 
   if (modelType === "tabular_regression") {
     const y = yRaw.map((value) => parseRegressionTargetCell(value));
@@ -473,7 +663,7 @@ async function trainTabularModel(
       layers: [tf.layers.dense({ inputShape: [featureCount], units: 1 })]
     });
     tabularModel.compile({
-      optimizer: tf.train.adam(config.learningRate),
+      optimizer: tf.train.adam(Math.min(config.learningRate, 0.005)),
       loss: "meanSquaredError",
       metrics: ["mse"]
     });
@@ -558,12 +748,10 @@ async function trainTabularModel(
     return { evaluation: { summary, metrics }, report };
   }
 
-  const uniqueLabels = [...new Set(yRaw)];
-  const labelToIndex = uniqueLabels.reduce<Record<string, number>>((acc, value, index) => {
-    acc[value] = index;
-    return acc;
-  }, {});
-  const yIndices = yRaw.map((value) => labelToIndex[value]);
+  const yIndices = yIndicesForSplit;
+  if (uniqueLabels.length < 2) {
+    throw new Error("Для классификации в целевой колонке нужно минимум 2 различных значения.");
+  }
   const yTrainIdx = trainIdx.map((i) => yIndices[i]);
   const yValIdx = valIdx.map((i) => yIndices[i]);
   const yTestIdx = testIdx.map((i) => yIndices[i]);
@@ -611,8 +799,11 @@ async function trainTabularModel(
   } else if (modelType === "tabular_random_forest") {
     onProgress(15, "Random Forest: обучение...");
     const rf = new RandomForestClassifier({
-      nEstimators: 35,
-      maxFeatures: Math.max(1, Math.min(featureCount, Math.round(Math.sqrt(featureCount)))),
+      nEstimators: 100,
+      maxFeatures: Math.max(
+        2,
+        Math.min(featureCount, Math.max(4, Math.round(featureCount ** 0.55)))
+      ),
       replacement: true,
       seed: 42,
       // ml-cart по умолчанию gainThreshold=0.01: при слабом сигнале/разреженных one-hot
@@ -653,16 +844,20 @@ async function trainTabularModel(
       });
     };
     const runTfTrain = async (kind: "linear" | "neural") => {
+      const swTrain = tf.tensor1d(balancedClassSampleWeights1d(yTrainIdx, uniqueLabels.length));
+      const swVal = tf.tensor1d(balancedClassSampleWeights1d(yValIdx, uniqueLabels.length));
       const m = buildTfClassifier(kind);
       const epochs: TrainingEpochLog[] = [];
+      const lr = Math.min(config.learningRate, 0.002);
       m.compile({
-        optimizer: tf.train.adam(config.learningRate),
+        optimizer: tf.train.adam(lr),
         loss: "categoricalCrossentropy",
         metrics: ["accuracy"]
       });
       await m.fit(xTrain, yTrain, {
         epochs: config.epochs,
-        validationData: [xVal, yVal],
+        validationData: [xVal, yVal, swVal],
+        sampleWeight: swTrain,
         callbacks: {
           onEpochEnd: async (epoch, logs) => {
             epochs.push({
@@ -680,6 +875,8 @@ async function trainTabularModel(
           }
         }
       });
+      swTrain.dispose();
+      swVal.dispose();
       const evalTensors = m.evaluate(xTest, yTest) as tf.Tensor[];
       const modelLoss = (await evalTensors[0].data())[0] ?? 0;
       const modelAcc = (await evalTensors[1].data())[0] ?? 0;
@@ -862,6 +1059,7 @@ function disposeTabularInMemory() {
   tabularRfModel = null;
   classIndexToLabel = [];
   tabularFeatureSpecs = [];
+  tabularNorm = null;
 }
 
 function clearKnnInMemory() {
@@ -884,9 +1082,11 @@ export async function persistCurrentModelToLibrary(modelId: string): Promise<{ m
           : {
               kind: "categorical",
               categories: [...s.categories],
-              categoricalEncoding: s.categoricalEncoding
+              categoricalEncoding: s.categoricalEncoding,
+              ...(s.rareBucketTop ? { rareBucketTop: [...s.rareBucketTop] } : {})
             }
-      )
+      ),
+      ...(tabularNorm ? { tabularNorm: { mean: [...tabularNorm.mean], std: [...tabularNorm.std] } } : {})
     };
     await putModelLibraryRecord({ id: modelId, ...payload });
     return { modelType: lastTrainedModelType };
@@ -926,9 +1126,14 @@ export async function loadModelFromLibraryEntry(entry: SavedModelEntry): Promise
         : {
             kind: "categorical",
             categories: [...s.categories],
-            categoricalEncoding: s.categoricalEncoding ?? "onehot"
+            categoricalEncoding: s.categoricalEncoding ?? "ordinal",
+            ...(s.rareBucketTop ? { rareBucketTop: [...s.rareBucketTop] } : {})
           }
     );
+    tabularNorm =
+      rec.tabularNorm && rec.tabularNorm.mean.length > 0
+        ? { mean: [...rec.tabularNorm.mean], std: [...rec.tabularNorm.std] }
+        : null;
     lastTrainedModelType = entry.modelType;
     return;
   }
@@ -984,7 +1189,9 @@ function parsePredictionFeatures(input: string) {
       }
       out.push(num);
     } else if (spec.categoricalEncoding === "ordinal") {
-      const j = spec.categories.indexOf(value);
+      const cell =
+        spec.rareBucketTop && !spec.rareBucketTop.includes(value) ? OTHER_CATEGORY : value;
+      const j = spec.categories.indexOf(cell);
       out.push(j < 0 ? 0 : j);
     } else {
       for (const category of spec.categories) {
@@ -999,7 +1206,7 @@ async function predictTabularByInput(input: string): Promise<PredictionResult | 
   if (!tabularMode || (!tabularModel && !tabularSvmModel && !tabularRfModel)) {
     return null;
   }
-  const features = parsePredictionFeatures(input);
+  const features = applyTabularNormToVector(parsePredictionFeatures(input));
   if (tabularSvmModel && tabularMode === "classification") {
     const pred = tabularSvmModel.predictOne(features);
     const idx = Math.max(0, Math.min(classIndexToLabel.length - 1, Math.round(Number(pred) || 0)));

@@ -47,7 +47,7 @@ const DEFAULT_TRAIN_CONFIG = {
   valSplit: 0.15,
   testSplit: 0.15,
   epochs: 80,
-  learningRate: 0.02
+  learningRate: 0.001
 } as const;
 
 type BlockCommand =
@@ -577,7 +577,7 @@ function registerBlocks() {
         .appendField("epochs")
         .appendField(new Blockly.FieldNumber(80, 5, 500, 5), "EPOCHS")
         .appendField("lr")
-        .appendField(new Blockly.FieldNumber(0.02, 0.0001, 1, 0.001), "LR");
+        .appendField(new Blockly.FieldNumber(0.001, 0.0001, 1, 0.001), "LR");
       this.appendValueInput("MODEL").setCheck("ModelType").setVisible(false);
       this.setPreviousStatement(true, null);
       this.setNextStatement(true, null);
@@ -1043,7 +1043,7 @@ export function BlocklyWorkspace({
           valSplit: Number(current.getFieldValue("VAL_SPLIT")) || 0.15,
           testSplit: Number(current.getFieldValue("TEST_SPLIT")) || 0.15,
           epochs: Number(current.getFieldValue("EPOCHS")) || 80,
-          learningRate: Number(current.getFieldValue("LR")) || 0.02
+          learningRate: Number(current.getFieldValue("LR")) || 0.001
         });
       } else if (current.type === "noda_save_model") {
         commands.push({

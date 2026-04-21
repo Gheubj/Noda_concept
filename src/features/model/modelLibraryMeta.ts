@@ -3,7 +3,12 @@ import type { ModelType } from "@/shared/types/ai";
 
 export type TabularFeatureSpecPersist =
   | { kind: "numeric" }
-  | { kind: "categorical"; categories: string[]; categoricalEncoding?: "onehot" | "ordinal" };
+  | {
+      kind: "categorical";
+      categories: string[];
+      categoricalEncoding?: "onehot" | "ordinal";
+      rareBucketTop?: string[];
+    };
 
 export type TabularModelLibraryPayload = {
   kind: "tabular";
@@ -11,6 +16,8 @@ export type TabularModelLibraryPayload = {
   tabularMode: "regression" | "classification";
   classIndexToLabel: string[];
   tabularFeatureSpecs: TabularFeatureSpecPersist[];
+  /** Z-score по обучающей выборке; применяется при вводе признаков для предсказания. */
+  tabularNorm?: { mean: number[]; std: number[] };
 };
 
 export type KnnModelLibraryPayload = {
