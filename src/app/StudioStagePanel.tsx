@@ -162,7 +162,7 @@ export function StudioStagePanel({
               )}
             </div>
             <CoachBriefBlock />
-            <NodlyPromoMetrics className="studio-stage-panel__promo-metrics" />
+            <NodlyPromoMetrics layout="scene-bars" className="studio-stage-panel__promo-metrics" />
           </div>
         </div>
       </Card>

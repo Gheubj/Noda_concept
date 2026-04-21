@@ -497,7 +497,7 @@ export function App() {
         rootClassName="app-auth-modal"
         centered
         title="Вход"
-        styles={{ body: { paddingTop: 8 } }}
+        styles={{ body: { paddingTop: 12 } }}
         onCancel={() => {
           setAuthOpen(false);
           setVerificationCode("");

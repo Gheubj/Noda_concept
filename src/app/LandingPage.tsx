@@ -3,6 +3,7 @@ import { Button, Layout, Spin } from "antd";
 import {
   ArrowRightOutlined,
   BookOutlined,
+  CaretRightOutlined,
   CheckCircleFilled,
   CodeOutlined,
   DatabaseOutlined,
@@ -249,9 +250,6 @@ const PATHS: GuestPath[] = [
   }
 ];
 
-const FEATURE_TONES = ["events", "data", "model"] as const;
-const PATH_TONES = ["model", "events", "predict"] as const;
-
 function GuestLanding() {
   const htmlTheme = useHtmlDataTheme();
   const sceneRef = useCursorScene<HTMLDivElement>();
@@ -331,46 +329,41 @@ function GuestLanding() {
           id="features"
           aria-label="Возможности Nodly"
         >
-          {FEATURES.map((feature, i) => (
+          {FEATURES.map((feature) => (
             <article
               key={feature.title}
-              className={`landing-v2__blockly-card landing-v2__blockly-card--${FEATURE_TONES[i] ?? "events"}`}
+              className="landing-v2__feature"
               onMouseMove={onReactiveCardMove}
             >
-              <div className="landing-v2__blockly-card__icon" aria-hidden>
+              <div className="landing-v2__feature-icon" aria-hidden>
                 {feature.icon}
               </div>
-              <h3 className="landing-v2__blockly-card__title">{feature.title}</h3>
-              <p className="landing-v2__blockly-card__text">{feature.text}</p>
+              <h3 className="landing-v2__feature-title">{feature.title}</h3>
+              <p className="landing-v2__feature-text">{feature.text}</p>
             </article>
           ))}
         </section>
 
         <section className="landing-v2__paths" aria-label="Сценарии использования">
-          {PATHS.map((path, i) => (
+          {PATHS.map((path) => (
             <article
               key={path.title}
-              className={`landing-v2__blockly-card landing-v2__blockly-card--${PATH_TONES[i] ?? "model"}`}
+              className="landing-v2__path"
               onMouseMove={onReactiveCardMove}
             >
-              <div className="landing-v2__blockly-card__chip">
-                <span className="landing-v2__blockly-card__chip-icon" aria-hidden>
+              <div className="landing-v2__path-tag">
+                <span className="landing-v2__path-tag-icon" aria-hidden>
                   {path.icon}
                 </span>
                 {path.tag}
               </div>
-              <h3 className="landing-v2__blockly-card__title">{path.title}</h3>
-              <p className="landing-v2__blockly-card__text">{path.text}</p>
-              <div className="landing-v2__blockly-card__actions">
-                <Button
-                  type="primary"
-                  ghost
-                  onClick={openAuthModal}
-                  className="landing-v2__blockly-card__cta"
-                >
+              <h3 className="landing-v2__path-title">{path.title}</h3>
+              <p className="landing-v2__path-text">{path.text}</p>
+              <div className="landing-v2__path-actions">
+                <Button type="primary" ghost onClick={openAuthModal} className="landing-v2__path-cta">
                   Войти или зарегистрироваться
                 </Button>
-                <span className="landing-v2__blockly-card__hint">{path.hint}</span>
+                <span className="landing-v2__path-hint">{path.hint}</span>
               </div>
             </article>
           ))}
@@ -417,7 +410,10 @@ function GuestLanding() {
                 <span className="landing-v2__device-title">mini-studio · iris</span>
               </div>
               <div className="landing-v2__device-row">
-                <div className="landing-v2__chip landing-v2__chip--blue">▶ Старт</div>
+                <div className="landing-v2__chip landing-v2__chip--blue">
+                  <CaretRightOutlined className="landing-v2__chip-play" aria-hidden />
+                  Старт
+                </div>
                 <div className="landing-v2__chip landing-v2__chip--blue">Выбрать датасет</div>
               </div>
               <div className="landing-v2__device-row">

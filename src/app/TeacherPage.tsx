@@ -2055,7 +2055,7 @@ export function TeacherPage() {
       <Modal
         title={lessonEditorLesson ? `Урок: ${lessonEditorLesson.title}` : "Урок"}
         open={lessonEditorOpen}
-        width={960}
+        width="min(1120px, calc(100vw - 24px))"
         okText="Сохранить"
         confirmLoading={lessonEditorSaving}
         onCancel={() => setLessonEditorOpen(false)}

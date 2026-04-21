@@ -1,10 +1,47 @@
 import { useId, useMemo } from "react";
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
+export type NodlyPromoMetricsLayout = "full" | "scene-bars";
+
+type NodlyPromoMetricsProps = {
+  className?: string;
+  /** `full` — как на лендинге (accuracy + loss). `scene-bars` — только полосы accuracy и F1, без графика. */
+  layout?: NodlyPromoMetricsLayout;
+};
+
 /**
- * Демо-полоса accuracy + график loss — тот же визуальный язык, что на лендинге и в панели «Сцена».
+ * Демо-полоса accuracy + график loss — тот же визуальный язык, что на лендинге.
+ * Вариант `scene-bars` — для панели «Сцена» в разработке: две метрики в виде прогресс-линий.
  */
-export function NodlyPromoMetrics({ className }: { className?: string }) {
+export function NodlyPromoMetrics({ className, layout = "full" }: NodlyPromoMetricsProps) {
+  if (layout === "scene-bars") {
+    return (
+      <div className={`nodly-promo-metrics nodly-promo-metrics--scene-bars ${className ?? ""}`} aria-hidden>
+        <div className="nodly-promo-metrics__row">
+          <div className="nodly-promo-metrics__row-head">
+            <span>accuracy</span>
+            <strong>0.94</strong>
+          </div>
+          <div className="nodly-promo-metrics__meter">
+            <span className="nodly-promo-metrics__meter-fill" style={{ width: "94%" }} />
+          </div>
+        </div>
+        <div className="nodly-promo-metrics__row">
+          <div className="nodly-promo-metrics__row-head">
+            <span>f1</span>
+            <strong>0.91</strong>
+          </div>
+          <div className="nodly-promo-metrics__meter">
+            <span
+              className="nodly-promo-metrics__meter-fill nodly-promo-metrics__meter-fill--f1"
+              style={{ width: "91%" }}
+            />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const lossGradUid = useId().replace(/:/g, "");
   const lossDemoRows = useMemo(
     () =>
