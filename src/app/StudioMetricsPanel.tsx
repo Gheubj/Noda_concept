@@ -301,26 +301,33 @@ function ComparisonPanel({ comparison }: { comparison: ModelComparisonReport }) 
     const row: Record<string, number> = { epoch };
     for (const r of rows) {
       const e = r.epochHistory?.[i];
-      if (!e) {
-        continue;
-      }
-      if (typeof e.loss === "number") {
-        row[`${r.modelType}_loss`] = e.loss;
-      }
-      if (typeof e.valLoss === "number") {
-        row[`${r.modelType}_valLoss`] = e.valLoss;
-      }
-      if (typeof e.accuracy === "number") {
-        row[`${r.modelType}_acc`] = e.accuracy;
-      }
-      if (typeof e.valAccuracy === "number") {
-        row[`${r.modelType}_valAcc`] = e.valAccuracy;
+      if (e) {
+        if (typeof e.loss === "number") {
+          row[`${r.modelType}_loss`] = e.loss;
+        }
+        if (typeof e.valLoss === "number") {
+          row[`${r.modelType}_valLoss`] = e.valLoss;
+        }
+        if (typeof e.accuracy === "number") {
+          row[`${r.modelType}_acc`] = e.accuracy;
+        } else if (typeof r.metrics?.testAccuracy === "number") {
+          // Фолбек: если в истории нет accuracy (напр. часть моделей), рисуем горизонталь по testAccuracy.
+          row[`${r.modelType}_acc`] = r.metrics.testAccuracy;
+        }
+        if (typeof e.valAccuracy === "number") {
+          row[`${r.modelType}_valAcc`] = e.valAccuracy;
+        }
+      } else if (typeof r.metrics?.testAccuracy === "number") {
+        row[`${r.modelType}_acc`] = r.metrics.testAccuracy;
       }
     }
     return row;
   });
   const hasLossOverlay = rows.some((r) => (r.epochHistory?.length ?? 0) > 0);
-  const hasAccOverlay = rows.some((r) => r.epochHistory?.some((e) => e.accuracy != null || e.valAccuracy != null));
+  const accSeries = rows.filter((r) =>
+    overlayRows.some((or) => Number.isFinite(or[`${r.modelType}_acc`]))
+  );
+  const hasAccOverlay = accSeries.length > 0 && overlayRows.length > 0;
   if (!rows.length) {
     return null;
   }
@@ -422,7 +429,7 @@ function ComparisonPanel({ comparison }: { comparison: ModelComparisonReport }) 
               <YAxis domain={[0, 1]} tick={{ fontSize: 11 }} width={40} />
               <Tooltip formatter={(v: number | string) => [typeof v === "number" ? `${(v * 100).toFixed(1)}%` : v, ""]} />
               <Legend />
-              {rows.map((r, idx) => (
+              {accSeries.map((r, idx) => (
                 <Line
                   key={`${r.modelType}-acc`}
                   type="monotone"

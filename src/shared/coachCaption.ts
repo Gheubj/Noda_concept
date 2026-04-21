@@ -38,21 +38,23 @@ export function buildCoachBriefLines(
       });
     }
   }
-  if (evaluation?.metrics?.testAccuracy != null) {
-    out.push({
-      key: "acc",
-      label: "Точность (тест)",
-      value: `${(evaluation.metrics.testAccuracy * 100).toFixed(1)}%`
-    });
-  } else if (evaluation?.summary?.trim()) {
-    out.push({ key: "sum", label: "Модель", value: evaluation.summary.trim() });
-  }
-  if (evaluation?.metrics?.macroF1 != null) {
-    out.push({
-      key: "f1",
-      label: "F1 (macro)",
-      value: `${(evaluation.metrics.macroF1 * 100).toFixed(1)}%`
-    });
+  if (!comparison?.rows?.length) {
+    if (evaluation?.metrics?.testAccuracy != null) {
+      out.push({
+        key: "acc",
+        label: "Точность (тест)",
+        value: `${(evaluation.metrics.testAccuracy * 100).toFixed(1)}%`
+      });
+    } else if (evaluation?.summary?.trim()) {
+      out.push({ key: "sum", label: "Модель", value: evaluation.summary.trim() });
+    }
+    if (evaluation?.metrics?.macroF1 != null) {
+      out.push({
+        key: "f1",
+        label: "F1 (macro)",
+        value: `${(evaluation.metrics.macroF1 * 100).toFixed(1)}%`
+      });
+    }
   }
   if (prediction) {
     const isRegressionPrediction = prediction.labelId === "regression_output";
