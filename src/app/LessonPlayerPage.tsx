@@ -3,6 +3,7 @@ import {
   Alert,
   Button,
   Card,
+  FloatButton,
   Form,
   Input,
   InputNumber,
@@ -13,6 +14,7 @@ import {
   Typography,
   message
 } from "antd";
+import { FullscreenExitOutlined, FullscreenOutlined } from "@ant-design/icons";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { useSessionStore } from "@/store/useSessionStore";
 import { ApiError, apiClient } from "@/shared/api/client";
@@ -100,6 +102,32 @@ export function LessonPlayerPage() {
   const [gradeForm] = Form.useForm();
   const playerStateRef = useRef(playerState);
   playerStateRef.current = playerState;
+  const lessonRootRef = useRef<HTMLDivElement | null>(null);
+  const [isPresentation, setIsPresentation] = useState(false);
+
+  useEffect(() => {
+    const onFs = () => {
+      setIsPresentation(document.fullscreenElement === lessonRootRef.current);
+    };
+    document.addEventListener("fullscreenchange", onFs);
+    return () => document.removeEventListener("fullscreenchange", onFs);
+  }, []);
+
+  const togglePresentation = useCallback(async () => {
+    const node = lessonRootRef.current;
+    if (!node) {
+      return;
+    }
+    try {
+      if (document.fullscreenElement === node) {
+        await document.exitFullscreen();
+      } else {
+        await node.requestFullscreen();
+      }
+    } catch {
+      messageApi.error("Не удалось включить режим презентации");
+    }
+  }, [messageApi]);
   /** Синхронная защита от двойного создания одного и того же mini-проекта (StrictMode / гонки). */
   const miniCreateLockRef = useRef<Record<string, boolean>>({});
 
@@ -487,8 +515,18 @@ export function LessonPlayerPage() {
   const review = bootstrap?.review;
 
   return (
-    <Content className="app-content app-content--workspace lesson-player-page">
+    <Content
+      ref={lessonRootRef as unknown as React.RefObject<HTMLDivElement>}
+      className={`app-content app-content--workspace lesson-player-page${
+        isPresentation ? " lesson-player-page--presentation" : ""
+      }`}
+    >
       {holder}
+      <FloatButton
+        icon={isPresentation ? <FullscreenExitOutlined /> : <FullscreenOutlined />}
+        tooltip={isPresentation ? "Выйти из презентации" : "Режим презентации"}
+        onClick={() => void togglePresentation()}
+      />
       <Spin spinning={loading}>
         <Space direction="vertical" size="large" style={{ width: "100%" }}>
           <div className="lesson-player-page__head">

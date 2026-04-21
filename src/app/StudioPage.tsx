@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useReducer, useRef, useState } from "react";
-import { DatabaseOutlined, FormOutlined, FullscreenExitOutlined, FullscreenOutlined } from "@ant-design/icons";
+import { DatabaseOutlined, FormOutlined } from "@ant-design/icons";
 import {
   Alert,
   Button,
@@ -210,8 +210,6 @@ export function StudioPage() {
   const [renameProjectId, setRenameProjectId] = useState<string | null>(null);
   const [renameProjectTitle, setRenameProjectTitle] = useState("");
   const [renamingProject, setRenamingProject] = useState(false);
-  const [miniPresentation, setMiniPresentation] = useState(false);
-  const miniBlocklyWrapRef = useRef<HTMLDivElement | null>(null);
   const [projectItems, setProjectItems] = useState<NodlyProjectMeta[]>([]);
   const [deletingProjectId, setDeletingProjectId] = useState<string | null>(null);
   const [submittingAssignment, setSubmittingAssignment] = useState(false);
@@ -814,33 +812,6 @@ export function StudioPage() {
     tabularPredictionInputs
   ]);
 
-  useEffect(() => {
-    const onFs = () => {
-      setMiniPresentation(document.fullscreenElement === miniBlocklyWrapRef.current);
-    };
-    document.addEventListener("fullscreenchange", onFs);
-    return () => document.removeEventListener("fullscreenchange", onFs);
-  }, []);
-
-  const toggleMiniPresentation = async () => {
-    if (!isMini) {
-      return;
-    }
-    const node = miniBlocklyWrapRef.current;
-    if (!node) {
-      return;
-    }
-    try {
-      if (document.fullscreenElement === node) {
-        await document.exitFullscreen();
-      } else {
-        await node.requestFullscreen();
-      }
-    } catch {
-      messageApi.error("Не удалось включить режим презентации");
-    }
-  };
-
   const handleSave = async () => {
     await saveProjectToCloud(saveTitle);
     setSaveOpen(false);
@@ -1120,9 +1091,9 @@ export function StudioPage() {
       <div
         className={`studio-page__main${
           isMini && miniLessonId && miniBlockId ? " studio-page__main--mini-side" : ""
-        }${isMini && !miniPresentation ? " studio-page__main--mini-compact" : ""}`}
+        }`}
       >
-        <div ref={miniBlocklyWrapRef} className="studio-page__blockly">
+        <div className="studio-page__blockly">
           <BlocklyWorkspace
             miniStudioToolbar={isMini}
             miniCoachGoals={
@@ -1400,13 +1371,6 @@ export function StudioPage() {
           icon={<FormOutlined />}
           tooltip="Проверка работы"
           onClick={() => setTeacherReviewModalOpen(true)}
-        />
-      ) : null}
-      {isMini ? (
-        <FloatButton
-          icon={miniPresentation ? <FullscreenExitOutlined /> : <FullscreenOutlined />}
-          tooltip={miniPresentation ? "Выйти из презентации" : "Режим презентации"}
-          onClick={() => void toggleMiniPresentation()}
         />
       ) : null}
     </Content>
