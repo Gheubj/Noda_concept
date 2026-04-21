@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
 import { Button, Layout, Spin } from "antd";
 import {
   ArrowRightOutlined,
@@ -28,6 +28,7 @@ import {
 } from "@/app/HomeSchoolStudentWelcome";
 import { HomeDirectStudentPanel } from "@/app/HomeDirectStudentPanel";
 import { LandingFooter } from "@/app/LandingFooter";
+import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
 const { Content } = Layout;
 
@@ -177,8 +178,22 @@ const PATHS: GuestPath[] = [
 
 function GuestLanding() {
   const htmlTheme = useHtmlDataTheme();
+  const lossGradUid = useId().replace(/:/g, "");
   const sceneRef = useCursorScene<HTMLDivElement>();
   const wordmark = htmlTheme === "light" ? "/nodly-wordmark-outline.png" : "/nodly-wordmark-white.png";
+  const lossDemoRows = useMemo(
+    () =>
+      Array.from({ length: 28 }, (_, i) => {
+        const epoch = i + 1;
+        const t = i / 27;
+        return {
+          epoch,
+          loss: 1.12 * Math.exp(-t * 2.85) + 0.065 + Math.sin(epoch * 0.38) * 0.032,
+          valLoss: 1.26 * Math.exp(-t * 2.48) + 0.095 + Math.cos(epoch * 0.31) * 0.038
+        };
+      }),
+    []
+  );
 
   return (
     <Content className="app-content landing-v2">
@@ -356,6 +371,59 @@ function GuestLanding() {
               <div className="landing-v2__device-legend">
                 <span>accuracy</span>
                 <strong>0.94</strong>
+              </div>
+              <div className="landing-v2__loss-block" aria-hidden>
+                <div className="landing-v2__loss-head">
+                  <span>loss</span>
+                  <span className="landing-v2__loss-note">train · val</span>
+                </div>
+                <div className="landing-v2__loss-chart">
+                  <ResponsiveContainer width="100%" height={120}>
+                    <LineChart data={lossDemoRows} margin={{ top: 4, right: 4, left: -18, bottom: 0 }}>
+                      <defs>
+                        <linearGradient id={`${lossGradUid}-lt`} x1="0" y1="0" x2="1" y2="0">
+                          <stop offset="0%" stopColor="#6aa3ff" />
+                          <stop offset="100%" stopColor="#9d7bff" />
+                        </linearGradient>
+                        <linearGradient id={`${lossGradUid}-lv`} x1="0" y1="0" x2="1" y2="0">
+                          <stop offset="0%" stopColor="#34d399" />
+                          <stop offset="100%" stopColor="#30d7d2" />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="4 6" stroke="rgba(148, 163, 184, 0.2)" vertical={false} />
+                      <XAxis dataKey="epoch" hide />
+                      <YAxis hide domain={["auto", "auto"]} />
+                      <Tooltip
+                        contentStyle={{
+                          borderRadius: 10,
+                          border: "1px solid rgba(148, 163, 184, 0.35)",
+                          background: "rgba(15, 23, 42, 0.88)",
+                          fontSize: 11,
+                          color: "#e2e8f0"
+                        }}
+                        labelStyle={{ color: "#94a3b8" }}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="loss"
+                        name="train"
+                        stroke={`url(#${lossGradUid}-lt)`}
+                        dot={false}
+                        strokeWidth={2}
+                        strokeLinecap="round"
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="valLoss"
+                        name="val"
+                        stroke={`url(#${lossGradUid}-lv)`}
+                        dot={false}
+                        strokeWidth={2}
+                        strokeLinecap="round"
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
               </div>
             </div>
           </div>

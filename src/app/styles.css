@@ -1845,13 +1845,37 @@ html[data-theme="dark"] .landing-home-next-lesson {
 
 .blockly-palette-btn {
   text-align: left;
-  border-radius: 6px;
-  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.12);
-  font-weight: 500;
-  border: 0;
+  border-radius: 10px;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.45) inset,
+    0 4px 12px rgba(15, 23, 42, 0.06);
+  font-weight: 560;
+  border: 1px solid var(--surface-stroke, rgba(148, 163, 184, 0.28));
   min-height: 30px;
   padding-left: 12px;
   position: relative;
+  transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease;
+}
+
+.blockly-palette-btn:hover {
+  transform: translateY(-1px);
+  border-color: color-mix(in srgb, var(--app-accent, #2563eb) 35%, var(--surface-stroke, rgba(148, 163, 184, 0.28)));
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.55) inset,
+    0 8px 18px rgba(15, 23, 42, 0.1);
+}
+
+html[data-theme="dark"] .blockly-palette-btn {
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.06) inset,
+    0 4px 14px rgba(0, 0, 0, 0.28);
+  border-color: rgba(148, 163, 184, 0.22);
+}
+
+html[data-theme="dark"] .blockly-palette-btn:hover {
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.08) inset,
+    0 8px 22px rgba(0, 0, 0, 0.38);
 }
 
 .blockly-palette-btn--stack {
@@ -1913,10 +1937,6 @@ html[data-theme="dark"] .blockly-palette-group-title {
   color: #94a3b8;
 }
 
-html[data-theme="dark"] .blockly-palette-btn {
-  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.35);
-}
-
 .blockly-container {
   flex: 1;
   min-width: 0;
@@ -1961,10 +1981,19 @@ html[data-theme="dark"] .blockly-palette-btn {
 /*
  * Точки сетки Blockly: stroke задаётся только при inject и не меняется при setTheme(),
  * из‑за чего после переключения темы оставались «чужие» точки (например светлые на тёмном фоне).
- * Фиксируем нейтральный серый для всех тем (совпадает с grid.colour в BlocklyWorkspace).
+ * Нейтральный серый для всех тем (совпадает с grid.colour в BlocklyWorkspace inject).
  */
 .blockly-container pattern[id^="blocklyGridPattern"] line {
-  stroke: #949494 !important;
+  stroke: #a8b0c4 !important;
+}
+
+/* Блоки: мягкая «подъёмная» тень в духе стеклянных карточек лендинга */
+.blockly-mainWorkspace .blocklyBlockCanvas > g.blocklyDraggable {
+  filter: drop-shadow(0 6px 16px rgba(15, 23, 42, 0.1));
+}
+
+html[data-theme="dark"] .blockly-mainWorkspace .blocklyBlockCanvas > g.blocklyDraggable {
+  filter: drop-shadow(0 8px 20px rgba(0, 0, 0, 0.42));
 }
 
 /* Touch: вся область workspace отдаёт жесты Blockly (панорама, блоки, pinch-zoom) */
@@ -3099,10 +3128,6 @@ html[data-theme="light"] .blockly-palette-group-title {
   color: #64748b;
 }
 
-.blockly-palette-btn {
-  border-radius: 9px;
-}
-
 .studio-projects-drawer .ant-drawer-content,
 .studio-data-drawer .ant-drawer-content,
 .studio-data-modal .ant-modal-content,
@@ -4091,8 +4116,69 @@ html[data-theme="dark"] .landing-v2__logo-sheen {
   color: #f8faff;
 }
 
+.landing-v2__loss-block {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(148, 163, 184, 0.22);
+}
+
+.landing-v2__loss-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 2px;
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(226, 232, 255, 0.55);
+}
+
+.landing-v2__loss-note {
+  letter-spacing: 0.04em;
+  text-transform: none;
+  font-size: 11px;
+  color: rgba(226, 232, 255, 0.42);
+}
+
+.landing-v2__loss-chart {
+  margin-inline: -2px;
+}
+
 @media (max-width: 720px) {
   .landing-v2__showcase-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+/* Метрики: оболочка графиков в стиле лендинга (стекло + тонкая сетка) */
+.studio-metrics-chart-shell {
+  border-radius: 16px;
+  border: 1px solid var(--surface-stroke);
+  background: color-mix(in srgb, var(--surface-floating) 58%, transparent);
+  padding: 10px 12px 6px;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.35) inset, var(--shadow-soft-xl, 0 14px 42px rgba(15, 23, 42, 0.1));
+}
+
+html[data-theme="dark"] .studio-metrics-chart-shell {
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.06) inset, var(--shadow-soft-xl);
+}
+
+.studio-metrics-chart-shell__head {
+  margin-bottom: 4px;
+}
+
+.studio-metrics-chart-shell__head .ant-typography {
+  font-size: 13px;
+  letter-spacing: -0.01em;
+}
+
+.studio-metrics-line-chart .recharts-cartesian-grid-horizontal line,
+.studio-metrics-line-chart .recharts-cartesian-grid-vertical line {
+  stroke: color-mix(in srgb, var(--surface-stroke) 75%, transparent);
+}
+
+.studio-metrics-line-chart .recharts-default-legend {
+  color: var(--app-muted);
 }
 
 /* =========================== Authed Home v2 =========================== */

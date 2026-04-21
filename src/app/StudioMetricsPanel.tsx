@@ -11,7 +11,7 @@ import {
   XAxis,
   YAxis
 } from "recharts";
-import { useMemo } from "react";
+import { useId, useMemo } from "react";
 import { useAppStore } from "@/store/useAppStore";
 import type {
   ClassificationExampleRow,
@@ -91,6 +91,7 @@ function MetricsTable({ report }: { report: TrainingRunReport }) {
 }
 
 function EpochCharts({ report }: { report: TrainingRunReport }) {
+  const uid = useId().replace(/:/g, "");
   const rows = report.epochHistory;
   if (!rows.length) {
     return (
@@ -102,52 +103,155 @@ function EpochCharts({ report }: { report: TrainingRunReport }) {
   }
   const hasAcc = rows.some((r) => r.accuracy != null || r.valAccuracy != null);
   const hasMse = rows.some((r) => r.mse != null || r.valMse != null);
+  const axisTick = { fontSize: 10, fill: "rgba(148, 163, 184, 0.95)" };
+  const gridStroke = "rgba(148, 163, 184, 0.18)";
+  const tipStyle = {
+    borderRadius: 12,
+    border: "1px solid rgba(148, 163, 184, 0.28)",
+    background: "color-mix(in srgb, var(--surface-floating, rgba(255,255,255,0.9)) 88%, transparent)",
+    backdropFilter: "blur(12px)",
+    fontSize: 12
+  } as const;
+  const margin = { top: 6, right: 8, left: 2, bottom: 2 };
   return (
     <Space direction="vertical" size="middle" style={{ width: "100%" }}>
-      <div className="studio-metrics-panel__chart-wrap">
-        <Text strong>Потери (loss)</Text>
-        <ResponsiveContainer width="100%" height={200}>
-          <LineChart data={rows} margin={{ top: 8, right: 12, left: 4, bottom: 4 }}>
-            <CartesianGrid strokeDasharray="3 3" opacity={0.35} />
-            <XAxis dataKey="epoch" tick={{ fontSize: 11 }} />
-            <YAxis tick={{ fontSize: 11 }} width={40} />
-            <Tooltip />
-            <Legend />
-            <Line type="monotone" dataKey="loss" name="train" stroke="#1677ff" dot={false} strokeWidth={2} />
-            <Line type="monotone" dataKey="valLoss" name="val" stroke="#52c41a" dot={false} strokeWidth={2} />
-          </LineChart>
-        </ResponsiveContainer>
-      </div>
-      {hasAcc ? (
-        <div className="studio-metrics-panel__chart-wrap">
-          <Text strong>Точность (accuracy)</Text>
+      <div className="studio-metrics-chart-shell">
+        <div className="studio-metrics-chart-shell__head">
+          <Text strong>Потери (loss)</Text>
+        </div>
+        <div className="studio-metrics-chart-shell__plot studio-metrics-line-chart">
           <ResponsiveContainer width="100%" height={200}>
-            <LineChart data={rows} margin={{ top: 8, right: 12, left: 4, bottom: 4 }}>
-              <CartesianGrid strokeDasharray="3 3" opacity={0.35} />
-              <XAxis dataKey="epoch" tick={{ fontSize: 11 }} />
-              <YAxis domain={[0, 1]} tick={{ fontSize: 11 }} width={40} />
-              <Tooltip formatter={(v: number | string) => [typeof v === "number" ? `${(v * 100).toFixed(1)}%` : v, ""]} />
-              <Legend />
-              <Line type="monotone" dataKey="accuracy" name="train" stroke="#722ed1" dot={false} strokeWidth={2} />
-              <Line type="monotone" dataKey="valAccuracy" name="val" stroke="#fa8c16" dot={false} strokeWidth={2} />
+            <LineChart data={rows} margin={margin}>
+              <defs>
+                <linearGradient id={`${uid}-loss-train`} x1="0" y1="0" x2="1" y2="0">
+                  <stop offset="0%" stopColor="#6aa3ff" />
+                  <stop offset="100%" stopColor="#9d7bff" />
+                </linearGradient>
+                <linearGradient id={`${uid}-loss-val`} x1="0" y1="0" x2="1" y2="0">
+                  <stop offset="0%" stopColor="#34d399" />
+                  <stop offset="100%" stopColor="#30d7d2" />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="4 6" stroke={gridStroke} vertical={false} />
+              <XAxis dataKey="epoch" tick={axisTick} axisLine={false} tickLine={false} tickMargin={6} />
+              <YAxis tick={axisTick} width={36} axisLine={false} tickLine={false} tickMargin={4} />
+              <Tooltip contentStyle={tipStyle} />
+              <Legend wrapperStyle={{ fontSize: 11, paddingTop: 4 }} />
+              <Line
+                type="monotone"
+                dataKey="loss"
+                name="train"
+                stroke={`url(#${uid}-loss-train)`}
+                dot={false}
+                strokeWidth={2.25}
+                strokeLinecap="round"
+              />
+              <Line
+                type="monotone"
+                dataKey="valLoss"
+                name="val"
+                stroke={`url(#${uid}-loss-val)`}
+                dot={false}
+                strokeWidth={2.25}
+                strokeLinecap="round"
+              />
             </LineChart>
           </ResponsiveContainer>
         </div>
+      </div>
+      {hasAcc ? (
+        <div className="studio-metrics-chart-shell">
+          <div className="studio-metrics-chart-shell__head">
+            <Text strong>Точность (accuracy)</Text>
+          </div>
+          <div className="studio-metrics-chart-shell__plot studio-metrics-line-chart">
+            <ResponsiveContainer width="100%" height={200}>
+              <LineChart data={rows} margin={margin}>
+                <defs>
+                  <linearGradient id={`${uid}-acc-train`} x1="0" y1="0" x2="1" y2="0">
+                    <stop offset="0%" stopColor="#9d7bff" />
+                    <stop offset="100%" stopColor="#6aa3ff" />
+                  </linearGradient>
+                  <linearGradient id={`${uid}-acc-val`} x1="0" y1="0" x2="1" y2="0">
+                    <stop offset="0%" stopColor="#34d399" />
+                    <stop offset="100%" stopColor="#5eead4" />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="4 6" stroke={gridStroke} vertical={false} />
+                <XAxis dataKey="epoch" tick={axisTick} axisLine={false} tickLine={false} tickMargin={6} />
+                <YAxis domain={[0, 1]} tick={axisTick} width={36} axisLine={false} tickLine={false} tickMargin={4} />
+                <Tooltip
+                  contentStyle={tipStyle}
+                  formatter={(v: number | string) => [typeof v === "number" ? `${(v * 100).toFixed(1)}%` : v, ""]}
+                />
+                <Legend wrapperStyle={{ fontSize: 11, paddingTop: 4 }} />
+                <Line
+                  type="monotone"
+                  dataKey="accuracy"
+                  name="train"
+                  stroke={`url(#${uid}-acc-train)`}
+                  dot={false}
+                  strokeWidth={2.25}
+                  strokeLinecap="round"
+                />
+                <Line
+                  type="monotone"
+                  dataKey="valAccuracy"
+                  name="val"
+                  stroke={`url(#${uid}-acc-val)`}
+                  dot={false}
+                  strokeWidth={2.25}
+                  strokeLinecap="round"
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
       ) : null}
       {hasMse && !hasAcc ? (
-        <div className="studio-metrics-panel__chart-wrap">
-          <Text strong>MSE</Text>
-          <ResponsiveContainer width="100%" height={200}>
-            <LineChart data={rows} margin={{ top: 8, right: 12, left: 4, bottom: 4 }}>
-              <CartesianGrid strokeDasharray="3 3" opacity={0.35} />
-              <XAxis dataKey="epoch" tick={{ fontSize: 11 }} />
-              <YAxis tick={{ fontSize: 11 }} width={48} />
-              <Tooltip />
-              <Legend />
-              <Line type="monotone" dataKey="mse" name="train mse" stroke="#eb2f96" dot={false} strokeWidth={2} />
-              <Line type="monotone" dataKey="valMse" name="val mse" stroke="#13c2c2" dot={false} strokeWidth={2} />
-            </LineChart>
-          </ResponsiveContainer>
+        <div className="studio-metrics-chart-shell">
+          <div className="studio-metrics-chart-shell__head">
+            <Text strong>MSE</Text>
+          </div>
+          <div className="studio-metrics-chart-shell__plot studio-metrics-line-chart">
+            <ResponsiveContainer width="100%" height={200}>
+              <LineChart data={rows} margin={margin}>
+                <defs>
+                  <linearGradient id={`${uid}-mse-train`} x1="0" y1="0" x2="1" y2="0">
+                    <stop offset="0%" stopColor="#8b7ae8" />
+                    <stop offset="100%" stopColor="#6aa3ff" />
+                  </linearGradient>
+                  <linearGradient id={`${uid}-mse-val`} x1="0" y1="0" x2="1" y2="0">
+                    <stop offset="0%" stopColor="#3db8b4" />
+                    <stop offset="100%" stopColor="#5ec8b8" />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="4 6" stroke={gridStroke} vertical={false} />
+                <XAxis dataKey="epoch" tick={axisTick} axisLine={false} tickLine={false} tickMargin={6} />
+                <YAxis tick={axisTick} width={44} axisLine={false} tickLine={false} tickMargin={4} />
+                <Tooltip contentStyle={tipStyle} />
+                <Legend wrapperStyle={{ fontSize: 11, paddingTop: 4 }} />
+                <Line
+                  type="monotone"
+                  dataKey="mse"
+                  name="train mse"
+                  stroke={`url(#${uid}-mse-train)`}
+                  dot={false}
+                  strokeWidth={2.25}
+                  strokeLinecap="round"
+                />
+                <Line
+                  type="monotone"
+                  dataKey="valMse"
+                  name="val mse"
+                  stroke={`url(#${uid}-mse-val)`}
+                  dot={false}
+                  strokeWidth={2.25}
+                  strokeLinecap="round"
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
         </div>
       ) : null}
     </Space>

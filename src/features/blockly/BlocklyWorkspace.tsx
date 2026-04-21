@@ -23,25 +23,44 @@ const NODLY_BLOCKLY_DARK = Blockly.Theme.defineTheme("nodly_dark", {
   name: "nodly_dark",
   base: Blockly.Themes.Classic,
   componentStyles: {
-    workspaceBackgroundColour: "#1e293b",
-    toolboxBackgroundColour: "#111827",
-    toolboxForegroundColour: "#e5e7eb",
-    flyoutBackgroundColour: "#1e293b",
+    workspaceBackgroundColour: "#141b2a",
+    toolboxBackgroundColour: "#0f1624",
+    toolboxForegroundColour: "#e2e8f0",
+    flyoutBackgroundColour: "#151d2e",
     flyoutForegroundColour: "#cbd5e1",
     scrollbarColour: "#64748b",
-    insertionMarkerColour: "#60a5fa"
+    insertionMarkerColour: "#6aa3ff"
   }
 });
 
+/** Спокойные hex-цвета в духе лендинга (чипы / glass), без кислотных HSV. */
 const BLOCK_COLOR = {
-  events: 20,
-  model: 220,
-  modelTypes: 200,
-  predict: 160,
-  control: 45,
-  data: 260,
-  output: 290
+  events: "#5b7cff",
+  model: "#8b7ae8",
+  modelTypes: "#7c6fd9",
+  predict: "#3db8b4",
+  control: "#64748b",
+  data: "#6b9fff",
+  output: "#5ec8b8",
+  /** Устаревший блок в старых проектах */
+  deprecated: "#94a3b8",
+  /** Изображения / специальные */
+  image: "#6b9e8f"
 } as const;
+
+const NODLY_BLOCKLY_LIGHT = Blockly.Theme.defineTheme("nodly_light", {
+  name: "nodly_light",
+  base: Blockly.Themes.Classic,
+  componentStyles: {
+    workspaceBackgroundColour: "#e8ecf4",
+    toolboxBackgroundColour: "#eef2f9",
+    toolboxForegroundColour: "#334155",
+    flyoutBackgroundColour: "#e9edf6",
+    flyoutForegroundColour: "#475569",
+    scrollbarColour: "#94a3b8",
+    insertionMarkerColour: "#5b7cff"
+  }
+});
 
 const DEFAULT_TRAIN_CONFIG = {
   trainSplit: 0.7,
@@ -780,7 +799,7 @@ function registerBlocks() {
         .appendField("картинки (KNN)")
         .appendField(new Blockly.FieldDropdown([["image_knn", "image_knn"]]), "MODEL_TYPE_REF");
       this.setOutput(true, "ModelType");
-      this.setColour(BLOCK_COLOR.modelTypes);
+      this.setColour(BLOCK_COLOR.image);
     }
   };
   Blockly.Blocks.noda_model_tabular_regression = {
@@ -822,7 +841,7 @@ function registerBlocks() {
       this.appendDummyInput().appendField("Удали блок — ввод в «Предсказать»");
       this.setPreviousStatement(true, null);
       this.setNextStatement(true, null);
-      this.setColour(120);
+      this.setColour(BLOCK_COLOR.deprecated);
     }
   };
   Blockly.Blocks.noda_save_model = {
@@ -2135,11 +2154,11 @@ export function BlocklyWorkspace({
       return;
     }
     const initialDark = document.documentElement.getAttribute("data-theme") === "dark";
-    /** Один нейтральный цвет сетки: при смене темы Blockly обновляет только theme, не stroke сетки. */
-    const gridDotColour = "#949494";
+    /** Нейтральная сетка; stroke не пересчитывается при смене темы — средний тон для light/dark. */
+    const gridDotColour = "#a8b0c4";
     workspaceRef.current = Blockly.inject(containerRef.current, {
       trashcan: true,
-      theme: initialDark ? NODLY_BLOCKLY_DARK : Blockly.Themes.Classic,
+      theme: initialDark ? NODLY_BLOCKLY_DARK : NODLY_BLOCKLY_LIGHT,
       grid: {
         spacing: 20,
         length: 3,
@@ -2280,7 +2299,7 @@ export function BlocklyWorkspace({
       return;
     }
     const isDark = htmlTheme === "dark";
-    ws.setTheme(isDark ? NODLY_BLOCKLY_DARK : Blockly.Themes.Classic);
+    ws.setTheme(isDark ? NODLY_BLOCKLY_DARK : NODLY_BLOCKLY_LIGHT);
     Blockly.svgResize(ws);
   }, [htmlTheme]);
 
