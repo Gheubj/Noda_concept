@@ -1470,21 +1470,30 @@ export async function exportSavedModelBundle(entry: SavedModelEntry): Promise<{
   };
   if (rec.kind === "tabular") {
     const m = await tf.loadLayersModel(TABULAR_IDB_URL(entry.id));
-    let artifacts: tf.io.ModelArtifacts | null = null;
+    let captureArtifacts!: (a: tf.io.ModelArtifacts) => void;
+    const artifactsPromise = new Promise<tf.io.ModelArtifacts>((resolve) => {
+      captureArtifacts = resolve;
+    });
     await m.save(
       tf.io.withSaveHandler(async (a) => {
-        artifacts = a;
+        captureArtifacts(a);
         return { modelArtifactsInfo: tf.io.getModelArtifactsInfoForJSON(a) };
       })
     );
+    const artifacts = await artifactsPromise;
     m.dispose();
-    if (!artifacts?.modelTopology || !artifacts.weightSpecs || !artifacts.weightData) {
+    if (!artifacts.modelTopology || !artifacts.weightSpecs || !artifacts.weightData) {
       throw new Error("Не удалось экспортировать веса табличной модели.");
     }
+    const readyArtifacts = artifacts as tf.io.ModelArtifacts & {
+      modelTopology: unknown;
+      weightSpecs: tf.io.WeightsManifestEntry[];
+      weightData: ArrayBuffer;
+    };
     bundle.tfArtifacts = {
-      modelTopology: artifacts.modelTopology,
-      weightSpecs: artifacts.weightSpecs,
-      weightDataBase64: toBase64(new Uint8Array(artifacts.weightData))
+      modelTopology: readyArtifacts.modelTopology,
+      weightSpecs: readyArtifacts.weightSpecs,
+      weightDataBase64: toBase64(new Uint8Array(readyArtifacts.weightData))
     };
     bundle.record = {
       kind: "tabular",
