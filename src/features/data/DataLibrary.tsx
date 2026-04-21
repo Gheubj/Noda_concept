@@ -26,7 +26,7 @@ import {
 import type { UploadProps } from "antd";
 import { useAppStore } from "@/store/useAppStore";
 import { parseCsvFile } from "@/features/data/csv";
-import { extractImageFilesFromZip } from "@/features/data/zipImages";
+import { extractImageFilesFromZip, extractLabeledImageFilesFromZip } from "@/features/data/zipImages";
 import { removeStoredModelFiles } from "@/features/model/mlEngine";
 import type { SavedModelEntry, TabularDataset } from "@/shared/types/ai";
 
@@ -56,6 +56,10 @@ function filterImageSize(files: File[], onSkip: (name: string) => void): File[] 
     }
     return true;
   });
+}
+
+function toLabelId(title: string) {
+  return title.trim().toLowerCase().replace(/\s+/g, "_").replace(/[^a-z0-9а-я_]/gi, "");
 }
 
 const { Paragraph, Text } = Typography;
@@ -259,6 +263,13 @@ export function DataLibrary({ variant = "default" }: { variant?: "default" | "dr
                         </>
                       ) : (
                         <>
+                          <Alert
+                            type="info"
+                            showIcon
+                            style={{ marginBottom: 8 }}
+                            message="Импорт готовой разметки из ZIP"
+                            description="Поддерживается структура ZIP: class_name/image.jpg (или dataset/class_name/image.jpg). Класс берется из имени папки. Ручная разметка ниже остается без изменений."
+                          />
                           <Space.Compact style={{ width: "100%" }}>
                             <Input
                               value={classNames[dataset.id] ?? ""}
@@ -276,6 +287,56 @@ export function DataLibrary({ variant = "default" }: { variant?: "default" | "dr
                               Добавить класс
                             </Button>
                           </Space.Compact>
+                          <Upload
+                            accept=".zip,application/zip,application/x-zip-compressed"
+                            showUploadList={false}
+                            beforeUpload={(file) => {
+                              void (async () => {
+                                try {
+                                  const groups = await extractLabeledImageFilesFromZip(file);
+                                  if (groups.length === 0) {
+                                    message.error(
+                                      "Не найдено размеченных изображений. Нужна структура ZIP: class_name/image.jpg"
+                                    );
+                                    return;
+                                  }
+                                  let addedClasses = 0;
+                                  let addedFiles = 0;
+                                  for (const g of groups) {
+                                    const classTitle = g.className.trim();
+                                    if (!classTitle) {
+                                      continue;
+                                    }
+                                    addClassToImageDataset(dataset.id, classTitle);
+                                    addedClasses += 1;
+                                    const ok = filterImageSize(g.files, (name) =>
+                                      message.warning(`Пропуск ${name}: больше 10 МБ`)
+                                    );
+                                    if (ok.length === 0) {
+                                      continue;
+                                    }
+                                    addSamplesToClass(dataset.id, toLabelId(classTitle), ok);
+                                    addedFiles += ok.length;
+                                  }
+                                  if (addedFiles === 0) {
+                                    message.error("Файлы из ZIP не добавлены (проверь размер и структуру архива).");
+                                    return;
+                                  }
+                                  message.success(
+                                    `Импортировано из ZIP: ${addedFiles} фото, классов: ${groups.length} (обработано: ${addedClasses})`
+                                  );
+                                } catch (e) {
+                                  message.error(e instanceof Error ? e.message : "Не удалось прочитать ZIP");
+                                }
+                              })();
+                              return false;
+                            }}
+                            customRequest={() => {}}
+                          >
+                            <Button icon={<FileZipOutlined />} size="small">
+                              ZIP с папками классов
+                            </Button>
+                          </Upload>
                           {dataset.classes.map((datasetClass) => {
                             const uploadProps: UploadProps = {
                               accept: "image/*",
