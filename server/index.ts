@@ -3,9 +3,10 @@ import path from "node:path";
 import cors from "cors";
 import express from "express";
 import rateLimit from "express-rate-limit";
+import helmet from "helmet";
 import cookieParser from "cookie-parser";
 import type { Request, Response } from "express";
-import { randomBytes } from "crypto";
+import { randomBytes, randomInt } from "crypto";
 import { z } from "zod";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "./db.js";
@@ -41,9 +42,37 @@ import { registerLessonImageUploadRoutes } from "./lessonImageUpload.js";
 
 const app = express();
 
+// За Railway/Vercel/любым reverse-proxy: нужно, чтобы req.ip приходил из X-Forwarded-For,
+// иначе express-rate-limit видит один IP прокси на всех клиентов, и rate-limit обходится.
+app.set("trust proxy", 1);
+app.disable("x-powered-by");
+
+app.use(
+  helmet({
+    // Это API-сервер (JSON); HTML не рендерим. CSP на API не даёт практической пользы
+    // и может ломать uploads, которые мы отдаём сами.
+    contentSecurityPolicy: false,
+    // Фронт живёт на другом origin (Vercel) и тянет картинки/PDF уроков с этого API.
+    crossOriginResourcePolicy: { policy: "cross-origin" },
+    // HSTS включаем только в prod, чтобы не ломать http://localhost.
+    strictTransportSecurity: config.isProd ? undefined : false,
+    referrerPolicy: { policy: "no-referrer" }
+  })
+);
 app.use(cors({ origin: config.appBaseUrl, credentials: true }));
 app.use(express.json({ limit: "25mb" }));
 app.use(cookieParser());
+
+// Глобальный rate-limit на весь /api (защищает эндпоинты без собственного лимитера:
+// analytics, /me/*, /projects/*, /classrooms/* и т.п.). Специализированные auth-лимитеры
+// применяются дополнительно и оставляют более узкие окна.
+const globalApiLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 300,
+  standardHeaders: true,
+  legacyHeaders: false
+});
+app.use("/api", globalApiLimiter);
 
 registerLmsRoutes(app);
 registerLessonPdfUploadRoutes(app);
@@ -107,7 +136,9 @@ app.post("/api/auth/register/request-code", registerCodeLimiter, async (req, res
     res.status(409).json({ error: "Этот email уже зарегистрирован" });
     return;
   }
-  const code = String(Math.floor(100000 + Math.random() * 900000));
+  // Криптостойкий 6-значный код (не Math.random): сокращает риск перебора при утечке
+  // логики генерации и не зависит от состояния Math PRNG процесса.
+  const code = String(randomInt(100000, 1000000));
   const codeHash = await hashPassword(code);
   const expiresAt = new Date(Date.now() + config.registrationOtpTtlMin * 60 * 1000);
   await prisma.registrationOtp.upsert({
@@ -235,9 +266,11 @@ app.post("/api/auth/forgot-password", forgotPasswordLimiter, async (req, res) =>
       });
       const url = `${config.appBaseUrl.replace(/\/$/, "")}/reset-password?token=${encodeURIComponent(raw)}`;
       await sendPasswordResetLink(user.email, url);
-    } catch (err) {
+    } catch {
+      // Намеренно не логируем ни email, ни тело ответа почтового провайдера:
+      // ПДн не должны оседать в stdout-логах.
       // eslint-disable-next-line no-console
-      console.error("forgot-password send:", err);
+      console.error("forgot-password send failed");
     }
   })();
 });
@@ -428,11 +461,14 @@ app.get("/api/auth/yandex/callback", async (req, res) => {
       });
     }
     const payload = { sub: user.id, role: user.role };
-    const accessToken = signAccessToken(payload);
     const refreshToken = signRefreshToken(payload);
     await persistRefreshToken(user.id, refreshToken);
     setRefreshCookie(res, refreshToken);
-    res.redirect(`${config.appBaseUrl}?access_token=${accessToken}`);
+    // Access-токен НЕ кладём в query-параметр: URL попадает в access-логи, историю
+    // браузера и Referer при переходах. Клиент сам вызовет /api/auth/refresh
+    // (httpOnly refresh-cookie уже выставлена выше) и получит access-токен в JSON.
+    const sep = config.appBaseUrl.includes("?") ? "&" : "?";
+    res.redirect(`${config.appBaseUrl}${sep}auth=yandex`);
   } catch {
     res.status(500).json({ error: "OAuth failed" });
   }
@@ -561,6 +597,7 @@ app.post("/api/me/delete-account", authRequired, async (req: AuthenticatedReques
       return;
     }
   }
+  // В лог — только id (без email/nickname), чтобы не засорять stdout ПДн.
   // eslint-disable-next-line no-console
   console.info(
     JSON.stringify({ event: "account_deleted", userId: account.id, at: new Date().toISOString() })

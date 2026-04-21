@@ -12,10 +12,30 @@ const cookieSameSite =
 const emailProviderRaw = (process.env.EMAIL_PROVIDER ?? "resend").toLowerCase();
 const emailProvider = emailProviderRaw === "smtp" ? "smtp" : "resend";
 
+const DEV_ACCESS_SECRET_FALLBACK = "dev_access_secret_change_me";
+const DEV_REFRESH_SECRET_FALLBACK = "dev_refresh_secret_change_me";
+
+function requireSecret(envName: string, devFallback: string): string {
+  const raw = process.env[envName];
+  if (raw && raw.length >= 16 && raw !== devFallback) {
+    return raw;
+  }
+  if (isProd) {
+    throw new Error(
+      `[config] ${envName} must be set to a strong value (>=16 chars) in production`
+    );
+  }
+  // В dev допускаем небезопасный дефолт, но явно логируем.
+  // eslint-disable-next-line no-console
+  console.warn(`[config] ${envName} is not set — using insecure dev fallback`);
+  return devFallback;
+}
+
 export const config = {
   port: Number(process.env.PORT ?? 3001),
-  jwtAccessSecret: process.env.JWT_ACCESS_SECRET ?? "dev_access_secret_change_me",
-  jwtRefreshSecret: process.env.JWT_REFRESH_SECRET ?? "dev_refresh_secret_change_me",
+  isProd,
+  jwtAccessSecret: requireSecret("JWT_ACCESS_SECRET", DEV_ACCESS_SECRET_FALLBACK),
+  jwtRefreshSecret: requireSecret("JWT_REFRESH_SECRET", DEV_REFRESH_SECRET_FALLBACK),
   accessTokenTtlSec: Number(process.env.JWT_ACCESS_TTL_SEC ?? 60 * 15),
   refreshTokenTtlSec: Number(process.env.JWT_REFRESH_TTL_SEC ?? 60 * 60 * 24 * 30),
   yandexClientId: process.env.YANDEX_CLIENT_ID ?? "",

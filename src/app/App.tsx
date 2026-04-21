@@ -28,7 +28,7 @@ import { ResetPasswordPage } from "@/app/ResetPasswordPage";
 import { ShareImportPage } from "@/app/ShareImportPage";
 import { SettingsPanel } from "@/app/SettingsPanel";
 import { useSessionStore } from "@/store/useSessionStore";
-import { apiClient, setAccessToken, toUserErrorMessage } from "@/shared/api/client";
+import { apiClient, toUserErrorMessage } from "@/shared/api/client";
 import {
   LEGAL_PRIVACY_POLICY_FILE,
   LEGAL_USER_AGREEMENT_FILE,
@@ -169,15 +169,17 @@ export function App() {
   }, [fetchSummary]);
 
   useLayoutEffect(() => {
+    // Подчистим URL от служебных маркеров (?auth=yandex из нового OAuth-редиректа
+    // и ?access_token=... из legacy-бэкенда). Access-токен из query не используем —
+    // клиент получит его через /api/auth/refresh по httpOnly refresh-cookie.
     const url = new URL(window.location.href);
-    if (!url.searchParams.has("access_token")) {
+    const hadToken = url.searchParams.has("access_token");
+    const hadAuthMarker = url.searchParams.has("auth");
+    if (!hadToken && !hadAuthMarker) {
       return;
     }
-    const token = url.searchParams.get("access_token");
-    if (token) {
-      setAccessToken(token);
-    }
     url.searchParams.delete("access_token");
+    url.searchParams.delete("auth");
     const qs = url.searchParams.toString();
     window.history.replaceState({}, "", `${url.pathname}${qs ? `?${qs}` : ""}${url.hash}`);
   }, []);

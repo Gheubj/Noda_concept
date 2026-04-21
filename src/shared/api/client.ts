@@ -9,18 +9,10 @@ function readPersistedAccessToken(): string {
   if (typeof window === "undefined") {
     return "";
   }
-  // OAuth (Яндекс) редирект кладёт токен в query до первого React effect — иначе restoreSession
-  // успевает вызвать /api/me без Bearer, получить 401 и очистить токен гонкой с useEffect.
-  const fromQuery = new URLSearchParams(window.location.search).get("access_token");
-  if (fromQuery) {
-    localStorage.setItem(ACCESS_STORAGE_KEY, fromQuery);
-    localStorage.removeItem(LEGACY_ACCESS_STORAGE_KEY);
-    if (typeof sessionStorage !== "undefined") {
-      sessionStorage.removeItem(ACCESS_STORAGE_KEY);
-      sessionStorage.removeItem(LEGACY_ACCESS_STORAGE_KEY);
-    }
-    return fromQuery;
-  }
+  // Access-токен НЕ принимаем из query-параметров: URL попадает в access-логи бэкенда
+  // и фронтового CDN, в Referer и в историю браузера. Даже если legacy-бэкенд
+  // добавил ?access_token=..., мы не используем это значение — токен будет получен
+  // через /api/auth/refresh по httpOnly refresh-cookie (см. restoreSession).
   let stored = localStorage.getItem(ACCESS_STORAGE_KEY) ?? localStorage.getItem(LEGACY_ACCESS_STORAGE_KEY);
   if (stored && !localStorage.getItem(ACCESS_STORAGE_KEY)) {
     localStorage.setItem(ACCESS_STORAGE_KEY, stored);
