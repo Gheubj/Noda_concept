@@ -12,6 +12,10 @@ function clamp01(n: number): number {
   return Math.min(1, Math.max(0, n));
 }
 
+function pctLabel01(x: number): string {
+  return `${(clamp01(x) * 100).toFixed(1)}%`;
+}
+
 function pickAccuracy(ev: ModelEvaluation | null): number | null {
   if (!ev?.metrics) {
     return null;
@@ -63,7 +67,6 @@ function pickRmse(ev: ModelEvaluation | null): number | null {
   return null;
 }
 
-/** RMSE → ширина полосы «чем меньше, тем лучше» (0…1 для визуализации). */
 function rmseToBarPortion(rmse: number): number {
   if (rmse <= 0) {
     return 1;
@@ -71,19 +74,29 @@ function rmseToBarPortion(rmse: number): number {
   return clamp01(1 / (1 + rmse));
 }
 
+type MetricRow = {
+  key: string;
+  name: string;
+  /** 0…1 для ширины заливки */
+  fill: number;
+  /** Подпись у полосы (только проценты / «качество» для RMSE) */
+  pctLabel: string;
+};
+
 type StudioLiveMetricsProps = {
   className?: string;
+  /** Мини-сцена: чуть мельче типографика и полосы */
+  compact?: boolean;
 };
 
 /**
- * Метрики последнего обучения в том же визуальном стиле, что демо на лендинге (подпись сверху, тонкая полоса).
- * Без «картинки» — значения из `useAppStore().evaluation` после прогона Blockly.
+ * Метрики последнего обучения: только подпись категории + полоса; число — проценты у конца заливки (не дробь отдельным блоком).
  */
-export function StudioLiveMetrics({ className }: StudioLiveMetricsProps) {
+export function StudioLiveMetrics({ className, compact }: StudioLiveMetricsProps) {
   const evaluation = useAppStore((s) => s.evaluation);
   const training = useAppStore((s) => s.training);
 
-  const rows = useMemo(() => {
+  const rows = useMemo((): MetricRow[] => {
     const ev = evaluation;
     const acc = pickAccuracy(ev);
     const f1 = pickF1(ev);
@@ -91,29 +104,33 @@ export function StudioLiveMetrics({ className }: StudioLiveMetricsProps) {
 
     if (acc != null && f1 != null) {
       return [
-        { key: "acc", name: "accuracy", value: acc, label: acc.toFixed(3) },
-        { key: "f1", name: "f1", value: f1, label: f1.toFixed(3) }
+        { key: "acc", name: "accuracy", fill: acc, pctLabel: pctLabel01(acc) },
+        { key: "f1", name: "f1", fill: f1, pctLabel: pctLabel01(f1) }
       ];
     }
     if (acc != null) {
-      return [{ key: "acc", name: "accuracy", value: acc, label: acc.toFixed(3) }];
+      return [{ key: "acc", name: "accuracy", fill: acc, pctLabel: pctLabel01(acc) }];
     }
     if (f1 != null) {
-      return [{ key: "f1", name: "f1", value: f1, label: f1.toFixed(3) }];
+      return [{ key: "f1", name: "f1", fill: f1, pctLabel: pctLabel01(f1) }];
     }
     if (rmse != null) {
-      const v = rmseToBarPortion(rmse);
-      return [
-        {
-          key: "rmse",
-          name: "rmse (тест)",
-          value: v,
-          label: rmse.toFixed(4)
-        }
-      ];
+      const fill = rmseToBarPortion(rmse);
+      const q = Math.round(fill * 100);
+      return [{ key: "rmse", name: "rmse (тест)", fill, pctLabel: `${q}%` }];
     }
     return [];
   }, [evaluation]);
+
+  const rootClass = [
+    "nodly-promo-metrics",
+    "nodly-promo-metrics--scene-bars",
+    "nodly-promo-metrics--live",
+    compact ? "nodly-promo-metrics--live-compact" : "",
+    className ?? ""
+  ]
+    .filter(Boolean)
+    .join(" ");
 
   if (training.isTraining) {
     return (
@@ -132,23 +149,35 @@ export function StudioLiveMetrics({ className }: StudioLiveMetricsProps) {
   }
 
   return (
-    <div className={`nodly-promo-metrics nodly-promo-metrics--scene-bars nodly-promo-metrics--live ${className ?? ""}`}>
-      {rows.map((row) => (
-        <div key={row.key} className="nodly-promo-metrics__scene-row">
-          <div className="nodly-promo-metrics__scene-head">
-            <span className="nodly-promo-metrics__scene-name">{row.name}</span>
-            <span className="nodly-promo-metrics__scene-value">{row.label}</span>
+    <div className={rootClass}>
+      {rows.map((row) => {
+        const w = Math.round(row.fill * 1000) / 10;
+        const showInside = w >= 14;
+        return (
+          <div key={row.key} className="nodly-promo-metrics__scene-row">
+            <div className="nodly-promo-metrics__scene-name-row">
+              <span className="nodly-promo-metrics__scene-name">{row.name}</span>
+            </div>
+            <div className="nodly-promo-metrics__scene-meter-row">
+              <div className="nodly-promo-metrics__meter nodly-promo-metrics__meter--scene">
+                <span
+                  className={`nodly-promo-metrics__meter-fill nodly-promo-metrics__meter-fill--live${
+                    row.key === "f1" ? " nodly-promo-metrics__meter-fill--f1" : ""
+                  }${row.key === "rmse" ? " nodly-promo-metrics__meter-fill--rmse" : ""}`}
+                  style={{ width: `${w}%` }}
+                >
+                  {showInside ? (
+                    <span className="nodly-promo-metrics__scene-pct-in">{row.pctLabel}</span>
+                  ) : null}
+                </span>
+              </div>
+              {!showInside ? (
+                <span className="nodly-promo-metrics__scene-pct-out">{row.pctLabel}</span>
+              ) : null}
+            </div>
           </div>
-          <div className="nodly-promo-metrics__meter nodly-promo-metrics__meter--scene">
-            <span
-              className={`nodly-promo-metrics__meter-fill${
-                row.key === "f1" ? " nodly-promo-metrics__meter-fill--f1" : ""
-              }${row.key === "rmse" ? " nodly-promo-metrics__meter-fill--rmse" : ""}`}
-              style={{ width: `${Math.round(row.value * 1000) / 10}%` }}
-            />
-          </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }

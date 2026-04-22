@@ -57,7 +57,9 @@ function CoachBriefBlock() {
     if (training.isTraining || training.scenarioActive) {
       return [];
     }
-    return buildCoachBriefLines(evaluation, prediction, comparison);
+    const raw = buildCoachBriefLines(evaluation, prediction, comparison);
+    /** Дублируют полосы метрик на сцене — оставляем только сводку / предсказание / сравнение. */
+    return raw.filter((l) => l.key !== "acc" && l.key !== "f1");
   }, [training.isTraining, training.scenarioActive, evaluation, prediction, comparison]);
   if (lines.length === 0) {
     return null;
@@ -104,7 +106,7 @@ export function StudioStagePanel({
       <aside className="studio-stage-panel studio-stage-panel--mini" aria-label="Сцена">
         <Card size="small" title="Сцена" className="studio-stage-card">
           <div className="studio-stage-panel__mini-layout">
-            <StudioLiveMetrics className="studio-stage-panel__mini-metrics" />
+            <StudioLiveMetrics compact className="studio-stage-panel__mini-metrics" />
             <div className="studio-stage-panel__mini-figure-wrap">
               <img className="studio-stage-panel__mini-figure" src={coachSrc} alt="" />
             </div>

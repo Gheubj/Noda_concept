@@ -18,21 +18,33 @@ export function NodlyPromoMetrics({ className, layout = "full" }: NodlyPromoMetr
     return (
       <div className={`nodly-promo-metrics nodly-promo-metrics--scene-bars ${className ?? ""}`} aria-hidden>
         <div className="nodly-promo-metrics__scene-row">
-          <div className="nodly-promo-metrics__scene-head">
+          <div className="nodly-promo-metrics__scene-name-row">
             <span className="nodly-promo-metrics__scene-name">accuracy</span>
-            <span className="nodly-promo-metrics__scene-value">0.94</span>
           </div>
-          <div className="nodly-promo-metrics__meter nodly-promo-metrics__meter--scene">
-            <span className="nodly-promo-metrics__meter-fill nodly-promo-metrics__meter-fill--acc" style={{ width: "94%" }} />
+          <div className="nodly-promo-metrics__scene-meter-row">
+            <div className="nodly-promo-metrics__meter nodly-promo-metrics__meter--scene">
+              <span
+                className="nodly-promo-metrics__meter-fill nodly-promo-metrics__meter-fill--live nodly-promo-metrics__meter-fill--acc"
+                style={{ width: "94%" }}
+              >
+                <span className="nodly-promo-metrics__scene-pct-in">94.0%</span>
+              </span>
+            </div>
           </div>
         </div>
         <div className="nodly-promo-metrics__scene-row">
-          <div className="nodly-promo-metrics__scene-head">
+          <div className="nodly-promo-metrics__scene-name-row">
             <span className="nodly-promo-metrics__scene-name">f1</span>
-            <span className="nodly-promo-metrics__scene-value">0.91</span>
           </div>
-          <div className="nodly-promo-metrics__meter nodly-promo-metrics__meter--scene">
-            <span className="nodly-promo-metrics__meter-fill nodly-promo-metrics__meter-fill--f1" style={{ width: "91%" }} />
+          <div className="nodly-promo-metrics__scene-meter-row">
+            <div className="nodly-promo-metrics__meter nodly-promo-metrics__meter--scene">
+              <span
+                className="nodly-promo-metrics__meter-fill nodly-promo-metrics__meter-fill--live nodly-promo-metrics__meter-fill--f1"
+                style={{ width: "91%" }}
+              >
+                <span className="nodly-promo-metrics__scene-pct-in">91.0%</span>
+              </span>
+            </div>
           </div>
         </div>
       </div>
@@ -61,7 +73,7 @@ export function NodlyPromoMetrics({ className, layout = "full" }: NodlyPromoMetr
       </div>
       <div className="nodly-promo-metrics__legend">
         <span>accuracy</span>
-        <strong>0.94</strong>
+        <strong>94.0%</strong>
       </div>
       <div className="nodly-promo-metrics__loss">
         <div className="nodly-promo-metrics__loss-head">

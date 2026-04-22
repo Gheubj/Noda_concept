@@ -945,7 +945,7 @@ html[data-theme="dark"] .studio-metrics-panel__cm-table td {
 .studio-page__main--mini-side {
   flex-direction: row;
   align-items: stretch;
-  gap: 10px;
+  gap: 8px;
 }
 
 .studio-mini-host .studio-page__main--mini-side .studio-page__blockly {
@@ -956,16 +956,16 @@ html[data-theme="dark"] .studio-metrics-panel__cm-table td {
 }
 
 .studio-mini-host .studio-page__main--mini-side .studio-page__side-tabs--mini {
-  flex: 0 0 min(440px, 42vw) !important;
-  width: min(440px, 42vw) !important;
-  min-width: 340px;
-  max-width: min(440px, 42vw);
+  flex: 0 0 min(352px, 34vw) !important;
+  width: min(352px, 34vw) !important;
+  min-width: 272px;
+  max-width: min(352px, 34vw);
 }
 
 .studio-stage-panel__mini-metrics {
-  margin: 0 0 4px;
-  padding: 8px 10px 10px;
-  border-radius: 10px;
+  margin: 0 0 3px;
+  padding: 6px 8px 8px;
+  border-radius: 8px;
   border: 1px solid rgba(148, 163, 184, 0.2);
   background: color-mix(in srgb, var(--surface-panel) 88%, transparent);
 }
@@ -973,7 +973,7 @@ html[data-theme="dark"] .studio-metrics-panel__cm-table td {
 .studio-stage-panel--mini .studio-stage-panel__mini-layout {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
   align-items: stretch;
 }
 
@@ -989,7 +989,7 @@ html[data-theme="dark"] .studio-metrics-panel__cm-table td {
   width: 100%;
   max-width: 100%;
   height: auto;
-  max-height: min(52dvh, 420px);
+  max-height: min(42dvh, 336px);
   object-fit: contain;
   margin-inline: auto;
 }
@@ -997,14 +997,14 @@ html[data-theme="dark"] .studio-metrics-panel__cm-table td {
 .studio-stage-panel--mini .studio-stage-panel__mini-copy {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
   min-width: 0;
 }
 
 .studio-stage-panel--mini .studio-stage-panel__mini-instruction {
-  max-height: min(42vh, 320px);
+  max-height: min(34vh, 256px);
   overflow: auto;
-  padding: 4px 2px;
+  padding: 3px 2px;
 }
 
 @media (max-width: 780px) {
@@ -1025,8 +1025,8 @@ html[data-theme="dark"] .studio-metrics-panel__cm-table td {
 }
 
 .studio-stage-panel--mini .studio-stage-panel__mini-goals {
-  padding: 8px 10px;
-  border-radius: 8px;
+  padding: 6px 8px;
+  border-radius: 7px;
   border: 1px dashed var(--ant-color-border, rgba(148, 163, 184, 0.45));
   background: color-mix(in srgb, var(--app-surface, #fff) 94%, transparent);
 }
@@ -1034,11 +1034,11 @@ html[data-theme="dark"] .studio-metrics-panel__cm-table td {
 .studio-stage-panel--mini .studio-stage-panel__mini-goal-row {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
 }
 
 .studio-stage-panel--mini .studio-stage-panel__mini-status {
-  font-size: 12px;
+  font-size: 10px;
 }
 
 
@@ -1175,16 +1175,16 @@ html[data-theme="dark"] .studio-metrics-panel__cm-table td {
 }
 
 .studio-stage-panel--mini .studio-stage-panel__brief-line {
-  font-size: 13px;
+  font-size: 11px;
 }
 
 .studio-stage-panel--mini .studio-stage-panel__mini-bubble {
-  font-size: 14px;
+  font-size: 12px;
   line-height: 1.45;
   color: var(--app-text);
-  padding: 10px 10px;
-  margin-top: 4px;
-  border-radius: 8px;
+  padding: 8px 8px;
+  margin-top: 3px;
+  border-radius: 7px;
   background: var(--app-surface);
   border: 1px solid var(--landing-hero-border);
   white-space: pre-line;
@@ -2650,13 +2650,13 @@ html[data-theme="dark"] .lesson-flow__pdf-page-canvas {
 }
 
 .studio-mini-host {
-  font-size: 13px;
+  font-size: 11px;
 }
 
 .studio-mini-host .ant-btn {
-  font-size: 12px;
-  height: 26px;
-  padding-inline: 10px;
+  font-size: 11px;
+  height: 24px;
+  padding-inline: 8px;
 }
 
 .studio-mini-host .blockly-root__toolbar {
@@ -2664,9 +2664,9 @@ html[data-theme="dark"] .lesson-flow__pdf-page-canvas {
 }
 
 .studio-mini-host .blockly-palette-btn {
-  min-height: 24px;
-  font-size: 12px;
-  padding-left: 10px;
+  min-height: 22px;
+  font-size: 11px;
+  padding-left: 8px;
 }
 
 .blockly-root__mini-tab.ant-btn {
@@ -4530,18 +4530,27 @@ html[data-theme="light"] .app-header .settings-theme-toggle__btn--active {
   gap: 8px;
 }
 
-/* Как на лендинге: название и число сверху, тонкая полоса снизу */
+/* Сцена: подпись сверху, полоса + проценты внутри заливки или справа от трека */
 .nodly-promo-metrics__scene-row {
   display: flex;
   flex-direction: column;
   gap: 4px;
 }
 
-.nodly-promo-metrics__scene-head {
+.nodly-promo-metrics__scene-name-row {
+  min-height: 1em;
+}
+
+.nodly-promo-metrics__scene-meter-row {
   display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 10px;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.nodly-promo-metrics__scene-meter-row .nodly-promo-metrics__meter--scene {
+  flex: 1 1 0;
+  min-width: 0;
 }
 
 .nodly-promo-metrics__scene-name {
@@ -4552,14 +4561,6 @@ html[data-theme="light"] .app-header .settings-theme-toggle__btn--active {
   color: rgba(226, 232, 255, 0.62);
 }
 
-.nodly-promo-metrics__scene-value {
-  font-family: var(--font-display, "Manrope", "Inter", sans-serif);
-  font-size: 13px;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  color: #f8fafc;
-}
-
 .nodly-promo-metrics__meter--scene {
   height: 8px;
   margin-top: 0;
@@ -4567,6 +4568,66 @@ html[data-theme="light"] .app-header .settings-theme-toggle__btn--active {
 
 .nodly-promo-metrics__meter--scene .nodly-promo-metrics__meter-fill {
   width: auto;
+}
+
+.nodly-promo-metrics__meter-fill--live {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  box-sizing: border-box;
+  min-width: 0;
+  padding-right: 5px;
+}
+
+.nodly-promo-metrics__scene-pct-in {
+  font-family: var(--font-display, "Manrope", "Inter", sans-serif);
+  font-size: 11px;
+  font-weight: 750;
+  letter-spacing: -0.03em;
+  color: rgba(248, 250, 252, 0.96);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.nodly-promo-metrics__scene-pct-out {
+  font-family: var(--font-display, "Manrope", "Inter", sans-serif);
+  font-size: 12px;
+  font-weight: 750;
+  letter-spacing: -0.03em;
+  color: rgba(226, 232, 255, 0.88);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.nodly-promo-metrics--live-compact.nodly-promo-metrics--scene-bars {
+  gap: 6px;
+}
+
+.nodly-promo-metrics--live-compact .nodly-promo-metrics__scene-row {
+  gap: 3px;
+}
+
+.nodly-promo-metrics--live-compact .nodly-promo-metrics__scene-name {
+  font-size: 9px;
+  letter-spacing: 0.1em;
+}
+
+.nodly-promo-metrics--live-compact .nodly-promo-metrics__meter--scene {
+  height: 6px;
+}
+
+.nodly-promo-metrics--live-compact .nodly-promo-metrics__scene-meter-row {
+  gap: 6px;
+}
+
+.nodly-promo-metrics--live-compact .nodly-promo-metrics__scene-pct-in {
+  font-size: 9px;
+  padding-right: 3px;
+}
+
+.nodly-promo-metrics--live-compact .nodly-promo-metrics__scene-pct-out {
+  font-size: 10px;
 }
 
 .nodly-promo-metrics__meter-fill--acc {
@@ -4586,7 +4647,7 @@ html[data-theme="light"] .studio-stage-panel__promo-metrics .nodly-promo-metrics
   color: var(--app-muted);
 }
 
-html[data-theme="light"] .studio-stage-panel__promo-metrics .nodly-promo-metrics__scene-value {
+html[data-theme="light"] .studio-stage-panel__promo-metrics .nodly-promo-metrics__scene-pct-out {
   color: var(--app-text);
 }
 
@@ -4598,7 +4659,7 @@ html[data-theme="light"] .studio-stage-panel__mini-metrics .nodly-promo-metrics_
   color: var(--app-muted);
 }
 
-html[data-theme="light"] .studio-stage-panel__mini-metrics .nodly-promo-metrics__scene-value {
+html[data-theme="light"] .studio-stage-panel__mini-metrics .nodly-promo-metrics__scene-pct-out {
   color: var(--app-text);
 }
 
@@ -4660,6 +4721,40 @@ html[data-theme="light"] .studio-stage-panel__mini-metrics {
   border: 1px solid rgba(148, 163, 184, 0.22);
   background: linear-gradient(150deg, rgba(15, 23, 42, 0.88), rgba(28, 34, 66, 0.82));
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+html[data-theme="dark"] .studio-stage-panel__promo-metrics,
+html[data-theme="dark"] .studio-stage-panel__mini-metrics {
+  border-color: rgba(110, 126, 170, 0.38);
+  background: linear-gradient(
+    155deg,
+    color-mix(in srgb, var(--surface-panel, #111827) 96%, #1e3a5f 4%) 0%,
+    color-mix(in srgb, var(--surface-panel, #0f172a) 92%, #312e81 8%) 100%
+  );
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 10px 36px rgba(0, 0, 0, 0.42);
+}
+
+html[data-theme="dark"] .studio-stage-panel__promo-metrics .nodly-promo-metrics__scene-name,
+html[data-theme="dark"] .studio-stage-panel__mini-metrics .nodly-promo-metrics__scene-name {
+  color: rgba(186, 198, 235, 0.72);
+}
+
+html[data-theme="dark"] .studio-stage-panel__promo-metrics .nodly-promo-metrics__scene-pct-out,
+html[data-theme="dark"] .studio-stage-panel__mini-metrics .nodly-promo-metrics__scene-pct-out {
+  color: rgba(224, 231, 255, 0.9);
+}
+
+html[data-theme="dark"] .studio-stage-panel__promo-metrics .nodly-promo-metrics__meter--scene,
+html[data-theme="dark"] .studio-stage-panel__mini-metrics .nodly-promo-metrics__meter--scene {
+  background: rgba(51, 65, 95, 0.55);
+}
+
+html[data-theme="dark"] .studio-stage-panel__promo-metrics .nodly-promo-metrics__scene-pct-in,
+html[data-theme="dark"] .studio-stage-panel__mini-metrics .nodly-promo-metrics__scene-pct-in {
+  color: rgba(248, 250, 252, 0.98);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.65);
 }
 
 /* Лендинг: карточки «возможности» и «сценарии» (не блоки Blockly — они только в финальном mockup) */
