@@ -23,24 +23,24 @@ const NODLY_BLOCKLY_DARK = Blockly.Theme.defineTheme("nodly_dark", {
   name: "nodly_dark",
   base: Blockly.Themes.Classic,
   componentStyles: {
-    workspaceBackgroundColour: "#141b2a",
-    toolboxBackgroundColour: "#0f1624",
+    workspaceBackgroundColour: "#1a2334",
+    toolboxBackgroundColour: "#1c2536",
     toolboxForegroundColour: "#e2e8f0",
-    flyoutBackgroundColour: "#151d2e",
+    flyoutBackgroundColour: "#232e42",
     flyoutForegroundColour: "#cbd5e1",
     scrollbarColour: "#64748b",
     insertionMarkerColour: "#6aa3ff"
   }
 });
 
-/** Сдержанные hex-цвета в духе лендинга (приглушённые блоки). */
+/** Сдержанные hex: события — терракота, данные — бывший синий событий, действия — отдельный холодный сланец. */
 const BLOCK_COLOR = {
-  events: "#4a6ab8",
+  events: "#b85c48",
   model: "#6a5ba8",
   modelTypes: "#5d5294",
   predict: "#2d8f8a",
-  control: "#5a6272",
-  data: "#5578b8",
+  control: "#5f7188",
+  data: "#4a6ab8",
   output: "#4a9a8f",
   deprecated: "#7a8294",
   image: "#4d7565"

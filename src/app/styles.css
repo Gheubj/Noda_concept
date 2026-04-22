@@ -1933,13 +1933,13 @@ html[data-theme="dark"] .blockly-palette-btn:hover {
 }
 
 html[data-theme="dark"] .blockly-layout {
-  background: #1e293b;
-  border-color: #334155;
+  background: #252f42;
+  border-color: rgba(100, 116, 139, 0.42);
 }
 
 html[data-theme="dark"] .blockly-palette {
-  background: #111827;
-  border-right-color: #334155;
+  background: #1e2738;
+  border-right-color: rgba(100, 116, 139, 0.38);
 }
 
 html[data-theme="dark"] .blockly-palette-group-title {
@@ -3148,6 +3148,19 @@ html[data-theme="light"] .studio-page__toolbar {
   box-shadow: var(--shadow-soft-xl);
 }
 
+html[data-theme="dark"] .studio-page__side-tabs .studio-stage-panel .ant-card,
+html[data-theme="dark"] .studio-page__side-tabs .studio-metrics-card.ant-card {
+  background: linear-gradient(
+    165deg,
+    color-mix(in srgb, #334664 90%, #1e293b 10%) 0%,
+    color-mix(in srgb, #2b3650 88%, #0f172a 12%) 100%
+  );
+  border-color: rgba(110, 126, 160, 0.42);
+  box-shadow:
+    0 16px 44px rgba(0, 0, 0, 0.38),
+    inset 0 1px 0 rgba(255, 255, 255, 0.07);
+}
+
 .blockly-palette {
   background: color-mix(in srgb, var(--surface-backdrop) 82%, var(--app-surface) 18%);
   border-right-color: var(--surface-stroke);
@@ -3943,11 +3956,15 @@ html[data-theme="dark"] .landing-v2__logo-sheen {
 }
 
 .landing-v2__palette-block--events {
-  background: linear-gradient(180deg, color-mix(in srgb, #4a6ab8 92%, #0f172a), #3d5588);
+  background: linear-gradient(180deg, color-mix(in srgb, #b85c48 90%, #0f172a), #8c4536);
 }
 
 .landing-v2__palette-block--data {
-  background: linear-gradient(180deg, color-mix(in srgb, #5578b8 92%, #0f172a), #446091);
+  background: linear-gradient(180deg, color-mix(in srgb, #4a6ab8 92%, #0f172a), #3d5588);
+}
+
+.landing-v2__palette-block--control {
+  background: linear-gradient(180deg, color-mix(in srgb, #5f7188 92%, #0f172a), #4a5a6e);
 }
 
 .landing-v2__palette-block--model {
@@ -4949,6 +4966,18 @@ html[data-theme="light"] .landing-v2__showcase--light .landing-v2__palette-block
   color: rgba(248, 250, 252, 0.96);
   border-color: rgba(255, 255, 255, 0.18);
   box-shadow: 0 1px 0 rgba(255, 255, 255, 0.14) inset, 0 12px 26px rgba(15, 23, 42, 0.12);
+}
+
+html[data-theme="light"] .landing-v2__showcase--light .landing-v2__palette-block--events {
+  background: linear-gradient(180deg, color-mix(in srgb, #c56d52 88%, #1e293b 12%), #9e4d3c);
+}
+
+html[data-theme="light"] .landing-v2__showcase--light .landing-v2__palette-block--data {
+  background: linear-gradient(180deg, color-mix(in srgb, #4a6ab8 90%, #1e293b 10%), #3a5580);
+}
+
+html[data-theme="light"] .landing-v2__showcase--light .landing-v2__palette-block--control {
+  background: linear-gradient(180deg, color-mix(in srgb, #5f7188 88%, #1e293b 12%), #4a5a6e);
 }
 
 html[data-theme="light"] .landing-v2__showcase--light .nodly-promo-metrics__legend,
