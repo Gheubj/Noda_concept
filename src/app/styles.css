@@ -4266,8 +4266,8 @@ html[data-theme="dark"] .home-v2__aurora {
 
 .home-v2__hello-lead {
   display: flex;
-  align-items: center;
-  gap: 14px;
+  align-items: baseline;
+  gap: 12px;
   flex-wrap: wrap;
 }
 
@@ -4280,7 +4280,8 @@ html[data-theme="dark"] .home-v2__aurora {
 }
 
 .home-v2__hello-glyph-emoji {
-  font-size: clamp(2rem, 4.2vw, 2.85rem);
+  /* Согласовано с .home-v2__hello-greet — эмодзи визуально крупнее букв, чуть ниже капа */
+  font-size: clamp(1.15rem, 2.35vw, 1.65rem);
   line-height: 1;
   display: inline-block;
 }
