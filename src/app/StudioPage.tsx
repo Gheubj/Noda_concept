@@ -1,5 +1,12 @@
 import { useEffect, useMemo, useReducer, useRef, useState } from "react";
-import { DatabaseOutlined, FormOutlined } from "@ant-design/icons";
+import {
+  DatabaseOutlined,
+  FolderOpenOutlined,
+  FormOutlined,
+  PlusOutlined,
+  SaveOutlined,
+  ShareAltOutlined
+} from "@ant-design/icons";
 import {
   Alert,
   Button,
@@ -1080,20 +1087,11 @@ export function StudioPage() {
               </span>
             </div>
             <div className="studio-page__toolbar-actions">
-              {!readOnly && activeProject ? (
-                <Button
-                  size="small"
-                  className="studio-page__btn-tertiary"
-                  icon={<FormOutlined />}
-                  onClick={() => openRenameProjectModal(activeProject.id, activeProject.title)}
-                >
-                  Переименовать
-                </Button>
-              ) : null}
               <Button
                 type="primary"
                 size="small"
                 className="studio-page__btn-primary"
+                icon={<SaveOutlined />}
                 disabled={readOnly}
                 onClick={() => {
                   if (activeProject) {
@@ -1106,12 +1104,6 @@ export function StudioPage() {
               >
                 Сохранить
               </Button>
-              <Button size="small" className="studio-page__btn-secondary" onClick={() => setLibraryOpen(true)}>
-                Проекты
-              </Button>
-              <Button size="small" className="studio-page__btn-secondary" onClick={handleNewProject}>
-                Новый
-              </Button>
               <Button
                 size="small"
                 className="studio-page__btn-secondary"
@@ -1120,10 +1112,38 @@ export function StudioPage() {
               >
                 Данные
               </Button>
+              <Button
+                size="small"
+                className="studio-page__btn-secondary"
+                icon={<PlusOutlined />}
+                disabled={readOnly}
+                onClick={handleNewProject}
+              >
+                Новый проект
+              </Button>
+              <Button
+                size="small"
+                className="studio-page__btn-secondary"
+                icon={<FolderOpenOutlined />}
+                onClick={() => setLibraryOpen(true)}
+              >
+                Проекты
+              </Button>
+              {!readOnly && activeProject ? (
+                <Button
+                  size="small"
+                  className="studio-page__btn-secondary"
+                  icon={<FormOutlined />}
+                  onClick={() => openRenameProjectModal(activeProject.id, activeProject.title)}
+                >
+                  Переименовать
+                </Button>
+              ) : null}
               {user && activeProject && !readOnly ? (
                 <Button
                   size="small"
-                  className="studio-page__btn-tertiary"
+                  className="studio-page__btn-secondary"
+                  icon={<ShareAltOutlined />}
                   onClick={() =>
                     void (async () => {
                       try {
