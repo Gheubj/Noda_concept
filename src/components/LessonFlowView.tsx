@@ -4,6 +4,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import type { LessonContentBlock } from "@/shared/types/lessonContent";
 import { resolveLessonMediaUrl } from "@/shared/lessonMediaUrl";
+import { markdownWithCustomEmojiImages } from "@/shared/emojiMarkdown";
 
 const LessonPdfReader = lazy(() =>
   import("@/components/LessonPdfReader").then((m) => ({ default: m.LessonPdfReader }))
@@ -114,7 +115,7 @@ export function LessonFlowView({
 
   const renderMarkdown = (value: string, className?: string) => (
     <div className={className}>
-      <ReactMarkdown remarkPlugins={[remarkGfm]}>{value}</ReactMarkdown>
+      <ReactMarkdown remarkPlugins={[remarkGfm]}>{markdownWithCustomEmojiImages(value)}</ReactMarkdown>
     </div>
   );
 

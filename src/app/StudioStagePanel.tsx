@@ -7,6 +7,7 @@ import type { StudioGoal } from "@/shared/types/lessonContent";
 import { coachPngForMood, resolveCoachMood } from "@/shared/coachMood";
 import { COACH_AUTO_RESULTS_LEAD, buildCoachBriefLines } from "@/shared/coachCaption";
 import { StudioLiveMetrics } from "@/components/StudioLiveMetrics";
+import { markdownWithCustomEmojiImages } from "@/shared/emojiMarkdown";
 
 const { Text } = Typography;
 
@@ -112,7 +113,9 @@ export function StudioStagePanel({
             <div className="studio-stage-panel__mini-copy">
               {instructionMarkdown.trim() ? (
                 <div className="studio-stage-panel__mini-instruction lesson-flow__markdown">
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{instructionMarkdown}</ReactMarkdown>
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                    {markdownWithCustomEmojiImages(instructionMarkdown)}
+                  </ReactMarkdown>
                 </div>
               ) : null}
               {showGoalsInPanel && goals.length > 0 ? (

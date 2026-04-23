@@ -3299,6 +3299,15 @@ html[data-theme="light"] .blockly-palette-group-title {
   line-height: 1.72;
 }
 
+.lesson-flow__markdown img[src^="/imgs/"] {
+  display: inline-block;
+  width: 1.15em;
+  height: 1.15em;
+  margin: 0 0.02em;
+  vertical-align: -0.18em;
+  object-fit: contain;
+}
+
 .lesson-flow__checkpoint .ant-radio-group,
 .lesson-flow__checkpoint .ant-checkbox-group {
   display: grid;
