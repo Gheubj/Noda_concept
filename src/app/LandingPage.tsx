@@ -417,9 +417,6 @@ function GuestLanding() {
                 <div className="landing-v2__palette-block landing-v2__palette-block--data">Выбрать датасет</div>
               </div>
               <div className="landing-v2__device-row landing-v2__device-row--full">
-                <div className="landing-v2__palette-block landing-v2__palette-block--control">Если · подождать</div>
-              </div>
-              <div className="landing-v2__device-row landing-v2__device-row--full">
                 <div className="landing-v2__palette-block landing-v2__palette-block--model">Обучить модель</div>
               </div>
               <div className="landing-v2__device-row">

@@ -3950,10 +3950,6 @@ html[data-theme="dark"] .landing-v2__logo-sheen {
   background: linear-gradient(180deg, color-mix(in srgb, #4a6ab8 92%, #0f172a), #3d5588);
 }
 
-.landing-v2__palette-block--control {
-  background: linear-gradient(180deg, color-mix(in srgb, #5f7188 92%, #0f172a), #4a5a6e);
-}
-
 .landing-v2__palette-block--model {
   background: linear-gradient(180deg, color-mix(in srgb, #6a5ba8 92%, #0f172a), #524488);
 }
@@ -4961,10 +4957,6 @@ html[data-theme="light"] .landing-v2__showcase--light .landing-v2__palette-block
 
 html[data-theme="light"] .landing-v2__showcase--light .landing-v2__palette-block--data {
   background: linear-gradient(180deg, color-mix(in srgb, #4a6ab8 90%, #1e293b 10%), #3a5580);
-}
-
-html[data-theme="light"] .landing-v2__showcase--light .landing-v2__palette-block--control {
-  background: linear-gradient(180deg, color-mix(in srgb, #5f7188 88%, #1e293b 12%), #4a5a6e);
 }
 
 html[data-theme="light"] .landing-v2__showcase--light .landing-v2__palette-block--output {
