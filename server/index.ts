@@ -10,7 +10,7 @@ import { randomBytes, randomInt } from "crypto";
 import { z } from "zod";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "./db.js";
-import { config } from "./config.js";
+import { config, normalizeBrowserOrigin } from "./config.js";
 import {
   authRequired,
   clearRefreshCookie,
@@ -59,7 +59,23 @@ app.use(
     referrerPolicy: { policy: "no-referrer" }
   })
 );
-app.use(cors({ origin: config.appBaseUrl, credentials: true }));
+app.use(
+  cors({
+    credentials: true,
+    origin(origin, callback) {
+      if (!origin) {
+        callback(null, true);
+        return;
+      }
+      const normalized = normalizeBrowserOrigin(origin);
+      if (normalized && config.corsAllowedOrigins.has(normalized)) {
+        callback(null, true);
+        return;
+      }
+      callback(null, false);
+    }
+  })
+);
 app.use(express.json({ limit: "25mb" }));
 app.use(cookieParser());
 
@@ -340,18 +356,27 @@ app.post("/api/auth/login", authLimiter, async (req, res) => {
 });
 
 app.post("/api/auth/refresh", async (req, res) => {
-  const oldToken = readRefreshTokenFromRequest(req);
-  const decoded = await rotateRefreshToken(oldToken);
-  if (!decoded) {
-    clearRefreshCookie(res);
-    res.status(401).json({ error: "Invalid refresh token" });
-    return;
+  try {
+    const oldToken = readRefreshTokenFromRequest(req);
+    const decoded = await rotateRefreshToken(oldToken);
+    if (!decoded) {
+      clearRefreshCookie(res);
+      res.status(401).json({ error: "Invalid refresh token" });
+      return;
+    }
+    const newAccess = signAccessToken(decoded);
+    const newRefresh = signRefreshToken(decoded);
+    await persistRefreshToken(decoded.sub, newRefresh);
+    setRefreshCookie(res, newRefresh);
+    res.json({ accessToken: newAccess });
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error("[api/auth/refresh]", err);
+    res.status(500).json({
+      error: "Refresh failed",
+      ...(config.isProd ? {} : { detail: err instanceof Error ? err.message : String(err) })
+    });
   }
-  const newAccess = signAccessToken(decoded);
-  const newRefresh = signRefreshToken(decoded);
-  await persistRefreshToken(decoded.sub, newRefresh);
-  setRefreshCookie(res, newRefresh);
-  res.json({ accessToken: newAccess });
 });
 
 app.post("/api/auth/logout", async (req, res) => {
@@ -425,7 +450,8 @@ app.get("/api/auth/yandex/callback", async (req, res) => {
         grant_type: "authorization_code",
         code,
         client_id: config.yandexClientId,
-        client_secret: config.yandexClientSecret
+        client_secret: config.yandexClientSecret,
+        redirect_uri: config.yandexRedirectUri
       }).toString()
     });
     const tokenJson = (await tokenResp.json()) as { access_token?: string };
@@ -436,17 +462,21 @@ app.get("/api/auth/yandex/callback", async (req, res) => {
       headers: { Authorization: `OAuth ${tokenJson.access_token}` }
     });
     const info = (await infoResp.json()) as {
-      id: string;
+      id: string | number;
       default_email?: string;
       real_name?: string;
       display_name?: string;
     };
-    const email = info.default_email ?? `${info.id}@yandex.local`;
+    const yandexUserId = String(info.id ?? "");
+    const email = info.default_email ?? `${yandexUserId}@yandex.local`;
     const stateRaw = typeof req.query.state === "string" ? req.query.state : "";
     const fromState = verifyYandexOAuthState(stateRaw);
     let user = await prisma.user.findUnique({ where: { email } });
     if (!user) {
-      const nickname = await pickUniqueNick(info.display_name ?? info.real_name ?? email.split("@")[0], info.id);
+      const nickname = await pickUniqueNick(
+        info.display_name ?? info.real_name ?? email.split("@")[0],
+        yandexUserId
+      );
       const newRole = fromState?.role ?? "student";
       const newStudentMode = fromState?.studentMode ?? "direct";
       user = await prisma.user.create({
@@ -454,7 +484,7 @@ app.get("/api/auth/yandex/callback", async (req, res) => {
           email,
           nickname,
           provider: "yandex",
-          providerUserId: info.id,
+          providerUserId: yandexUserId,
           role: newRole,
           studentMode: newRole === "teacher" ? "direct" : newStudentMode
         }
