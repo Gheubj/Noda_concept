@@ -34,6 +34,23 @@ type Props = {
   summaryLoading: boolean;
 };
 
+/** Не ренерить пустую обёртку home-v2__surface на главной */
+export function shouldShowHomeSchoolStudentBanner(p: Props): boolean {
+  if (p.enrollmentsCount === 0) {
+    return true;
+  }
+  if (p.attentionCount > 0 && !p.summaryLoading) {
+    return true;
+  }
+  if (p.scheduleLoading) {
+    return true;
+  }
+  if (p.scheduleReady && nextUpcomingSlot(p.slots)) {
+    return true;
+  }
+  return false;
+}
+
 export function HomeSchoolStudentBanner({
   slots,
   scheduleReady,
@@ -61,40 +78,49 @@ export function HomeSchoolStudentBanner({
     );
   }
 
+  const attentionBlock =
+    attentionCount > 0 && !summaryLoading ? (
+      <Alert
+        type="warning"
+        showIcon
+        style={{ marginBottom: 12 }}
+        message={
+          <span>
+            Требует внимания: <strong>{attentionCount}</strong>{" "}
+            {attentionCount === 1 ? "задание" : "заданий"} (оценка или доработка).{" "}
+            <Link to="/class">Открыть Обучение</Link>
+          </span>
+        }
+      />
+    ) : null;
+
+  const scheduleBlock = scheduleLoading ? (
+    <div style={{ paddingTop: 4 }}>
+      <Text type="secondary" style={{ fontSize: 12, display: "block", marginBottom: 8 }}>
+        Загружаем расписание…
+      </Text>
+      <Skeleton active title={false} paragraph={{ rows: 2 }} />
+    </div>
+  ) : next ? (
+    <div className="landing-home-next-lesson">
+      <Text type="secondary" style={{ fontSize: 12, display: "block", marginBottom: 4 }}>
+        Ближайшее занятие
+      </Text>
+      <Text strong style={{ fontSize: 14, display: "block" }}>
+        {dayjs(next.startsAt).format("dddd, D MMMM")} · {timeRange(next)}
+      </Text>
+      <Text style={{ fontSize: 13 }}>{next.lessonTitle ?? "Занятие"}</Text>
+    </div>
+  ) : null;
+
+  if (!attentionBlock && !scheduleBlock) {
+    return null;
+  }
+
   return (
     <div className="landing-home-school-banner">
-      {attentionCount > 0 && !summaryLoading ? (
-        <Alert
-          type="warning"
-          showIcon
-          style={{ marginBottom: 12 }}
-          message={
-            <span>
-              Требует внимания: <strong>{attentionCount}</strong>{" "}
-              {attentionCount === 1 ? "задание" : "заданий"} (оценка или доработка).{" "}
-              <Link to="/class">Открыть Обучение</Link>
-            </span>
-          }
-        />
-      ) : null}
-      {scheduleLoading ? (
-        <div style={{ paddingTop: 4 }}>
-          <Text type="secondary" style={{ fontSize: 12, display: "block", marginBottom: 8 }}>
-            Загружаем расписание…
-          </Text>
-          <Skeleton active title={false} paragraph={{ rows: 2 }} />
-        </div>
-      ) : next ? (
-        <div className="landing-home-next-lesson">
-          <Text type="secondary" style={{ fontSize: 12, display: "block", marginBottom: 4 }}>
-            Ближайшее занятие
-          </Text>
-          <Text strong style={{ fontSize: 14, display: "block" }}>
-            {dayjs(next.startsAt).format("dddd, D MMMM")} · {timeRange(next)}
-          </Text>
-          <Text style={{ fontSize: 13 }}>{next.lessonTitle ?? "Занятие"}</Text>
-        </div>
-      ) : null}
+      {attentionBlock}
+      {scheduleBlock}
     </div>
   );
 }

@@ -4548,10 +4548,11 @@ html[data-theme="light"] .app-header .settings-theme-toggle__btn--active {
   background: rgba(255, 255, 255, 0.92);
 }
 
-/* Модалка входа: выравнивание шапки и тела */
+/* Модалка входа: убираем padding у content (у Ant Design он оставляет «полоску» фона над шапкой) */
 .app-auth-modal.ant-modal .ant-modal-content {
   border-radius: 18px;
   overflow: hidden;
+  padding: 0;
 }
 
 .app-auth-modal.ant-modal .ant-modal-header {
@@ -4562,6 +4563,7 @@ html[data-theme="light"] .app-header .settings-theme-toggle__btn--active {
   align-items: center;
   border-bottom: 1px solid var(--surface-stroke);
   background: color-mix(in srgb, var(--surface-floating) 94%, transparent);
+  border-radius: 18px 18px 0 0;
 }
 
 .app-auth-modal.ant-modal .ant-modal-header .ant-modal-title {
@@ -4574,8 +4576,9 @@ html[data-theme="light"] .app-header .settings-theme-toggle__btn--active {
   line-height: 1.25;
 }
 
+/* Крестик — по центру шапки (не всего окна): при padding: 0 нельзя top: 50% от content) */
 .app-auth-modal.ant-modal .ant-modal-close {
-  top: 50%;
+  top: 26px;
   margin-top: 0;
   transform: translateY(-50%);
   inset-inline-end: 12px;

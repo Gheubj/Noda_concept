@@ -22,7 +22,10 @@ import { useHomeSchoolAssignments } from "@/hooks/useHomeSchoolAssignments";
 import { HomeSchedulePreview, type SchedulePreviewSlot } from "@/app/HomeSchedulePreview";
 import { HomeUpcomingHomework } from "@/app/HomeUpcomingHomework";
 import { HomeTeacherSummary } from "@/app/HomeTeacherSummary";
-import { HomeSchoolStudentBanner } from "@/app/HomeSchoolStudentBanner";
+import {
+  HomeSchoolStudentBanner,
+  shouldShowHomeSchoolStudentBanner
+} from "@/app/HomeSchoolStudentBanner";
 import {
   HomeSchoolStudentWelcome,
   type SchoolStudentSummary
@@ -461,6 +464,24 @@ function AuthedHome({ user }: { user: SessionUser }) {
 
   const greeting = useMemo(() => greetingWithPhase(), []);
 
+  const schoolBannerProps = useMemo(
+    () => ({
+      slots: scheduleSlots,
+      scheduleReady,
+      scheduleLoading: enrollmentsCount > 0 && !scheduleReady,
+      enrollmentsCount,
+      attentionCount: schoolSummary.assignmentAttentionCount ?? 0,
+      summaryLoading: schoolSummaryLoading
+    }),
+    [
+      scheduleSlots,
+      scheduleReady,
+      enrollmentsCount,
+      schoolSummary.assignmentAttentionCount,
+      schoolSummaryLoading
+    ]
+  );
+
   const quickLinks: QuickLink[] = useMemo(() => {
     const links: QuickLink[] = [];
     links.push({
@@ -558,16 +579,9 @@ function AuthedHome({ user }: { user: SessionUser }) {
               />
             </HomeReactiveSurface>
           ) : null}
-          {schoolStudent ? (
+          {schoolStudent && shouldShowHomeSchoolStudentBanner(schoolBannerProps) ? (
             <HomeReactiveSurface>
-              <HomeSchoolStudentBanner
-                slots={scheduleSlots}
-                scheduleReady={scheduleReady}
-                scheduleLoading={enrollmentsCount > 0 && !scheduleReady}
-                enrollmentsCount={enrollmentsCount}
-                attentionCount={schoolSummary.assignmentAttentionCount ?? 0}
-                summaryLoading={schoolSummaryLoading}
-              />
+              <HomeSchoolStudentBanner {...schoolBannerProps} />
             </HomeReactiveSurface>
           ) : null}
           {directStudent ? (
