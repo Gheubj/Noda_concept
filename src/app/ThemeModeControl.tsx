@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { LaptopOutlined, MoonOutlined, SunOutlined } from "@ant-design/icons";
+import { LaptopOutlined } from "@ant-design/icons";
 import { useThemeStore, type ThemeMode } from "@/store/useThemeStore";
 
 type Props = {
@@ -8,13 +8,31 @@ type Props = {
 };
 
 const MODES: { value: ThemeMode; label: string; short: string; icon: ReactNode }[] = [
-  { value: "light", label: "Светлая", short: "Свет", icon: <SunOutlined className="settings-theme-toggle__icon" /> },
-  { value: "dark", label: "Тёмная", short: "Тёмн", icon: <MoonOutlined className="settings-theme-toggle__icon" /> },
+  {
+    value: "light",
+    label: "Светлая",
+    short: "Свет",
+    icon: (
+      <span className="settings-theme-toggle__icon settings-theme-toggle__icon--emoji" aria-hidden>
+        ☀️
+      </span>
+    )
+  },
+  {
+    value: "dark",
+    label: "Тёмная",
+    short: "Тёмн",
+    icon: (
+      <span className="settings-theme-toggle__icon settings-theme-toggle__icon--emoji" aria-hidden>
+        🌙
+      </span>
+    )
+  },
   {
     value: "system",
     label: "Система",
     short: "Авто",
-    icon: <LaptopOutlined className="settings-theme-toggle__icon" />
+    icon: <LaptopOutlined className="settings-theme-toggle__icon settings-theme-toggle__icon--laptop" />
   }
 ];
 

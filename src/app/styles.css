@@ -4147,9 +4147,18 @@ html[data-theme="dark"] .home-v2__aurora {
 .home-v2__hello-sub {
   margin: 0;
   color: var(--app-muted);
-  font-size: 15px;
-  line-height: 1.55;
-  max-width: 60ch;
+  font-size: clamp(13px, 1.85vw, 15px);
+  line-height: 1.45;
+  max-width: none;
+  white-space: nowrap;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.home-v2__hello-sub::-webkit-scrollbar {
+  display: none;
 }
 
 .home-v2__quicklinks {
@@ -4265,7 +4274,15 @@ html[data-theme="dark"] .home-v2__aurora {
 .home-v2__hello-glyph {
   display: inline-flex;
   flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
   filter: drop-shadow(0 6px 14px color-mix(in srgb, var(--app-accent) 25%, transparent));
+}
+
+.home-v2__hello-glyph-emoji {
+  font-size: clamp(2rem, 4.2vw, 2.85rem);
+  line-height: 1;
+  display: inline-block;
 }
 
 .home-v2__hello-greet {
@@ -4406,9 +4423,20 @@ html[data-theme="dark"] .settings-theme-toggle__btn--active {
 }
 
 .settings-theme-toggle__icon {
-  font-size: 16px;
   line-height: 1;
   opacity: 0.88;
+}
+
+.settings-theme-toggle__icon--laptop {
+  font-size: 18px;
+}
+
+.settings-theme-toggle__icon--emoji {
+  font-size: 22px;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .settings-theme-toggle--header {
@@ -4421,6 +4449,14 @@ html[data-theme="dark"] .settings-theme-toggle__btn--active {
   min-height: 30px;
   padding-inline: 8px;
   font-size: 12px;
+}
+
+.settings-theme-toggle--header .settings-theme-toggle__icon--emoji {
+  font-size: 19px;
+}
+
+.settings-theme-toggle--header .settings-theme-toggle__icon--laptop {
+  font-size: 16px;
 }
 
 html[data-theme="light"] .app-header .settings-theme-toggle {

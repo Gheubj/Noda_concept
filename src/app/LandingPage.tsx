@@ -48,65 +48,13 @@ function greetingWithPhase(): { line: string; phase: GreetingPhase } {
   return { line: "Доброй ночи", phase: "night" };
 }
 
+/** День / ночь в духе системных символов (☀️ / 🌙). */
 function GreetingGlyph({ phase }: { phase: GreetingPhase }) {
-  const common = { width: 36, height: 36, viewBox: "0 0 40 40", "aria-hidden": true as const };
-  if (phase === "night") {
-    return (
-      <svg {...common}>
-        <defs>
-          <linearGradient id="gg-moon" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stopColor="#a5b4fc" />
-            <stop offset="100%" stopColor="#6366f1" />
-          </linearGradient>
-        </defs>
-        <circle cx="14" cy="14" r="5" fill="url(#gg-moon)" opacity="0.9" />
-        <circle cx="22" cy="22" r="9" fill="none" stroke="url(#gg-moon)" strokeWidth="2.2" />
-        <path d="M28 10l1.5 3 3.2.2-2.4 2.4.6 3.2-3-1.6-3 1.6.6-3.2-2.4-2.4 3.2-.2z" fill="#fde68a" opacity="0.85" />
-      </svg>
-    );
-  }
-  if (phase === "dawn") {
-    return (
-      <svg {...common}>
-        <defs>
-          <linearGradient id="gg-dawn" x1="0" y1="1" x2="1" y2="0">
-            <stop offset="0%" stopColor="#fb7185" />
-            <stop offset="55%" stopColor="#fbbf24" />
-            <stop offset="100%" stopColor="#93c5fd" />
-          </linearGradient>
-        </defs>
-        <path d="M4 28 Q20 8 36 28 Z" fill="url(#gg-dawn)" opacity="0.95" />
-        <circle cx="28" cy="12" r="5" fill="#fef3c7" opacity="0.95" />
-      </svg>
-    );
-  }
-  if (phase === "evening") {
-    return (
-      <svg {...common}>
-        <defs>
-          <linearGradient id="gg-eve" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stopColor="#f97316" />
-            <stop offset="100%" stopColor="#7c3aed" />
-          </linearGradient>
-        </defs>
-        <path d="M2 30h36" stroke="url(#gg-eve)" strokeWidth="3" strokeLinecap="round" />
-        <circle cx="30" cy="10" r="6" fill="#fdba74" />
-      </svg>
-    );
-  }
+  const glyph = phase === "night" ? "🌙" : "☀️";
   return (
-    <svg {...common}>
-      <defs>
-        <radialGradient id="gg-sun" cx="50%" cy="50%" r="50%">
-          <stop offset="0%" stopColor="#fde047" />
-          <stop offset="100%" stopColor="#f59e0b" />
-        </radialGradient>
-      </defs>
-      <circle cx="20" cy="20" r="10" fill="url(#gg-sun)" />
-      <g stroke="#fbbf24" strokeWidth="2" strokeLinecap="round" opacity="0.85">
-        <path d="M20 4v3M20 33v3M36 20h-3M7 20H4M31.5 8.5l-2 2M10.5 29.5l-2 2M31.5 31.5l-2-2M10.5 10.5l-2-2" />
-      </g>
-    </svg>
+    <span className="home-v2__hello-glyph-emoji" aria-hidden>
+      {glyph}
+    </span>
   );
 }
 
@@ -565,11 +513,13 @@ function AuthedHome({ user }: { user: SessionUser }) {
             <span className="home-v2__hello-glyph">
               <GreetingGlyph phase={greeting.phase} />
             </span>
-            <span className="home-v2__hello-greet">{greeting.line}</span>
+            <span className="home-v2__hello-greet">
+              {greeting.line},
+            </span>
           </div>
           <h1 className="home-v2__hello">{user.nickname}</h1>
           <p className="home-v2__hello-sub">
-            Короткая сводка и быстрый вход в разделы. Всё, что нужно — на одном экране.
+            Короткая сводка и быстрый вход в разделы.&nbsp;Всё, что нужно — на одном экране.
           </p>
         </header>
 
