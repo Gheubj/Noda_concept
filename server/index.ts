@@ -20,7 +20,8 @@ import {
   persistRefreshToken,
   randomJoinCode,
   roleGuard,
-  rotateRefreshToken,
+  performRefreshTokenRotation,
+  revokeAllRefreshTokensForJwt,
   setRefreshCookie,
   signAccessToken,
   signRefreshToken,
@@ -358,16 +359,19 @@ app.post("/api/auth/login", authLimiter, async (req, res) => {
 app.post("/api/auth/refresh", async (req, res) => {
   try {
     const oldToken = readRefreshTokenFromRequest(req);
-    const decoded = await rotateRefreshToken(oldToken);
-    if (!decoded) {
+    if (!oldToken) {
       clearRefreshCookie(res);
       res.status(401).json({ error: "Invalid refresh token" });
       return;
     }
-    const newAccess = signAccessToken(decoded);
-    const newRefresh = signRefreshToken(decoded);
-    await persistRefreshToken(decoded.sub, newRefresh);
-    setRefreshCookie(res, newRefresh);
+    const rotated = await performRefreshTokenRotation(oldToken);
+    if (!rotated) {
+      clearRefreshCookie(res);
+      res.status(401).json({ error: "Invalid refresh token" });
+      return;
+    }
+    const newAccess = signAccessToken(rotated.decoded);
+    setRefreshCookie(res, rotated.newRefreshJwt);
     res.json({ accessToken: newAccess });
   } catch (err) {
     // eslint-disable-next-line no-console
@@ -382,10 +386,7 @@ app.post("/api/auth/refresh", async (req, res) => {
 app.post("/api/auth/logout", async (req, res) => {
   const refresh = readRefreshTokenFromRequest(req);
   if (refresh) {
-    const decoded = await rotateRefreshToken(refresh);
-    if (decoded) {
-      await prisma.refreshToken.deleteMany({ where: { userId: decoded.sub } });
-    }
+    await revokeAllRefreshTokensForJwt(refresh);
   }
   clearRefreshCookie(res);
   res.json({ ok: true });

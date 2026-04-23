@@ -104,22 +104,63 @@ export function readRefreshTokenFromRequest(req: Request): string | undefined {
   return c?.nodly_refresh ?? c?.noda_refresh;
 }
 
-export async function rotateRefreshToken(oldToken: string | undefined) {
-  if (!oldToken) {
-    return null;
-  }
+/**
+ * Атомарно: снять старый refresh в БД и записать новый в одной транзакции.
+ * Иначе при падении persist после delete сессия «ломается» (500, затем 401).
+ * Параллельные POST /refresh: только один deleteMany с count=1, остальные получают 0 строк — без P2025.
+ */
+export async function performRefreshTokenRotation(
+  oldToken: string
+): Promise<{ decoded: SessionPayload; newRefreshJwt: string } | null> {
   try {
     const decoded = jwt.verify(oldToken, config.jwtRefreshSecret) as SessionPayload;
-    const stored = await prisma.refreshToken.findFirst({
-      where: { userId: decoded.sub, tokenHash: hashToken(oldToken) }
-    });
-    if (!stored || stored.expiresAt.getTime() < Date.now()) {
+    if (!decoded?.sub) {
       return null;
     }
-    await prisma.refreshToken.delete({ where: { id: stored.id } });
-    return decoded;
+    const oldHash = hashToken(oldToken);
+    const newRefreshJwt = signRefreshToken(decoded);
+    const newHash = hashToken(newRefreshJwt);
+    const expiresAt = new Date(Date.now() + config.refreshTokenTtlSec * 1000);
+
+    const ok = await prisma.$transaction(async (tx) => {
+      const del = await tx.refreshToken.deleteMany({
+        where: {
+          userId: decoded.sub,
+          tokenHash: oldHash,
+          expiresAt: { gt: new Date() }
+        }
+      });
+      if (del.count === 0) {
+        return false;
+      }
+      await tx.refreshToken.create({
+        data: {
+          userId: decoded.sub,
+          tokenHash: newHash,
+          expiresAt
+        }
+      });
+      return true;
+    });
+
+    if (!ok) {
+      return null;
+    }
+    return { decoded, newRefreshJwt };
   } catch {
     return null;
+  }
+}
+
+/** Выход: инвалидировать все refresh-сессии пользователя по jwt из cookie (без find+delete по id). */
+export async function revokeAllRefreshTokensForJwt(refresh: string): Promise<void> {
+  try {
+    const decoded = jwt.verify(refresh, config.jwtRefreshSecret) as SessionPayload;
+    if (decoded?.sub) {
+      await prisma.refreshToken.deleteMany({ where: { userId: decoded.sub } });
+    }
+  } catch {
+    /* невалидный jwt — просто чистим cookie на клиенте */
   }
 }
 

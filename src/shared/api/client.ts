@@ -33,6 +33,21 @@ function readPersistedAccessToken(): string {
 
 accessToken = readPersistedAccessToken();
 
+/** Один in-flight POST /api/auth/refresh — иначе два параллельных /me дают два refresh и гонку на сервере. */
+let refreshCookiePromise: Promise<Response> | null = null;
+
+export function postAuthRefresh(): Promise<Response> {
+  if (!refreshCookiePromise) {
+    refreshCookiePromise = fetch(`${API_BASE}/api/auth/refresh`, {
+      method: "POST",
+      credentials: "include"
+    }).finally(() => {
+      refreshCookiePromise = null;
+    });
+  }
+  return refreshCookiePromise;
+}
+
 export function getApiBaseUrl() {
   return API_BASE;
 }
@@ -106,10 +121,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     headers
   });
   if (response.status === 401 && path !== "/api/auth/refresh") {
-    const refresh = await fetch(`${API_BASE}/api/auth/refresh`, {
-      method: "POST",
-      credentials: "include"
-    });
+    const refresh = await postAuthRefresh();
     if (refresh.ok) {
       const data = (await refresh.json()) as { accessToken?: string };
       if (data.accessToken) {
@@ -146,10 +158,7 @@ async function requestForm<T>(path: string, formData: FormData): Promise<T> {
     headers
   });
   if (response.status === 401 && path !== "/api/auth/refresh") {
-    const refresh = await fetch(`${API_BASE}/api/auth/refresh`, {
-      method: "POST",
-      credentials: "include"
-    });
+    const refresh = await postAuthRefresh();
     if (refresh.ok) {
       const data = (await refresh.json()) as { accessToken?: string };
       if (data.accessToken) {

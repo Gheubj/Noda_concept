@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { apiClient, getApiBaseUrl, setAccessToken } from "@/shared/api/client";
+import { apiClient, postAuthRefresh, setAccessToken } from "@/shared/api/client";
 
 export type UserRole = "teacher" | "student" | "admin";
 export type StudentMode = "school" | "direct";
@@ -119,10 +119,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
       if (get().user) {
         return;
       }
-      const res = await fetch(`${getApiBaseUrl()}/api/auth/refresh`, {
-        method: "POST",
-        credentials: "include"
-      });
+      const res = await postAuthRefresh();
       if (res.ok) {
         const data = (await res.json()) as { accessToken?: string };
         if (data.accessToken) {
