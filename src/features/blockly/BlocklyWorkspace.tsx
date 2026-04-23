@@ -33,13 +33,13 @@ const NODLY_BLOCKLY_DARK = Blockly.Theme.defineTheme("nodly_dark", {
   }
 });
 
-/** Сдержанные hex: события — терракота, данные — бывший синий событий, действия — отдельный холодный сланец. */
+/** Сдержанные hex: события — терракота, данные — бывший синий событий, действия — тёмно-зелёный. */
 const BLOCK_COLOR = {
   events: "#b85c48",
   model: "#6a5ba8",
   modelTypes: "#5d5294",
   predict: "#2d8f8a",
-  control: "#5f7188",
+  control: "#355f48",
   data: "#4a6ab8",
   output: "#4a9a8f",
   deprecated: "#7a8294",
