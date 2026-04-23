@@ -1,5 +1,5 @@
 import bcrypt from "bcryptjs";
-import jwt from "jsonwebtoken";
+import jwt, { type JwtPayload } from "jsonwebtoken";
 import { randomBytes, createHash } from "crypto";
 import type { Request, Response, NextFunction } from "express";
 import type { StudentMode, UserRole } from "@prisma/client";
@@ -11,6 +11,20 @@ export interface SessionPayload {
   role: UserRole;
 }
 
+/** verify() добавляет exp/iat — их нельзя передавать в sign() вместе с expiresIn. */
+function narrowSessionClaims(input: SessionPayload | JwtPayload): SessionPayload {
+  const role = (input as SessionPayload).role;
+  const subRaw = input.sub;
+  const sub = typeof subRaw === "string" ? subRaw : subRaw != null ? String(subRaw) : "";
+  if (!sub || role == null) {
+    throw new TypeError("JWT payload must include sub and role");
+  }
+  if (role !== "teacher" && role !== "student" && role !== "admin") {
+    throw new TypeError("Invalid role in JWT");
+  }
+  return { sub, role };
+}
+
 export function hashPassword(password: string) {
   return bcrypt.hash(password, 10);
 }
@@ -19,12 +33,14 @@ export function verifyPassword(password: string, hash: string) {
   return bcrypt.compare(password, hash);
 }
 
-export function signAccessToken(payload: SessionPayload) {
-  return jwt.sign(payload, config.jwtAccessSecret, { expiresIn: config.accessTokenTtlSec });
+export function signAccessToken(payload: SessionPayload | JwtPayload) {
+  const claims = narrowSessionClaims(payload);
+  return jwt.sign(claims, config.jwtAccessSecret, { expiresIn: config.accessTokenTtlSec });
 }
 
-export function signRefreshToken(payload: SessionPayload) {
-  return jwt.sign(payload, config.jwtRefreshSecret, { expiresIn: config.refreshTokenTtlSec });
+export function signRefreshToken(payload: SessionPayload | JwtPayload) {
+  const claims = narrowSessionClaims(payload);
+  return jwt.sign(claims, config.jwtRefreshSecret, { expiresIn: config.refreshTokenTtlSec });
 }
 
 const YANDEX_OAUTH_STATE_TYP = "yandex_oauth";
@@ -113,10 +129,8 @@ export async function performRefreshTokenRotation(
   oldToken: string
 ): Promise<{ decoded: SessionPayload; newRefreshJwt: string } | null> {
   try {
-    const decoded = jwt.verify(oldToken, config.jwtRefreshSecret) as SessionPayload;
-    if (!decoded?.sub) {
-      return null;
-    }
+    const raw = jwt.verify(oldToken, config.jwtRefreshSecret) as JwtPayload;
+    const decoded = narrowSessionClaims(raw);
     const oldHash = hashToken(oldToken);
     const newRefreshJwt = signRefreshToken(decoded);
     const newHash = hashToken(newRefreshJwt);
@@ -155,10 +169,9 @@ export async function performRefreshTokenRotation(
 /** Выход: инвалидировать все refresh-сессии пользователя по jwt из cookie (без find+delete по id). */
 export async function revokeAllRefreshTokensForJwt(refresh: string): Promise<void> {
   try {
-    const decoded = jwt.verify(refresh, config.jwtRefreshSecret) as SessionPayload;
-    if (decoded?.sub) {
-      await prisma.refreshToken.deleteMany({ where: { userId: decoded.sub } });
-    }
+    const raw = jwt.verify(refresh, config.jwtRefreshSecret) as JwtPayload;
+    const decoded = narrowSessionClaims(raw);
+    await prisma.refreshToken.deleteMany({ where: { userId: decoded.sub } });
   } catch {
     /* невалидный jwt — просто чистим cookie на клиенте */
   }
@@ -180,7 +193,8 @@ export function authRequired(req: AuthenticatedRequest, res: Response, next: Nex
     return;
   }
   try {
-    req.session = jwt.verify(token, config.jwtAccessSecret) as SessionPayload;
+    const verified = jwt.verify(token, config.jwtAccessSecret) as JwtPayload;
+    req.session = narrowSessionClaims(verified);
     next();
   } catch {
     res.status(401).json({ error: "Unauthorized" });
