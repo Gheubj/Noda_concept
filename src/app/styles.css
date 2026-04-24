@@ -5163,3 +5163,10 @@ html[data-theme="light"] .landing-v2__showcase--light .nodly-promo-metrics__loss
     width 0.32s cubic-bezier(0.22, 1, 0.36, 1),
     height 0.32s cubic-bezier(0.22, 1, 0.36, 1) !important;
 }
+
+/* SPA-навигация из тура: View Transitions (Chrome 111+, Safari 18+, Edge) */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 0.38s;
+  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+}

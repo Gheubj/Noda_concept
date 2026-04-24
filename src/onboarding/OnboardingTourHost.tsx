@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from "react";
+import { flushSync } from "react-dom";
 import { Tour, type TourProps } from "antd";
 import { useLocation, useNavigate } from "react-router-dom";
 import type { SessionUser } from "@/store/useSessionStore";
@@ -26,6 +27,18 @@ type Props = {
   /** Hide global tour in lesson mini-studio embed */
   disabled?: boolean;
 };
+
+/** SPA-переход с плавной сменой вида там, где есть View Transitions API */
+function navigateForTour(to: string, navigate: (path: string) => void) {
+  const doc = document as Document & { startViewTransition?: (cb: () => void) => void };
+  if (typeof doc.startViewTransition === "function") {
+    doc.startViewTransition(() => {
+      flushSync(() => navigate(to));
+    });
+  } else {
+    navigate(to);
+  }
+}
 
 export function OnboardingTourHost({ user, disabled }: Props) {
   const navigate = useNavigate();
@@ -70,8 +83,7 @@ export function OnboardingTourHost({ user, disabled }: Props) {
         return;
       }
       if (def.navigateTo && !def.routeMatch(pathname)) {
-        setOpen(false);
-        navigate(def.navigateTo);
+        navigateForTour(def.navigateTo, navigate);
         return;
       }
       if (!def.routeMatch(pathname)) {
@@ -87,8 +99,7 @@ export function OnboardingTourHost({ user, disabled }: Props) {
           bump();
           return;
         }
-        setOpen(false);
-        navigate(def.navigateTo ?? "/");
+        navigateForTour(def.navigateTo ?? "/", navigate);
         return;
       }
       applyPrepare(def);
