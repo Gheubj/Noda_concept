@@ -1,4 +1,13 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactElement } from "react";
+import {
+  Suspense,
+  lazy,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ReactElement
+} from "react";
 import {
   Badge,
   Button,
@@ -17,7 +26,6 @@ import { SettingOutlined, UserOutlined } from "@ant-design/icons";
 import { Link, NavLink, Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import { AccountPage } from "@/app/AccountPage";
 import { LandingPage } from "@/app/LandingPage";
-import { StudioPage } from "@/app/StudioPage";
 import { ClassPage } from "@/app/ClassPage";
 import { LearningPage } from "@/app/LearningPage";
 import { LessonPlayerPage } from "@/app/LessonPlayerPage";
@@ -41,6 +49,9 @@ import {
 
 const { Header } = Layout;
 const { Title, Paragraph, Text } = Typography;
+const StudioPage = lazy(() =>
+  import("@/app/StudioPage").then((module) => ({ default: module.StudioPage }))
+);
 
 function OpenSettingsDrawerAndHome() {
   const navigate = useNavigate();
@@ -69,7 +80,7 @@ function RequireUser({ children }: { children: ReactElement }) {
 export function App() {
   const htmlTheme = useHtmlDataTheme();
   const headerWordmark =
-    htmlTheme === "light" ? "/nodly-wordmark-outline.png" : "/nodly-wordmark-white.png";
+    htmlTheme === "light" ? "/nodly-wordmark-outline.webp" : "/nodly-wordmark-white.webp";
   const isPhone = useIsPhone();
   const location = useLocation();
   const studioQs = location.pathname === "/studio" ? new URLSearchParams(location.search) : null;
@@ -451,7 +462,9 @@ export function App() {
           path="/studio"
           element={
             <RequireUser>
-              <StudioPage />
+              <Suspense fallback={<div className="app-content">Загрузка редактора…</div>}>
+                <StudioPage />
+              </Suspense>
             </RequireUser>
           }
         />
