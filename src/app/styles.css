@@ -1273,8 +1273,7 @@ html[data-theme="dark"] .studio-stage-panel__bubble {
 .studio-rename-project-modal .ant-modal-header {
   display: flex;
   align-items: center;
-  min-height: 48px;
-  padding-right: 48px;
+  padding-right: 44px;
 }
 
 .studio-rename-project-modal .ant-modal-header .ant-modal-title {
@@ -1282,8 +1281,8 @@ html[data-theme="dark"] .studio-stage-panel__bubble {
 }
 
 .studio-rename-project-modal .ant-modal-close {
-  top: 50%;
-  transform: translateY(-50%);
+  top: 6px;
+  inset-inline-end: 8px;
 }
 
 .data-library--drawer {
@@ -4575,13 +4574,13 @@ html[data-theme="light"] .app-header .settings-theme-toggle__btn--active {
 }
 
 /* Модалка входа: убираем padding у content (у Ant Design он оставляет «полоску» фона над шапкой) */
-.app-auth-modal.ant-modal .ant-modal-content {
+.app-auth-modal .ant-modal .ant-modal-content {
   border-radius: 18px;
   overflow: hidden;
   padding: 0;
 }
 
-.app-auth-modal.ant-modal .ant-modal-header {
+.app-auth-modal .ant-modal .ant-modal-header {
   margin: 0;
   padding: 0 52px 0 0;
   min-height: 52px;
@@ -4592,7 +4591,7 @@ html[data-theme="light"] .app-header .settings-theme-toggle__btn--active {
   border-radius: 18px 18px 0 0;
 }
 
-.app-auth-modal.ant-modal .ant-modal-header .ant-modal-title {
+.app-auth-modal .ant-modal .ant-modal-header .ant-modal-title {
   flex: 1;
   margin: 0;
   padding: 14px 0 14px 20px;
@@ -4603,10 +4602,8 @@ html[data-theme="light"] .app-header .settings-theme-toggle__btn--active {
 }
 
 /* Крестик — по центру шапки (не всего окна): при padding: 0 нельзя top: 50% от content) */
-.app-auth-modal.ant-modal .ant-modal-close {
-  top: 26px;
-  margin-top: 0;
-  transform: translateY(-50%);
+.app-auth-modal .ant-modal .ant-modal-close {
+  top: 6px;
   inset-inline-end: 12px;
   width: 40px;
   height: 40px;
@@ -4615,15 +4612,15 @@ html[data-theme="light"] .app-header .settings-theme-toggle__btn--active {
   justify-content: center;
 }
 
-.app-auth-modal.ant-modal .ant-modal-body {
+.app-auth-modal .ant-modal .ant-modal-body {
   padding: 16px 20px 20px;
 }
 
-.app-auth-modal.ant-modal .ant-tabs-nav {
+.app-auth-modal .ant-modal .ant-tabs-nav {
   margin-bottom: 0 !important;
 }
 
-.app-auth-modal.ant-modal .ant-tabs-tab {
+.app-auth-modal .ant-modal .ant-tabs-tab {
   padding: 10px 0 !important;
 }
 
@@ -5570,7 +5567,7 @@ html[data-theme="light"] .landing-v2__showcase--light .nodly-promo-metrics__loss
   }
 
   /* Auth-модалка: в полный экран, но скролл колеблющийся (клавиатура iOS) */
-  .app-auth-modal.ant-modal .ant-modal-content {
+  .app-auth-modal .ant-modal .ant-modal-content {
     border-radius: 0 !important;
   }
 
@@ -6096,11 +6093,11 @@ html[data-theme="light"] .landing-v2__showcase--light .nodly-promo-metrics__loss
    8. AUTH MODAL
    ========================================================================= */
 @media (max-width: 480px) {
-  .app-auth-modal.ant-modal .ant-modal-header .ant-modal-title {
+  .app-auth-modal .ant-modal .ant-modal-header .ant-modal-title {
     padding: 14px 0 14px 16px;
     font-size: 17px;
   }
-  .app-auth-modal.ant-modal .ant-modal-body {
+  .app-auth-modal .ant-modal .ant-modal-body {
     padding: 14px 16px 18px;
   }
 }
