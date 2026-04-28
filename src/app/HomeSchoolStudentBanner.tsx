@@ -70,7 +70,7 @@ export function HomeSchoolStudentBanner({
         message="Подключитесь к классу"
         description={
           <Text style={{ fontSize: 13 }}>
-            Введите код класса в <Link to="/account">личном кабинете</Link> (блок «Код класса»), чтобы увидеть
+            Введите код класса в <Link to="/class">Обучение → Мой класс</Link>, чтобы увидеть
             задания и расписание.
           </Text>
         }

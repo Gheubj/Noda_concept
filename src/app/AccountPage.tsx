@@ -10,7 +10,6 @@ export function AccountPage() {
   const [messageApi, contextHolder] = message.useMessage();
   const navigate = useNavigate();
   const { user, refreshMe, logout, setUser } = useSessionStore();
-  const [joinCode, setJoinCode] = useState("");
   const [deletePassword, setDeletePassword] = useState("");
   const [deletePhrase, setDeletePhrase] = useState("");
   const [deleteAck, setDeleteAck] = useState(false);
@@ -36,16 +35,6 @@ export function AccountPage() {
       </div>
     );
   }
-
-  const handleJoinClassroom = async () => {
-    try {
-      await apiClient.post("/api/classrooms/join", { code: joinCode });
-      await refreshMe();
-      messageApi.success("Класс подключен");
-    } catch (e) {
-      messageApi.error(toUserErrorMessage(e));
-    }
-  };
 
   const handleNicknameSave = async () => {
     try {
@@ -109,26 +98,19 @@ export function AccountPage() {
                     Режим: {user.studentMode === "school" ? "со школой (по коду класса)" : "самостоятельное обучение"}
                   </Text>
                 ) : null}
+                {user.role === "student" && user.studentMode === "school" ? (
+                  <Text>
+                    Класс:{" "}
+                    {user.enrollments && user.enrollments.length > 0
+                      ? user.enrollments.map((e) => e.classroomTitle).join(", ")
+                      : "не подключен"}
+                  </Text>
+                ) : null}
                 <Button danger onClick={() => void logout()}>
                   Выйти
                 </Button>
               </Space>
             </Card>
-            {user.role === "student" && user.studentMode === "school" ? (
-              <Card title="Код класса" data-onboarding="account-join-class">
-                <Space wrap>
-                  <Input
-                    placeholder="Код класса"
-                    value={joinCode}
-                    onChange={(e) => setJoinCode(e.target.value)}
-                    style={{ width: 200 }}
-                  />
-                  <Button type="primary" onClick={() => void handleJoinClassroom()}>
-                    Присоединиться
-                  </Button>
-                </Space>
-              </Card>
-            ) : null}
             <Card title="Удаление аккаунта" styles={{ header: { borderBottomColor: "rgba(255, 77, 79, 0.35)" } }}>
               <Space direction="vertical" style={{ width: "100%", maxWidth: 480 }} size="middle">
                 <Paragraph type="secondary" style={{ marginBottom: 0 }}>

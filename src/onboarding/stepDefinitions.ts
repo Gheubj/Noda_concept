@@ -36,7 +36,7 @@ const headerAccount: OnboardingStepDef = {
   navigateTo: "/",
   targetAttr: "header-account",
   title: "Личный кабинет",
-  description: "Ник, email, режим ученика, код класса и безопасность аккаунта.",
+  description: "Ник, email, режим ученика и безопасность аккаунта.",
   placement: "bottom"
 };
 
@@ -137,7 +137,7 @@ const accountProfile: OnboardingStepDef = {
   navigateTo: "/account",
   targetAttr: "account-profile",
   title: "Профиль",
-  description: "Ник и выход из аккаунта. Для школьников — присоединение к классу по коду.",
+  description: "Ник, роль, текущий класс и выход из аккаунта.",
   placement: "bottom"
 };
 
@@ -257,12 +257,12 @@ const studentClassInfo: OnboardingStepDef = {
   optional: true
 };
 
-const accountJoinSchool: OnboardingStepDef = {
-  routeMatch: starts("/account"),
-  navigateTo: "/account",
-  targetAttr: "account-join-class",
+const studentClassJoinCode: OnboardingStepDef = {
+  routeMatch: starts("/class"),
+  navigateTo: "/class",
+  targetAttr: "student-class-join-code",
   title: "Код класса",
-  description: "Если ещё не в классе — введи код от учителя здесь.",
+  description: "Если ещё не в классе — введи код от учителя здесь, во вкладке «Мой класс».",
   placement: "top"
 };
 
@@ -293,7 +293,7 @@ export const STUDENT_SCHOOL_ONBOARDING_STEPS: OnboardingStepDef[] = [
   lessonPlayerFlow,
   ...STUDIO_ONBOARDING_STEPS,
   accountProfile,
-  accountJoinSchool
+  studentClassJoinCode
 ];
 
 /* --- Direct student --- */

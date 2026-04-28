@@ -1270,7 +1270,7 @@ export function TeacherPage() {
             }
           >
             <Paragraph type="secondary" style={{ marginTop: 0 }}>
-              Ученик в личном кабинете (режим «ученик школы») вводит этот код в поле «Код класса».
+              Ученик в разделе «Обучение → Мой класс» (режим «ученик школы») вводит этот код.
             </Paragraph>
             <Table<DashboardStudent>
               size="small"

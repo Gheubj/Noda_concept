@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { CheckOutlined } from "@ant-design/icons";
-import { Button, Card, Empty, Select, Space, Spin, Table, Tabs, Tag, Typography, message } from "antd";
+import { Button, Card, Empty, Input, Select, Space, Spin, Table, Tabs, Tag, Typography, message } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { Link, useNavigate } from "react-router-dom";
 import { useSessionStore } from "@/store/useSessionStore";
@@ -92,10 +92,22 @@ function needsAttention(row: StudentAssignmentRow): boolean {
 }
 
 export function StudentClassPage() {
-  const { user } = useSessionStore();
+  const { user, refreshMe } = useSessionStore();
   const [messageApi, contextHolder] = message.useMessage();
   const navigate = useNavigate();
   const enrollments = user?.enrollments ?? [];
+  const [joinCode, setJoinCode] = useState("");
+  const handleJoinClassroom = async () => {
+    try {
+      await apiClient.post("/api/classrooms/join", { code: joinCode.trim() });
+      await refreshMe();
+      setJoinCode("");
+      messageApi.success("Класс подключен");
+    } catch (e) {
+      messageApi.error("Не удалось подключиться к классу");
+    }
+  };
+
   const [assignments, setAssignments] = useState<StudentAssignmentRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [classFocusId, setClassFocusId] = useState<string>("");
@@ -416,13 +428,24 @@ export function StudentClassPage() {
 
   if (enrollments.length === 0) {
     return (
-      <Card>
+      <Card data-onboarding="student-class-join-code">
         <Title level={5} style={{ marginTop: 0 }}>
           Ты ещё не в классе
         </Title>
         <Paragraph type="secondary">
-          Попроси код у учителя и введи его в <Link to="/account">личном кабинете</Link> (блок «Код класса»).
+          Попроси код у учителя и введи его здесь.
         </Paragraph>
+        <Space wrap>
+          <Input
+            placeholder="Код класса"
+            value={joinCode}
+            onChange={(e) => setJoinCode(e.target.value)}
+            style={{ width: 220 }}
+          />
+          <Button type="primary" onClick={() => void handleJoinClassroom()}>
+            Присоединиться
+          </Button>
+        </Space>
       </Card>
     );
   }

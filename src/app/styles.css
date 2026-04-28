@@ -219,6 +219,18 @@ button.app-header-nav-link--button {
   vertical-align: middle;
 }
 
+.app-header-nav .app-header-nav-badge .ant-badge-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 16px;
+  height: 16px;
+  padding: 0;
+  line-height: 16px;
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+
 /* Как у «Главная» / «Разработка» / «Обучение»: та же высота и подложка hover */
 .app-header-nav .app-header-nav-badge .app-header-nav-link {
   display: inline-flex !important;
