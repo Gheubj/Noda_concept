@@ -162,17 +162,32 @@ const FEATURES: Feature[] = [
   {
     icon: <CodeOutlined />,
     title: "Визуальное программирование",
-    text: "Blockly с логикой, циклами и вызовами моделей. Старт — без классического кода."
+    text: "Понятные блоки с логикой, циклами и запуском моделей. Можно начать без классического кода."
+  },
+  {
+    icon: <BookOutlined />,
+    title: "Бесплатный модуль A",
+    text: "4 урока: введение в ИИ, регрессия, классификация и нейросети. Готовый примерный план уже внутри."
+  },
+  {
+    icon: <TeamOutlined />,
+    title: "Методика уровня сборных",
+    text: "Программа составлена и проверена тренерами сборной России и Испании по ИИ."
   },
   {
     icon: <DatabaseOutlined />,
     title: "Данные и обучение",
-    text: "Картинки и таблицы. Обучение и предсказания — внутри одного проекта."
+    text: "Изображения и таблицы в одном месте. Обучение, метрики и предсказания — в одном проекте."
   },
   {
     icon: <NodeIndexOutlined />,
     title: "Для класса и для себя",
-    text: "Классы, коды и задания от учителя — или свободный self-paced режим."
+    text: "Классы, коды, задания и проверка работ — или свободный self-paced режим для самостоятельного старта."
+  },
+  {
+    icon: <RocketOutlined />,
+    title: "Быстрый запуск",
+    text: "Работает в браузере без установки и сложной настройки. Начать можно за пару минут."
   }
 ];
 
@@ -203,7 +218,7 @@ const PATHS: GuestPath[] = [
     tag: "Self-paced",
     icon: <ExperimentOutlined />,
     title: "Учусь сам",
-    text: "Каталог уроков и свободные проекты в Blockly без привязки к школе.",
+    text: "Каталог уроков и свободные проекты в визуальном программировании без привязки к школе.",
     hint: "Роль «Ученик» · режим «Без учителя»"
   }
 ];
@@ -246,8 +261,9 @@ function GuestLanding() {
           </h1>
 
           <p className="landing-v2__lead">
-            Nodly соединяет визуальное программирование и машинное обучение
-            в единый поток. Без установки. Для школ, кружков и тех, кто учится сам.
+            Nodly соединяет визуальное программирование и машинное обучение в единый поток.
+            Бесплатный модуль A на 4 урока помогает быстро войти в тему, а программа проверена
+            тренерами сборной России и Испании по ИИ.
           </p>
 
           <div className="landing-v2__cta-row">
@@ -271,13 +287,19 @@ function GuestLanding() {
               <CheckCircleFilled /> Без установки
             </li>
             <li className="landing-v2__pill">
-              <CheckCircleFilled /> Blockly + ML
+              <CheckCircleFilled /> Визуальное программирование + ML
+            </li>
+            <li className="landing-v2__pill">
+              <CheckCircleFilled /> Бесплатный модуль A
+            </li>
+            <li className="landing-v2__pill">
+              <CheckCircleFilled /> 4 стартовых урока
             </li>
             <li className="landing-v2__pill">
               <CheckCircleFilled /> Школы и кружки
             </li>
             <li className="landing-v2__pill">
-              <CheckCircleFilled /> Русский язык
+              <CheckCircleFilled /> Проверено тренерами сборных РФ и Испании
             </li>
           </ul>
         </section>
@@ -347,16 +369,16 @@ function GuestLanding() {
               </p>
               <div className="landing-v2__showcase-stats">
                 <div className="landing-v2__stat">
-                  <div className="landing-v2__stat-k">Blockly</div>
-                  <div className="landing-v2__stat-v">2 уровня</div>
+                  <div className="landing-v2__stat-k">Формат</div>
+                  <div className="landing-v2__stat-v">Визуальное программирование</div>
                 </div>
                 <div className="landing-v2__stat">
-                  <div className="landing-v2__stat-k">Модели</div>
-                  <div className="landing-v2__stat-v">KNN · SVM · RF</div>
+                  <div className="landing-v2__stat-k">Бесплатный старт</div>
+                  <div className="landing-v2__stat-v">Модуль A · 4 урока</div>
                 </div>
                 <div className="landing-v2__stat">
-                  <div className="landing-v2__stat-k">Классы</div>
-                  <div className="landing-v2__stat-v">коды и задания</div>
+                  <div className="landing-v2__stat-k">Экспертиза</div>
+                  <div className="landing-v2__stat-v">Тренеры РФ и Испании</div>
                 </div>
               </div>
             </div>
@@ -511,7 +533,7 @@ function AuthedHome({ user }: { user: SessionUser }) {
     links.push({
       to: "/studio",
       title: "Разработка",
-      sub: "Blockly · модели · данные",
+      sub: "Визуальное программирование · модели · данные",
       icon: <CodeOutlined />
     });
     if (schoolStudent) {

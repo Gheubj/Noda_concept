@@ -5,7 +5,7 @@ import express from "express";
 import rateLimit from "express-rate-limit";
 import helmet from "helmet";
 import cookieParser from "cookie-parser";
-import type { Request, Response } from "express";
+import type { NextFunction, Request, Response } from "express";
 import { randomBytes, randomInt } from "crypto";
 import { z } from "zod";
 import type { Prisma } from "@prisma/client";
@@ -40,13 +40,20 @@ import {
 import { startHomeworkDueReminderScheduler } from "./homeworkDueReminders.js";
 import { registerLessonPdfUploadRoutes } from "./lessonPdfUpload.js";
 import { registerLessonImageUploadRoutes } from "./lessonImageUpload.js";
+import { logger } from "./logger.js";
 
 const app = express();
+type RequestWithMeta = Request & { requestId?: string };
 
 // За Railway/Vercel/любым reverse-proxy: нужно, чтобы req.ip приходил из X-Forwarded-For,
 // иначе express-rate-limit видит один IP прокси на всех клиентов, и rate-limit обходится.
 app.set("trust proxy", 1);
 app.disable("x-powered-by");
+app.use((req: RequestWithMeta, res: Response, next: NextFunction) => {
+  req.requestId = randomBytes(8).toString("hex");
+  res.setHeader("X-Request-Id", req.requestId);
+  next();
+});
 
 app.use(
   helmet({
@@ -90,6 +97,21 @@ const globalApiLimiter = rateLimit({
   legacyHeaders: false
 });
 app.use("/api", globalApiLimiter);
+app.use((req: RequestWithMeta, res: Response, next: NextFunction) => {
+  const started = Date.now();
+  res.on("finish", () => {
+    if (!req.path.startsWith("/api/health")) {
+      logger.info("http_request", {
+        requestId: req.requestId,
+        method: req.method,
+        path: req.path,
+        status: res.statusCode,
+        durationMs: Date.now() - started
+      });
+    }
+  });
+  next();
+});
 
 registerLmsRoutes(app);
 registerLessonPdfUploadRoutes(app);
@@ -118,6 +140,16 @@ const forgotPasswordLimiter = rateLimit({
 
 app.get("/api/health", (_req: Request, res: Response) => {
   res.json({ ok: true, service: "nodly-poc-server" });
+});
+
+app.get("/api/health/ready", async (_req: Request, res: Response) => {
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    res.json({ ok: true, db: "up" });
+  } catch (error) {
+    logger.error("health_ready_failed", error);
+    res.status(503).json({ ok: false, db: "down" });
+  }
 });
 
 /** PDF из `public/legal` — отдаём как вложение, чтобы не перехватывалось SPA fallback на фронте. */
@@ -374,8 +406,9 @@ app.post("/api/auth/refresh", async (req, res) => {
     setRefreshCookie(res, rotated.newRefreshJwt);
     res.json({ accessToken: newAccess });
   } catch (err) {
-    // eslint-disable-next-line no-console
-    console.error("[api/auth/refresh]", err);
+    logger.error("auth_refresh_failed", err, {
+      requestId: (req as RequestWithMeta).requestId
+    });
     res.status(500).json({
       error: "Refresh failed",
       ...(config.isProd ? {} : { detail: err instanceof Error ? err.message : String(err) })
@@ -1105,26 +1138,41 @@ async function ensureSpriteSeed() {
   }
 }
 
+app.use((err: unknown, req: RequestWithMeta, res: Response, _next: NextFunction) => {
+  logger.error("unhandled_api_error", err, {
+    requestId: req.requestId,
+    method: req.method,
+    path: req.path
+  });
+  if (res.headersSent) {
+    return;
+  }
+  res.status(500).json({
+    error: "Internal server error",
+    requestId: req.requestId
+  });
+});
+
 app.listen(config.port, async () => {
   try {
     await ensureSpriteSeed();
   } catch (error) {
-    // eslint-disable-next-line no-console
-    console.warn("Sprite seed skipped:", error);
+    logger.warn("sprite_seed_skipped", { error: error instanceof Error ? error.message : String(error) });
   }
   try {
     await ensureLessonTemplateSeed();
   } catch (error) {
-    // eslint-disable-next-line no-console
-    console.warn("Lesson template seed skipped:", error);
+    logger.warn("lesson_template_seed_skipped", {
+      error: error instanceof Error ? error.message : String(error)
+    });
   }
   try {
     await ensureLessonTemplateGuides();
   } catch (error) {
-    // eslint-disable-next-line no-console
-    console.warn("Lesson template guides skipped:", error);
+    logger.warn("lesson_template_guides_skipped", {
+      error: error instanceof Error ? error.message : String(error)
+    });
   }
   startHomeworkDueReminderScheduler();
-  // eslint-disable-next-line no-console
-  console.log(`Server started at http://localhost:${config.port}`);
+  logger.info("server_started", { port: config.port });
 });

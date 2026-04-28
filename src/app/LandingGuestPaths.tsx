@@ -46,7 +46,7 @@ export function LandingGuestPaths() {
           <Card size="small" title="Учусь сам" className="landing-guest-paths__card">
             <div className="landing-guest-paths__chip">Self-paced</div>
             <Paragraph type="secondary" style={{ marginBottom: 12, minHeight: 56 }}>
-              Уроки из каталога и свободные проекты в Blockly без привязки к школе.
+              Уроки из каталога и свободные проекты в визуальном программировании без привязки к школе.
             </Paragraph>
             <Button type="primary" block icon={<ExperimentOutlined />} onClick={openAuthModal}>
               Войти или зарегистрироваться
