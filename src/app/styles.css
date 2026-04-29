@@ -3475,9 +3475,10 @@ html[data-theme="light"] .blockly-palette-group-title {
 
 html[data-theme="light"] .landing-v2 {
   background:
-    radial-gradient(ellipse at 72% -8%, color-mix(in srgb, var(--app-accent) 10%, transparent), transparent 56%),
-    radial-gradient(ellipse at 8% 118%, color-mix(in srgb, #64748b 16%, transparent), transparent 52%),
-    var(--app-bg);
+    radial-gradient(ellipse at 74% -10%, color-mix(in srgb, var(--app-accent) 28%, transparent), transparent 54%),
+    radial-gradient(ellipse at 10% 112%, color-mix(in srgb, #9d68ff 20%, transparent), transparent 50%),
+    radial-gradient(ellipse at 52% 118%, color-mix(in srgb, #30d7d2 14%, transparent), transparent 48%),
+    linear-gradient(180deg, #f8fafc 0%, #eef2f7 55%, #e8edf4 100%);
 }
 
 .landing-v2__scene {
@@ -3511,9 +3512,9 @@ html[data-theme="light"] .landing-v2 {
 }
 
 html[data-theme="light"] .landing-v2__aurora {
-  mix-blend-mode: multiply;
-  opacity: 0.3;
-  filter: blur(110px);
+  mix-blend-mode: normal;
+  opacity: 0.5;
+  filter: blur(92px);
 }
 
 html[data-theme="dark"] .landing-v2__aurora {
@@ -3575,9 +3576,9 @@ html[data-theme="dark"] .landing-v2__aurora {
 }
 
 html[data-theme="light"] .landing-v2__spotlight {
-  background: radial-gradient(600px circle at var(--mx) var(--my),
-    color-mix(in srgb, var(--app-accent) 14%, transparent),
-    transparent 62%);
+  background: radial-gradient(720px circle at var(--mx) var(--my),
+    color-mix(in srgb, var(--app-accent) 28%, transparent),
+    transparent 58%);
 }
 
 .landing-v2__orb {
@@ -3668,6 +3669,141 @@ html[data-theme="light"] .landing-v2__spotlight {
 @keyframes landingV2BubbleFloat {
   0%, 100% { transform: translate3d(0, 0, 0); }
   50% { transform: translate3d(0, -10px, 0); }
+}
+
+/* Светлая тема лендинга: сетка, орбы, «стекло» карточек — ближе к глубине тёмной */
+html[data-theme="light"] .landing-v2__grid {
+  opacity: 0.78;
+  -webkit-mask-image: radial-gradient(ellipse at 50% 28%, #000 0%, transparent 78%);
+  mask-image: radial-gradient(ellipse at 50% 28%, #000 0%, transparent 78%);
+}
+
+html[data-theme="light"] .landing-v2__orb {
+  background: color-mix(in srgb, #ffffff 58%, transparent);
+  border-color: color-mix(in srgb, var(--surface-stroke) 92%, #94a3b8);
+  box-shadow:
+    0 0 42px color-mix(in srgb, var(--app-accent) 30%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.78);
+}
+
+html[data-theme="light"] .landing-v2__side-bubble {
+  background: color-mix(in srgb, #ffffff 52%, transparent);
+  border-color: color-mix(in srgb, var(--surface-stroke) 88%, #cbd5e1);
+  box-shadow:
+    0 14px 34px rgba(15, 23, 42, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.72);
+  opacity: 0.9;
+}
+
+html[data-theme="light"] .landing-v2__eyebrow {
+  background: color-mix(in srgb, #ffffff 56%, transparent);
+  border-color: color-mix(in srgb, var(--surface-stroke) 75%, #94a3b8);
+  box-shadow:
+    0 10px 32px rgba(15, 23, 42, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(22px);
+  -webkit-backdrop-filter: blur(22px);
+}
+
+html[data-theme="light"] .landing-v2__eyebrow--free {
+  background: color-mix(in srgb, #ffffff 48%, color-mix(in srgb, var(--app-accent) 16%, transparent));
+  border-color: color-mix(in srgb, var(--app-accent) 42%, var(--surface-stroke));
+}
+
+html[data-theme="light"] .landing-v2__logo-plate {
+  background: linear-gradient(135deg,
+    rgba(255, 255, 255, 0.74),
+    color-mix(in srgb, var(--surface-backdrop) 38%, rgba(255, 255, 255, 0.52)));
+  border-color: color-mix(in srgb, var(--surface-stroke) 72%, #94a3b8);
+  box-shadow:
+    0 32px 76px rgba(15, 23, 42, 0.13),
+    inset 0 1px 0 rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(32px);
+  -webkit-backdrop-filter: blur(32px);
+}
+
+html[data-theme="light"] .landing-v2__logo-plate:hover {
+  box-shadow:
+    0 40px 92px rgba(15, 23, 42, 0.16),
+    inset 0 1px 0 rgba(255, 255, 255, 0.92);
+}
+
+html[data-theme="light"] .landing-v2__logo-glow {
+  opacity: 0.72;
+}
+
+html[data-theme="light"] .landing-v2__cta-secondary {
+  background: color-mix(in srgb, #ffffff 58%, transparent);
+  border-color: color-mix(in srgb, var(--surface-stroke) 78%, #94a3b8);
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.78);
+  backdrop-filter: blur(22px);
+  -webkit-backdrop-filter: blur(22px);
+}
+
+html[data-theme="light"] .landing-v2__pill {
+  background: color-mix(in srgb, #ffffff 52%, color-mix(in srgb, var(--app-accent) 18%, transparent));
+  border-color: color-mix(in srgb, var(--app-accent) 52%, var(--surface-stroke));
+  box-shadow:
+    0 8px 26px color-mix(in srgb, var(--app-accent) 22%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.65);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+
+html[data-theme="light"] .landing-v2__module-includes li {
+  background: color-mix(in srgb, #ffffff 62%, transparent);
+  border-color: color-mix(in srgb, var(--surface-stroke) 80%, #cbd5e1);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+html[data-theme="light"] .landing-v2__feature,
+html[data-theme="light"] .landing-v2__path {
+  background: rgba(255, 255, 255, 0.58);
+  border-color: rgba(71, 85, 105, 0.16);
+  box-shadow:
+    0 18px 46px rgba(15, 23, 42, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+}
+
+html[data-theme="light"] .landing-v2__feature:hover,
+html[data-theme="light"] .landing-v2__path:hover {
+  box-shadow:
+    0 26px 60px rgba(15, 23, 42, 0.14),
+    inset 0 1px 0 rgba(255, 255, 255, 0.92);
+}
+
+html[data-theme="light"] .landing-v2__path-tag {
+  background: color-mix(in srgb, #ffffff 70%, color-mix(in srgb, var(--app-accent) 12%, transparent));
+  border-color: color-mix(in srgb, var(--app-accent) 32%, var(--surface-stroke));
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+html[data-theme="light"] .landing-v2__path-tag-icon {
+  background: rgba(255, 255, 255, 0.72);
+  border-color: color-mix(in srgb, var(--surface-stroke) 85%, #cbd5e1);
+}
+
+html[data-theme="light"] .landing-v2__feature-icon {
+  background: color-mix(in srgb, #ffffff 70%, color-mix(in srgb, var(--app-accent) 14%, transparent));
+  border-color: color-mix(in srgb, var(--app-accent) 28%, var(--surface-stroke));
+}
+
+html[data-theme="light"] .landing-v2__lesson-step {
+  background: color-mix(in srgb, #ffffff 62%, color-mix(in srgb, var(--app-accent) 14%, transparent));
+  border-color: color-mix(in srgb, var(--app-accent) 36%, var(--surface-stroke));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.75);
+}
+
+html[data-theme="light"] .landing-v2 .landing-footer {
+  border-top-color: rgba(71, 85, 105, 0.12);
+  background: rgba(255, 255, 255, 0.52);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
 }
 
 /* Hero */
@@ -5659,29 +5795,44 @@ html[data-theme="dark"] .studio-stage-panel__mini-metrics .nodly-promo-metrics__
   color: var(--app-muted);
 }
 
-/* Лендинг: светлый вариант финального блока */
+/* Лендинг: светлый вариант showcase — стекло, акценты (screen-glow на белом не работает) */
 html[data-theme="light"] .landing-v2__showcase--light {
-  border-color: rgba(71, 85, 105, 0.16);
-  background: linear-gradient(145deg,
-    color-mix(in srgb, #ffffff 88%, transparent),
-    color-mix(in srgb, var(--app-accent) 8%, #f1f5f9) 48%,
-    #e8edf5 100%);
+  border-color: rgba(71, 85, 105, 0.22);
+  background:
+    linear-gradient(135deg,
+      rgba(255, 255, 255, 0.72) 0%,
+      rgba(255, 255, 255, 0.46) 45%,
+      color-mix(in srgb, var(--app-accent) 12%, rgba(241, 245, 249, 0.88)) 100%);
   color: var(--app-text);
-  box-shadow: 0 28px 60px rgba(15, 23, 42, 0.08);
+  box-shadow:
+    0 34px 76px rgba(15, 23, 42, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(28px);
+  -webkit-backdrop-filter: blur(28px);
 }
 
 html[data-theme="light"] .landing-v2__showcase--light::before {
-  opacity: 0.35;
+  opacity: 1;
+  background:
+    radial-gradient(520px circle at 16% 12%, color-mix(in srgb, #6366f1 24%, transparent), transparent 56%),
+    radial-gradient(500px circle at 86% 86%, color-mix(in srgb, var(--app-accent) 26%, transparent), transparent 56%);
 }
 
 html[data-theme="light"] .landing-v2__showcase--light .landing-v2__showcase-glow {
-  opacity: 0.25;
+  mix-blend-mode: normal;
+  opacity: 0.42;
+  background: radial-gradient(440px circle at var(--fx) var(--fy),
+    color-mix(in srgb, #9d68ff 34%, transparent),
+    transparent 62%);
 }
 
 html[data-theme="light"] .landing-v2__showcase--light .landing-v2__showcase-badge {
-  border-color: var(--surface-stroke);
-  background: color-mix(in srgb, var(--surface-floating) 85%, transparent);
+  border-color: rgba(71, 85, 105, 0.18);
+  background: rgba(255, 255, 255, 0.62);
   color: var(--app-text);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
 }
 
 html[data-theme="light"] .landing-v2__showcase--light .landing-v2__showcase-title {
@@ -5693,26 +5844,36 @@ html[data-theme="light"] .landing-v2__showcase--light .landing-v2__showcase-text
 }
 
 html[data-theme="light"] .landing-v2__showcase--light .landing-v2__showcase-flow li {
-  border-color: var(--surface-stroke);
-  background: color-mix(in srgb, var(--surface-floating) 86%, transparent);
+  border-color: rgba(71, 85, 105, 0.16);
+  background: rgba(255, 255, 255, 0.52);
   color: var(--app-text);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.78);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
 }
 
 /* LMS-блок: светлая тема */
 html[data-theme="light"] .landing-v2__showcase--light .landing-v2__lms-mock {
-  border-color: var(--surface-stroke);
+  border-color: rgba(71, 85, 105, 0.2);
   background: linear-gradient(150deg,
-    color-mix(in srgb, var(--surface-floating) 92%, transparent),
-    color-mix(in srgb, #e2e8f0 70%, transparent));
-  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.07);
+    rgba(255, 255, 255, 0.78),
+    rgba(248, 250, 252, 0.52));
+  box-shadow:
+    0 22px 48px rgba(15, 23, 42, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(22px);
+  -webkit-backdrop-filter: blur(22px);
 }
 
 html[data-theme="light"] .landing-v2__showcase--light .landing-v2__lms-feature,
 html[data-theme="light"] .landing-v2__showcase--light .landing-v2__lms-task,
 html[data-theme="light"] .landing-v2__showcase--light .landing-v2__lms-journal,
 html[data-theme="light"] .landing-v2__showcase--light .landing-v2__lms-week-cell {
-  border-color: var(--surface-stroke);
-  background: color-mix(in srgb, var(--surface-floating) 86%, transparent);
+  border-color: rgba(71, 85, 105, 0.14);
+  background: rgba(255, 255, 255, 0.5);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
 }
 
 html[data-theme="light"] .landing-v2__showcase--light .landing-v2__lms-feature-title,
@@ -5741,11 +5902,15 @@ html[data-theme="light"] .landing-v2__showcase--light .landing-v2__lms-week-cell
 
 
 html[data-theme="light"] .landing-v2__showcase--light .landing-v2__device {
-  border-color: var(--surface-stroke);
+  border-color: rgba(71, 85, 105, 0.2);
   background: linear-gradient(150deg,
-    color-mix(in srgb, var(--surface-floating) 92%, transparent),
-    color-mix(in srgb, #e2e8f0 70%, transparent));
-  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.07);
+    rgba(255, 255, 255, 0.78),
+    rgba(248, 250, 252, 0.52));
+  box-shadow:
+    0 22px 48px rgba(15, 23, 42, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(22px);
+  -webkit-backdrop-filter: blur(22px);
 }
 
 html[data-theme="light"] .landing-v2__showcase--light .landing-v2__device-title {
