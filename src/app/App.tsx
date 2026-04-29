@@ -620,7 +620,7 @@ export function App() {
         </Routes>
         <Modal
         open={authOpen}
-        rootClassName="app-auth-modal"
+        rootClassName="app-modal-chrome"
         centered
         title="Вход"
         styles={{ body: { paddingTop: 12 } }}
@@ -910,7 +910,7 @@ export function App() {
       {onboardingInvitePersona ? (
         <Modal
           open={onboardingInviteOpen}
-          rootClassName="app-auth-modal"
+          rootClassName="app-modal-chrome"
           title="Краткая экскурсия по платформе"
           okText="Начать"
           cancelText="Не сейчас"
@@ -943,6 +943,7 @@ export function App() {
       <OnboardingTourHost user={user} disabled={isMiniStudioEmbed} />
       <Modal
         open={forgotOpen}
+        rootClassName="app-modal-chrome"
         title="Сброс пароля"
         okText="Отправить ссылку"
         onCancel={() => setForgotOpen(false)}

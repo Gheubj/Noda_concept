@@ -1267,7 +1267,7 @@ export function StudioPage() {
             width="min(1120px, 96vw)"
             destroyOnClose={false}
             centered
-            rootClassName="studio-data-modal"
+            rootClassName="studio-data-modal app-modal-chrome"
           >
             <DataLibrary />
           </Modal>
@@ -1280,6 +1280,7 @@ export function StudioPage() {
             onCancel={() => setMiniSaveToProjectsOpen(false)}
             destroyOnClose
             centered
+            rootClassName="app-modal-chrome"
           >
             <Space direction="vertical" style={{ width: "100%" }} size="middle">
               <Paragraph type="secondary" style={{ marginBottom: 0 }}>
@@ -1382,6 +1383,7 @@ export function StudioPage() {
       </Drawer>
       <Modal
         open={saveOpen}
+        rootClassName="app-modal-chrome"
         title="Сохранить проект"
         okText="Сохранить"
         okButtonProps={{ disabled: readOnly }}
@@ -1395,7 +1397,7 @@ export function StudioPage() {
       <Modal
         open={renameProjectOpen}
         title="Переименовать проект"
-        rootClassName="studio-rename-project-modal"
+        rootClassName="studio-rename-project-modal app-modal-chrome"
         okText="Сохранить"
         confirmLoading={renamingProject}
         onOk={() => void submitRenameProject()}
@@ -1424,7 +1426,7 @@ export function StudioPage() {
         centered
         zIndex={1100}
         maskClosable
-        rootClassName="studio-teacher-review-modal"
+        rootClassName="studio-teacher-review-modal app-modal-chrome"
       >
         {teacherReview ? (
           <Space direction="vertical" size="middle" style={{ width: "100%" }}>

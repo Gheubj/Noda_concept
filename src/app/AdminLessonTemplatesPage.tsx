@@ -236,6 +236,7 @@ export function AdminLessonTemplatesPage() {
         </Card>
       </Space>
       <Modal
+        rootClassName="app-modal-chrome"
         title="Новый урок"
         open={createOpen}
         onCancel={() => {

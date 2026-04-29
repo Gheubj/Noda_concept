@@ -5302,25 +5302,33 @@ html[data-theme="light"] .app-header .settings-theme-toggle__btn--active {
   background: rgba(255, 255, 255, 0.92);
 }
 
-/* Модалка входа: убираем padding у content (у Ant Design он оставляет «полоску» фона над шапкой) */
-.app-auth-modal .ant-modal .ant-modal-content {
+/* Единый «хром» модалок (`.app-modal-chrome`, совместимо с `.app-auth-modal`): без полоски над шапкой, сплошной фон заголовка */
+.app-auth-modal .ant-modal .ant-modal-content,
+.app-modal-chrome .ant-modal .ant-modal-content {
   border-radius: 18px;
   overflow: hidden;
   padding: 0;
 }
 
-.app-auth-modal .ant-modal .ant-modal-header {
+.app-auth-modal .ant-modal .ant-modal-header,
+.app-modal-chrome .ant-modal .ant-modal-header {
   margin: 0;
   padding: 0 52px 0 0;
   min-height: 52px;
   display: flex;
   align-items: center;
   border-bottom: 1px solid var(--surface-stroke);
-  background: color-mix(in srgb, var(--surface-floating) 94%, transparent);
   border-radius: 18px 18px 0 0;
+  background: #ffffff;
 }
 
-.app-auth-modal .ant-modal .ant-modal-header .ant-modal-title {
+html[data-theme="dark"] .app-auth-modal .ant-modal .ant-modal-header,
+html[data-theme="dark"] .app-modal-chrome .ant-modal .ant-modal-header {
+  background: rgba(15, 23, 42, 0.98);
+}
+
+.app-auth-modal .ant-modal .ant-modal-header .ant-modal-title,
+.app-modal-chrome .ant-modal .ant-modal-header .ant-modal-title {
   flex: 1;
   margin: 0;
   padding: 14px 0 14px 20px;
@@ -5331,7 +5339,8 @@ html[data-theme="light"] .app-header .settings-theme-toggle__btn--active {
 }
 
 /* Крестик — по центру шапки (не всего окна): при padding: 0 нельзя top: 50% от content) */
-.app-auth-modal .ant-modal .ant-modal-close {
+.app-auth-modal .ant-modal .ant-modal-close,
+.app-modal-chrome .ant-modal .ant-modal-close {
   top: 6px;
   inset-inline-end: 12px;
   width: 40px;
@@ -5341,24 +5350,29 @@ html[data-theme="light"] .app-header .settings-theme-toggle__btn--active {
   justify-content: center;
 }
 
-.app-auth-modal .ant-modal .ant-modal-body {
+.app-auth-modal .ant-modal .ant-modal-body,
+.app-modal-chrome .ant-modal .ant-modal-body {
   padding: 16px 20px 20px;
 }
 
-.app-auth-modal .ant-modal .ant-modal-footer {
+.app-auth-modal .ant-modal .ant-modal-footer,
+.app-modal-chrome .ant-modal .ant-modal-footer {
   padding: 12px 20px 16px;
   margin: 0;
 }
 
-.app-auth-modal .ant-modal .ant-modal-footer .ant-btn + .ant-btn {
+.app-auth-modal .ant-modal .ant-modal-footer .ant-btn + .ant-btn,
+.app-modal-chrome .ant-modal .ant-modal-footer .ant-btn + .ant-btn {
   margin-inline-start: 8px;
 }
 
-.app-auth-modal .ant-modal .ant-tabs-nav {
+.app-auth-modal .ant-modal .ant-tabs-nav,
+.app-modal-chrome .ant-modal .ant-tabs-nav {
   margin-bottom: 0 !important;
 }
 
-.app-auth-modal .ant-modal .ant-tabs-tab {
+.app-auth-modal .ant-modal .ant-tabs-tab,
+.app-modal-chrome .ant-modal .ant-tabs-tab {
   padding: 10px 0 !important;
 }
 
@@ -6412,7 +6426,8 @@ html[data-theme="light"] .landing-v2__showcase--light .nodly-promo-metrics__loss
   }
 
   /* Auth-модалка: в полный экран, но скролл колеблющийся (клавиатура iOS) */
-  .app-auth-modal .ant-modal .ant-modal-content {
+  .app-auth-modal .ant-modal .ant-modal-content,
+  .app-modal-chrome .ant-modal .ant-modal-content {
     border-radius: 0 !important;
   }
 
@@ -6935,14 +6950,16 @@ html[data-theme="light"] .landing-v2__showcase--light .nodly-promo-metrics__loss
 }
 
 /* =========================================================================
-   8. AUTH MODAL
+   8. MODAL CHROME (вход, экскурсия, учитель, студия…)
    ========================================================================= */
 @media (max-width: 480px) {
-  .app-auth-modal .ant-modal .ant-modal-header .ant-modal-title {
+  .app-auth-modal .ant-modal .ant-modal-header .ant-modal-title,
+  .app-modal-chrome .ant-modal .ant-modal-header .ant-modal-title {
     padding: 14px 0 14px 16px;
     font-size: 17px;
   }
-  .app-auth-modal .ant-modal .ant-modal-body {
+  .app-auth-modal .ant-modal .ant-modal-body,
+  .app-modal-chrome .ant-modal .ant-modal-body {
     padding: 14px 16px 18px;
   }
 }

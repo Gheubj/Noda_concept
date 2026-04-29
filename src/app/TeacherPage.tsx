@@ -1736,6 +1736,7 @@ export function TeacherPage() {
       </Space>
 
       <Modal
+        rootClassName="app-modal-chrome"
         title="Новая школа / организация"
         open={schoolModalOpen}
         okText="Создать"
@@ -1756,6 +1757,7 @@ export function TeacherPage() {
       </Modal>
 
       <Modal
+        rootClassName="app-modal-chrome"
         title="Новый класс"
         open={classModalOpen}
         okText="Создать"
@@ -1804,6 +1806,7 @@ export function TeacherPage() {
       </Modal>
 
       <Modal
+        rootClassName="app-modal-chrome"
         title="Удалить класс"
         open={Boolean(deleteClassTarget)}
         onCancel={() => {
@@ -1830,6 +1833,7 @@ export function TeacherPage() {
       </Modal>
 
       <Modal
+        rootClassName="app-modal-chrome"
         title="Занятие в расписании"
         open={scheduleModalOpen}
         okText="Добавить"
@@ -2031,6 +2035,7 @@ export function TeacherPage() {
       </Modal>
 
       <Modal
+        rootClassName="app-modal-chrome"
         title="Редактировать занятие"
         open={editSlotModalOpen}
         okText="Сохранить"
@@ -2135,6 +2140,7 @@ export function TeacherPage() {
       </Drawer>
 
       <Modal
+        rootClassName="app-modal-chrome"
         title={lessonEditorLesson ? `Урок: ${lessonEditorLesson.title}` : "Урок"}
         open={lessonEditorOpen}
         width="min(1120px, calc(100vw - 24px))"
@@ -2175,7 +2181,13 @@ export function TeacherPage() {
         </Space>
       </Modal>
 
-      <Modal title="Новое задание" open={createOpen} onCancel={() => setCreateOpen(false)} onOk={() => void submitCreate()}>
+      <Modal
+        rootClassName="app-modal-chrome"
+        title="Новое задание"
+        open={createOpen}
+        onCancel={() => setCreateOpen(false)}
+        onOk={() => void submitCreate()}
+      >
         <Form form={createForm} layout="vertical">
           <Form.Item name="title" label="Название" rules={[{ required: true, min: 2 }]}>
             <Input />
@@ -2214,7 +2226,13 @@ export function TeacherPage() {
         </Form>
       </Modal>
 
-      <Modal title="Задание" open={editOpen} onCancel={() => setEditOpen(false)} onOk={() => void submitEdit()}>
+      <Modal
+        rootClassName="app-modal-chrome"
+        title="Задание"
+        open={editOpen}
+        onCancel={() => setEditOpen(false)}
+        onOk={() => void submitEdit()}
+      >
         <Form form={editForm} layout="vertical">
           <Form.Item name="title" label="Название" rules={[{ required: true, min: 2 }]}>
             <Input />
@@ -2248,6 +2266,7 @@ export function TeacherPage() {
       </Modal>
 
       <Modal
+        rootClassName="app-modal-chrome"
         title="Проверка сдачи"
         open={gradeOpen}
         onCancel={() => {

@@ -753,6 +753,7 @@ export function DataLibrary({ variant = "default" }: { variant?: "default" | "dr
 
   const previewModal = (
     <Modal
+      rootClassName="app-modal-chrome"
       open={previewVisible}
       onCancel={closePreview}
       footer={null}
