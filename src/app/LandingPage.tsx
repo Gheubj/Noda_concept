@@ -160,6 +160,47 @@ interface Feature {
 
 const FEATURES: Feature[] = [
   {
+    icon: <RocketOutlined />,
+    title: "Не просто использовать ИИ",
+    text: "Мы учим не писать промпты в чужие сервисы, а создавать и запускать собственные ML-решения."
+  },
+  {
+    icon: <CodeOutlined />,
+    title: "Мышление AI-разработчика",
+    text: "От идеи и данных до обучения и проверки качества. Ученик проходит весь инженерный цикл."
+  },
+  {
+    icon: <ExperimentOutlined />,
+    title: "Понимание, что под капотом",
+    text: "Регрессия, классификация, метрики и ошибки модели объясняются простым языком и сразу в практике."
+  }
+];
+
+const MODULE_PLAN: Feature[] = [
+  {
+    icon: <BookOutlined />,
+    title: "Урок 1. Введение в ИИ",
+    text: "Что такое модель, зачем нужны данные и как выглядит путь AI-разработчика от задачи до результата."
+  },
+  {
+    icon: <DatabaseOutlined />,
+    title: "Урок 2. Регрессия",
+    text: "Учимся предсказывать числовые значения, работать с признаками и оценивать точность модели."
+  },
+  {
+    icon: <NodeIndexOutlined />,
+    title: "Урок 3. Классификация",
+    text: "Определяем классы объектов, разбираем ошибки модели и улучшаем результат на реальных примерах."
+  },
+  {
+    icon: <ExperimentOutlined />,
+    title: "Урок 4. Нейросети",
+    text: "Знакомимся с базовой логикой нейросетей и собираем первый рабочий пример в визуальной среде."
+  }
+];
+
+const ADVANTAGES: Feature[] = [
+  {
     icon: <CodeOutlined />,
     title: "Визуальное программирование",
     text: "Понятные блоки с логикой, циклами и запуском моделей. Можно начать без классического кода."
@@ -255,15 +296,15 @@ function GuestLanding() {
           </div>
 
           <h1 id="landing-v2-title" className="landing-v2__title">
-            Учись, собирай данные и <em>обучай модели</em>
+            Все вокруг говорят про ИИ.
             <br />
-            в одной спокойной среде.
+            Пора <em>учиться его разрабатывать</em>.
           </h1>
 
           <p className="landing-v2__lead">
-            Nodly соединяет визуальное программирование и машинное обучение в единый поток.
-            Бесплатный модуль A на 4 урока помогает быстро войти в тему, а программа проверена
-            тренерами сборной России и Испании по ИИ.
+            Nodly учит работать с ИИ как разработчик: проектировать решение, готовить данные,
+            обучать модели и проверять качество. Не формат «конечного пользователя», а полноценный
+            инженерный подход с первого занятия.
           </p>
 
           <div className="landing-v2__cta-row">
@@ -287,7 +328,7 @@ function GuestLanding() {
               <CheckCircleFilled /> Без установки
             </li>
             <li className="landing-v2__pill">
-              <CheckCircleFilled /> Визуальное программирование + ML
+              <CheckCircleFilled /> Не пользователь ИИ, а разработчик ИИ
             </li>
             <li className="landing-v2__pill">
               <CheckCircleFilled /> Бесплатный модуль A
@@ -304,12 +345,64 @@ function GuestLanding() {
           </ul>
         </section>
 
+        <div className="landing-v2__section-intro">
+          <div className="landing-v2__eyebrow">
+            <span className="landing-v2__dot" aria-hidden />
+            Формат обучения
+          </div>
+          <h2 className="landing-v2__section-title">Учимся не пользоваться ИИ, а разрабатывать ИИ</h2>
+        </div>
+        <section className="landing-v2__features" aria-label="Позиционирование обучения">
+          {FEATURES.map((feature) => (
+            <article
+              key={feature.title}
+              className="landing-v2__feature"
+              onMouseMove={onReactiveCardMove}
+            >
+              <div className="landing-v2__feature-icon" aria-hidden>
+                {feature.icon}
+              </div>
+              <h3 className="landing-v2__feature-title">{feature.title}</h3>
+              <p className="landing-v2__feature-text">{feature.text}</p>
+            </article>
+          ))}
+        </section>
+
+        <div className="landing-v2__section-intro">
+          <div className="landing-v2__eyebrow">
+            <span className="landing-v2__dot" aria-hidden />
+            Бесплатный старт
+          </div>
+          <h2 className="landing-v2__section-title">Модуль A: 4 урока с понятной траекторией</h2>
+        </div>
+        <section className="landing-v2__features landing-v2__features--four" aria-label="План модуля A">
+          {MODULE_PLAN.map((feature) => (
+            <article
+              key={feature.title}
+              className="landing-v2__feature"
+              onMouseMove={onReactiveCardMove}
+            >
+              <div className="landing-v2__feature-icon" aria-hidden>
+                {feature.icon}
+              </div>
+              <h3 className="landing-v2__feature-title">{feature.title}</h3>
+              <p className="landing-v2__feature-text">{feature.text}</p>
+            </article>
+          ))}
+        </section>
+
+        <div className="landing-v2__section-intro" id="features">
+          <div className="landing-v2__eyebrow">
+            <span className="landing-v2__dot" aria-hidden />
+            Преимущества Nodly
+          </div>
+          <h2 className="landing-v2__section-title">Максимум пользы для учеников, родителей и преподавателей</h2>
+        </div>
         <section
           className="landing-v2__features"
-          id="features"
           aria-label="Возможности Nodly"
         >
-          {FEATURES.map((feature) => (
+          {ADVANTAGES.map((feature) => (
             <article
               key={feature.title}
               className="landing-v2__feature"
@@ -370,7 +463,7 @@ function GuestLanding() {
               <div className="landing-v2__showcase-stats">
                 <div className="landing-v2__stat">
                   <div className="landing-v2__stat-k">Формат</div>
-                  <div className="landing-v2__stat-v">Визуальное программирование</div>
+                  <div className="landing-v2__stat-v">Путь AI-разработчика</div>
                 </div>
                 <div className="landing-v2__stat">
                   <div className="landing-v2__stat-k">Бесплатный старт</div>

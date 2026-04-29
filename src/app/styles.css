@@ -3829,6 +3829,24 @@ html[data-theme="dark"] .landing-v2__logo-sheen {
   margin: 0;
 }
 
+.landing-v2__section-intro {
+  position: relative;
+  z-index: 1;
+  max-width: 1160px;
+  margin: 40px auto 12px;
+  text-align: center;
+}
+
+.landing-v2__section-title {
+  margin: 10px auto 0;
+  max-width: 30ch;
+  font-family: var(--font-display, "Manrope", "Inter", sans-serif);
+  font-size: clamp(1.32rem, 2vw, 1.8rem);
+  line-height: 1.2;
+  letter-spacing: -0.015em;
+  color: var(--app-text);
+}
+
 .landing-v2__pill {
   display: inline-flex;
   align-items: center;
@@ -4911,8 +4929,16 @@ html[data-theme="dark"] .studio-stage-panel__mini-metrics .nodly-promo-metrics__
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
+.landing-v2__features--four {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
 @media (max-width: 900px) {
   .landing-v2__features {
+    grid-template-columns: 1fr;
+  }
+
+  .landing-v2__features--four {
     grid-template-columns: 1fr;
   }
 }
