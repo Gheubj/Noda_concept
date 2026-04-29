@@ -47,6 +47,13 @@ function openAuthModal() {
   window.dispatchEvent(new Event("nodly-open-auth"));
 }
 
+function scrollToRoles() {
+  const target = document.getElementById("roles");
+  if (target) {
+    target.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+}
+
 type GreetingPhase = "night" | "dawn" | "day" | "evening";
 
 function greetingWithPhase(): { line: string; phase: GreetingPhase } {
@@ -284,9 +291,20 @@ function GuestLanding() {
           <div className="landing-v2__side-bubble landing-v2__side-bubble--l1" />
           <div className="landing-v2__side-bubble landing-v2__side-bubble--l2" />
           <div className="landing-v2__side-bubble landing-v2__side-bubble--l3" />
+          <div className="landing-v2__side-bubble landing-v2__side-bubble--l4" />
+          <div className="landing-v2__side-bubble landing-v2__side-bubble--l5" />
+          <div className="landing-v2__side-bubble landing-v2__side-bubble--l6" />
           <div className="landing-v2__side-bubble landing-v2__side-bubble--r1" />
           <div className="landing-v2__side-bubble landing-v2__side-bubble--r2" />
           <div className="landing-v2__side-bubble landing-v2__side-bubble--r3" />
+          <div className="landing-v2__side-bubble landing-v2__side-bubble--r4" />
+          <div className="landing-v2__side-bubble landing-v2__side-bubble--r5" />
+          <div className="landing-v2__side-bubble landing-v2__side-bubble--r6" />
+          <div className="landing-v2__side-bubble landing-v2__side-bubble--c1" />
+          <div className="landing-v2__side-bubble landing-v2__side-bubble--c2" />
+          <div className="landing-v2__side-bubble landing-v2__side-bubble--c3" />
+          <div className="landing-v2__side-bubble landing-v2__side-bubble--c4" />
+          <div className="landing-v2__side-bubble landing-v2__side-bubble--c5" />
         </div>
 
         <section className="landing-v2__hero" aria-labelledby="landing-v2-title">
@@ -319,7 +337,7 @@ function GuestLanding() {
               size="large"
               icon={<RocketOutlined />}
               className="landing-v2__cta-primary"
-              onClick={openAuthModal}
+              onClick={scrollToRoles}
             >
               Начать бесплатно
             </Button>
@@ -495,7 +513,7 @@ function GuestLanding() {
           </div>
         </section>
 
-        <section className="landing-v2__paths" aria-label="Сценарии использования">
+        <section className="landing-v2__paths" id="roles" aria-label="Сценарии использования">
           {PATHS.map((path) => (
             <article
               key={path.title}
