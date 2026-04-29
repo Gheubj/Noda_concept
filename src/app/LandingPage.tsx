@@ -244,61 +244,6 @@ const ADVANTAGES: Feature[] = [
   }
 ];
 
-type LmsTarget = "rail" | "week" | "tasks" | "journal";
-
-interface LmsFeature {
-  id: string;
-  target: LmsTarget;
-  icon: ReactNode;
-  title: string;
-  text: string;
-}
-
-const LMS_FEATURES: LmsFeature[] = [
-  {
-    id: "sched",
-    target: "week",
-    icon: <CalendarOutlined />,
-    title: "Расписание и темы уроков",
-    text: "Недельный календарь, серии занятий, привязка темы и материалов к слоту."
-  },
-  {
-    id: "tasks",
-    target: "tasks",
-    icon: <FileTextOutlined />,
-    title: "Классные работы и ДЗ",
-    text: "Выдача заданий с дедлайнами, авто-уведомления о просрочке, привязка к шаблону урока."
-  },
-  {
-    id: "review",
-    target: "tasks",
-    icon: <CheckCircleFilled />,
-    title: "Сдача и проверка проектов",
-    text: "Статусы «на проверке / доработка / оценка», комментарии учителя в карточке работы."
-  },
-  {
-    id: "journal",
-    target: "journal",
-    icon: <LineChartOutlined />,
-    title: "Журнал и успеваемость",
-    text: "Таблица «ученики × задания», прогресс по модулям и оценки в одном месте."
-  },
-  {
-    id: "code",
-    target: "rail",
-    icon: <TeamOutlined />,
-    title: "Класс по коду",
-    text: "Ученики подключаются за минуту: ввели код — увидели расписание и задания."
-  },
-  {
-    id: "program",
-    target: "tasks",
-    icon: <BookOutlined />,
-    title: "Готовая программа",
-    text: "Шаблоны уроков и модулей: можно использовать как есть или адаптировать под класс."
-  }
-];
-
 interface GuestPath {
   tag: string;
   icon: ReactNode;
@@ -334,7 +279,6 @@ const PATHS: GuestPath[] = [
 function GuestLanding() {
   const htmlTheme = useHtmlDataTheme();
   const sceneRef = useCursorScene<HTMLDivElement>();
-  const [lmsHover, setLmsHover] = useState<LmsTarget | null>(null);
   const wordmark = htmlTheme === "light" ? "/nodly-wordmark-outline.png" : "/nodly-wordmark-white.png";
 
   return (
@@ -574,10 +518,7 @@ function GuestLanding() {
         >
           <div className="landing-v2__showcase-glow" aria-hidden />
           <div className="landing-v2__showcase-inner landing-v2__showcase-inner--reverse">
-            <div
-              className={`landing-v2__lms-mock${lmsHover ? ` landing-v2__lms-mock--has-hl landing-v2__lms-mock--hl-${lmsHover}` : ""}`}
-              aria-hidden
-            >
+            <div className="landing-v2__lms-mock" aria-hidden>
               <div className="landing-v2__lms-mock-rail">
                 <CalendarOutlined className="landing-v2__lms-mock-rail-icon" />
                 <span className="landing-v2__lms-mock-rail-title">Расписание · 7А · неделя</span>
@@ -679,23 +620,48 @@ function GuestLanding() {
                 и получает понятный маршрут обучения вместе со средой разработки.
               </p>
               <div className="landing-v2__lms-features">
-                {LMS_FEATURES.map((f) => (
-                  <div
-                    key={f.id}
-                    className={`landing-v2__lms-feature${lmsHover === f.target ? " landing-v2__lms-feature--active" : ""}`}
-                    onMouseEnter={() => setLmsHover(f.target)}
-                    onMouseLeave={() => setLmsHover((cur) => (cur === f.target ? null : cur))}
-                    onFocus={() => setLmsHover(f.target)}
-                    onBlur={() => setLmsHover((cur) => (cur === f.target ? null : cur))}
-                    tabIndex={0}
-                  >
-                    <span className="landing-v2__lms-feature-icon">{f.icon}</span>
-                    <div>
-                      <div className="landing-v2__lms-feature-title">{f.title}</div>
-                      <div className="landing-v2__lms-feature-text">{f.text}</div>
-                    </div>
+                <div className="landing-v2__lms-feature">
+                  <span className="landing-v2__lms-feature-icon"><CalendarOutlined /></span>
+                  <div>
+                    <div className="landing-v2__lms-feature-title">Расписание и темы уроков</div>
+                    <div className="landing-v2__lms-feature-text">Недельный календарь, серии занятий, привязка темы и материалов к слоту.</div>
                   </div>
-                ))}
+                </div>
+                <div className="landing-v2__lms-feature">
+                  <span className="landing-v2__lms-feature-icon"><FileTextOutlined /></span>
+                  <div>
+                    <div className="landing-v2__lms-feature-title">Классные работы и ДЗ</div>
+                    <div className="landing-v2__lms-feature-text">Выдача заданий с дедлайнами, авто-уведомления о просрочке, привязка к шаблону урока.</div>
+                  </div>
+                </div>
+                <div className="landing-v2__lms-feature">
+                  <span className="landing-v2__lms-feature-icon"><CheckCircleFilled /></span>
+                  <div>
+                    <div className="landing-v2__lms-feature-title">Сдача и проверка проектов</div>
+                    <div className="landing-v2__lms-feature-text">Статусы «на проверке / доработка / оценка», комментарии учителя в карточке работы.</div>
+                  </div>
+                </div>
+                <div className="landing-v2__lms-feature">
+                  <span className="landing-v2__lms-feature-icon"><LineChartOutlined /></span>
+                  <div>
+                    <div className="landing-v2__lms-feature-title">Журнал и успеваемость</div>
+                    <div className="landing-v2__lms-feature-text">Таблица «ученики × задания», прогресс по модулям и оценки в одном месте.</div>
+                  </div>
+                </div>
+                <div className="landing-v2__lms-feature">
+                  <span className="landing-v2__lms-feature-icon"><TeamOutlined /></span>
+                  <div>
+                    <div className="landing-v2__lms-feature-title">Класс по коду</div>
+                    <div className="landing-v2__lms-feature-text">Ученики подключаются за минуту: ввели код — увидели расписание и задания.</div>
+                  </div>
+                </div>
+                <div className="landing-v2__lms-feature">
+                  <span className="landing-v2__lms-feature-icon"><BookOutlined /></span>
+                  <div>
+                    <div className="landing-v2__lms-feature-title">Готовая программа</div>
+                    <div className="landing-v2__lms-feature-text">Шаблоны уроков и модулей: можно использовать как есть или адаптировать под класс.</div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
