@@ -1,4 +1,4 @@
-import { Button, Card, Space, Spin, Tag, Typography, message } from "antd";
+import { Button, Card, Space, Spin, Typography, message } from "antd";
 import dayjs from "dayjs";
 import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
@@ -11,6 +11,7 @@ import {
   studentSlotNeedsAttention,
   type SlotStudentAssignmentRow
 } from "@/app/WeekScheduleCalendar";
+import { AssignmentKindIcon } from "@/components/AssignmentKindChip";
 
 const { Text, Paragraph } = Typography;
 
@@ -132,32 +133,48 @@ export function HomeUpcomingHomework({ rows, loading, onRefresh }: Props) {
     const sub = row.submission;
     const graded = st === "graded" && sub != null && sub.score != null;
     const scoreShown = graded ? sub.score : null;
+    const scoreCls =
+      scoreShown != null
+        ? scoreShown >= 5
+          ? "lms-mark--5"
+          : scoreShown >= 4
+            ? "lms-mark--4"
+            : scoreShown >= 3
+              ? "lms-mark--3"
+              : "lms-mark--2"
+        : "";
     return (
       <div key={r.assignmentId} className="landing-home-schedule__slot">
-        <Text strong style={{ fontSize: 12, display: "block", lineHeight: 1.35 }}>
-          {r.classroomTitle}
-        </Text>
-        <Text style={{ fontSize: 12, display: "block", marginTop: 4, lineHeight: 1.35 }}>
-          {r.title}
-        </Text>
+        <Space align="start" size={8} style={{ width: "100%" }}>
+          <AssignmentKindIcon kind={r.kind} size="sm" />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <Text strong style={{ fontSize: 12, display: "block", lineHeight: 1.35 }}>
+              {r.classroomTitle}
+            </Text>
+            <Text style={{ fontSize: 12, display: "block", marginTop: 4, lineHeight: 1.35 }}>
+              {r.title}
+            </Text>
+          </div>
+        </Space>
         {graded && scoreShown != null ? (
-          <Text type="success" style={{ fontSize: 11, display: "block", marginTop: 2 }}>
-            {scoreShown}/{row.maxScore}
-          </Text>
+          <Space size={6} align="center" style={{ marginTop: 6 }}>
+            <em className={`lms-mark ${scoreCls}`} style={{ fontStyle: "normal" }}>{scoreShown}</em>
+            <Text type="secondary" style={{ fontSize: 11 }}>из {row.maxScore}</Text>
+          </Space>
         ) : null}
         {st === "submitted" && !graded ? (
-          <Text type="secondary" style={{ fontSize: 11, display: "block", marginTop: 2 }}>
+          <span className="lms-status-badge lms-status-badge--review" style={{ marginTop: 6 }}>
             на проверке
-          </Text>
+          </span>
         ) : null}
-        <Tag color="default" style={{ margin: "6px 0 0 0", fontSize: 11 }}>
-          {diaryStatusLabels[st] ?? st}
-        </Tag>
-        {studentSlotNeedsAttention(row) ? (
-          <Tag color="red" style={{ margin: "4px 0 0 0", fontSize: 11 }}>
-            Важно
-          </Tag>
-        ) : null}
+        <Space size={4} wrap style={{ marginTop: 6 }}>
+          <span className="lms-status-badge lms-status-badge--neutral">
+            {diaryStatusLabels[st] ?? st}
+          </span>
+          {studentSlotNeedsAttention(row) ? (
+            <span className="lms-status-badge lms-status-badge--danger">Важно</span>
+          ) : null}
+        </Space>
         <Space size={4} wrap style={{ marginTop: 6 }}>
           {st === "not_started" || !row.submission ? (
             <Button type="primary" size="small" onClick={() => void startOrOpen(row)}>

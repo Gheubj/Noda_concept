@@ -612,54 +612,53 @@ function GuestLanding() {
                 <SolutionOutlined /> Учителям и ученикам
               </div>
               <h2 id="landing-v2-lms-title" className="landing-v2__showcase-title">
-                Расписание, ДЗ, проверка и журнал — без сторонних инструментов.
+                Расписание, ДЗ и проверка — без сторонних инструментов.
               </h2>
               <p className="landing-v2__showcase-text">
-                Учитель ведёт расписание класса, выдаёт классные работы и ДЗ с дедлайнами,
-                проверяет сдачи и видит журнал. Ученик подключается по коду класса
-                и получает понятный маршрут обучения вместе со средой разработки.
+                Учитель ведёт класс, выдаёт работы и проверяет сдачи. Ученик подключается
+                по коду и видит весь маршрут обучения.
               </p>
               <div className="landing-v2__lms-features">
                 <div className="landing-v2__lms-feature">
                   <span className="landing-v2__lms-feature-icon"><CalendarOutlined /></span>
                   <div>
-                    <div className="landing-v2__lms-feature-title">Расписание и темы уроков</div>
-                    <div className="landing-v2__lms-feature-text">Недельный календарь, серии занятий, привязка темы и материалов к слоту.</div>
+                    <div className="landing-v2__lms-feature-title">Расписание</div>
+                    <div className="landing-v2__lms-feature-text">Недельный календарь и темы уроков</div>
                   </div>
                 </div>
                 <div className="landing-v2__lms-feature">
                   <span className="landing-v2__lms-feature-icon"><FileTextOutlined /></span>
                   <div>
-                    <div className="landing-v2__lms-feature-title">Классные работы и ДЗ</div>
-                    <div className="landing-v2__lms-feature-text">Выдача заданий с дедлайнами, авто-уведомления о просрочке, привязка к шаблону урока.</div>
+                    <div className="landing-v2__lms-feature-title">Задания и ДЗ</div>
+                    <div className="landing-v2__lms-feature-text">Дедлайны и уведомления о просрочке</div>
                   </div>
                 </div>
                 <div className="landing-v2__lms-feature">
                   <span className="landing-v2__lms-feature-icon"><CheckCircleFilled /></span>
                   <div>
-                    <div className="landing-v2__lms-feature-title">Сдача и проверка проектов</div>
-                    <div className="landing-v2__lms-feature-text">Статусы «на проверке / доработка / оценка», комментарии учителя в карточке работы.</div>
+                    <div className="landing-v2__lms-feature-title">Проверка</div>
+                    <div className="landing-v2__lms-feature-text">Статусы и комментарии учителя</div>
                   </div>
                 </div>
                 <div className="landing-v2__lms-feature">
                   <span className="landing-v2__lms-feature-icon"><LineChartOutlined /></span>
                   <div>
-                    <div className="landing-v2__lms-feature-title">Журнал и успеваемость</div>
-                    <div className="landing-v2__lms-feature-text">Таблица «ученики × задания», прогресс по модулям и оценки в одном месте.</div>
+                    <div className="landing-v2__lms-feature-title">Журнал</div>
+                    <div className="landing-v2__lms-feature-text">Ученики × задания, прогресс по модулям</div>
                   </div>
                 </div>
                 <div className="landing-v2__lms-feature">
                   <span className="landing-v2__lms-feature-icon"><TeamOutlined /></span>
                   <div>
                     <div className="landing-v2__lms-feature-title">Класс по коду</div>
-                    <div className="landing-v2__lms-feature-text">Ученики подключаются за минуту: ввели код — увидели расписание и задания.</div>
+                    <div className="landing-v2__lms-feature-text">Ученик подключается за минуту</div>
                   </div>
                 </div>
                 <div className="landing-v2__lms-feature">
                   <span className="landing-v2__lms-feature-icon"><BookOutlined /></span>
                   <div>
                     <div className="landing-v2__lms-feature-title">Готовая программа</div>
-                    <div className="landing-v2__lms-feature-text">Шаблоны уроков и модулей: можно использовать как есть или адаптировать под класс.</div>
+                    <div className="landing-v2__lms-feature-text">Шаблоны уроков, можно адаптировать</div>
                   </div>
                 </div>
               </div>

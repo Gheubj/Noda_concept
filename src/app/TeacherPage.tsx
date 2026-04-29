@@ -25,6 +25,7 @@ import {
 import type { ColumnsType } from "antd/es/table";
 import { Link, useLocation } from "react-router-dom";
 import { CheckOutlined, CopyOutlined, TeamOutlined } from "@ant-design/icons";
+import { AssignmentKindIcon } from "@/components/AssignmentKindChip";
 import dayjs from "dayjs";
 import { useSessionStore } from "@/store/useSessionStore";
 import { apiClient } from "@/shared/api/client";
@@ -1042,12 +1043,20 @@ export function TeacherPage() {
   ];
 
   const assignmentColumns: ColumnsType<TeacherAssignmentRow> = [
-    { title: "Название", dataIndex: "title", key: "title" },
     {
-      title: "Тип",
-      dataIndex: "kind",
-      key: "kind",
-      render: (k: string) => KIND_RU[k] ?? k
+      title: "Задание",
+      key: "title",
+      render: (_, row) => (
+        <Space size="middle" align="start">
+          <AssignmentKindIcon kind={row.kind} />
+          <div>
+            <Text strong style={{ display: "block", lineHeight: 1.25 }}>{row.title}</Text>
+            <Text type="secondary" style={{ fontSize: 12 }}>
+              {KIND_RU[row.kind] ?? row.kind}
+            </Text>
+          </div>
+        </Space>
+      )
     },
     {
       title: "Срок",
@@ -1087,30 +1096,62 @@ export function TeacherPage() {
 
   const submissionColumns: ColumnsType<TeacherSubmissionRow> = [
     { title: "Ученик", key: "st", render: (_, r) => r.student.nickname },
-    { title: "Задание", key: "as", render: (_, r) => r.assignment.title },
     {
-      title: "Тип",
-      key: "kind",
-      width: 110,
-      render: (_, r) => KIND_RU[r.assignment.kind] ?? r.assignment.kind
+      title: "Задание",
+      key: "as",
+      render: (_, r) => (
+        <Space size="middle" align="start">
+          <AssignmentKindIcon kind={r.assignment.kind} />
+          <div>
+            <Text strong style={{ display: "block", lineHeight: 1.25 }}>{r.assignment.title}</Text>
+            <Text type="secondary" style={{ fontSize: 12 }}>
+              {KIND_RU[r.assignment.kind] ?? r.assignment.kind}
+            </Text>
+          </div>
+        </Space>
+      )
     },
     {
       title: "Статус",
       dataIndex: "status",
       key: "status",
-      render: (s: string) => SUBMISSION_STATUS_RU[s] ?? s
+      render: (s: string) => {
+        const cls =
+          s === "graded" || s === "auto_checked"
+            ? "lms-status-badge--done"
+            : s === "submitted" || s === "pending_teacher_review"
+              ? "lms-status-badge--review"
+              : s === "needs_revision"
+                ? "lms-status-badge--warn"
+                : "lms-status-badge--neutral";
+        return <span className={`lms-status-badge ${cls}`}>{SUBMISSION_STATUS_RU[s] ?? s}</span>;
+      }
     },
     {
       title: "Балл",
       key: "score",
       render: (_, r) => {
         if (r.score != null && r.assignment.maxScore != null) {
-          return `${r.score}/${r.assignment.maxScore}`;
+          const cls =
+            r.score >= 5 ? "lms-mark--5"
+            : r.score >= 4 ? "lms-mark--4"
+            : r.score >= 3 ? "lms-mark--3"
+            : "lms-mark--2";
+          return (
+            <Space size={6} align="center">
+              <em className={`lms-mark ${cls}`} style={{ fontStyle: "normal" }}>{r.score}</em>
+              <Text type="secondary" style={{ fontSize: 12 }}>из {r.assignment.maxScore}</Text>
+            </Space>
+          );
         }
         if (r.status === "pending_teacher_review" && r.autoScore != null) {
-          return `Авто: ${r.autoScore}/${r.assignment.maxScore}`;
+          return (
+            <Text type="secondary" style={{ fontSize: 12 }}>
+              авто: {r.autoScore}/{r.assignment.maxScore}
+            </Text>
+          );
         }
-        return "—";
+        return <em className="lms-mark lms-mark--empty" style={{ fontStyle: "normal" }}>—</em>;
       }
     },
     {
@@ -1159,33 +1200,6 @@ export function TeacherPage() {
     }
     return m;
   }, [gradebook]);
-
-  const gradebookColumns: ColumnsType<{ id: string; nickname: string }> = useMemo(() => {
-    if (!gradebook) {
-      return [{ title: "Ученик", dataIndex: "nickname", key: "nick", fixed: "left" as const }];
-    }
-    const base: ColumnsType<{ id: string; nickname: string }> = [
-      { title: "Ученик", dataIndex: "nickname", key: "nick", fixed: "left", width: 140 }
-    ];
-    for (const a of gradebook.assignments) {
-      base.push({
-        title: `${a.title}`,
-        key: a.id,
-        width: 100,
-        render: (_, row) => {
-          const c = cellMap.get(`${row.id}_${a.id}`);
-          if (!c || c.status === "not_started") {
-            return "—";
-          }
-          if ((c.status === "graded" || c.status === "auto_checked") && c.score != null) {
-            return `${c.score}`;
-          }
-          return SUBMISSION_STATUS_RU[c.status] ?? c.status;
-        }
-      });
-    }
-    return base;
-  }, [gradebook, cellMap]);
 
   if (!user) {
     return (
@@ -1520,16 +1534,63 @@ export function TeacherPage() {
         </Space>
       </Card>
       {lmsClassroomId ? (
-        <Table<{ id: string; nickname: string }>
-          size="small"
-          rowKey="id"
-          loading={gradebookLoading}
-          scroll={{ x: Math.max(400, (gradebook?.assignments.length ?? 0) * 100 + 140) }}
-          columns={gradebookColumns}
-          dataSource={gradebook?.students ?? []}
-          pagination={false}
-          locale={{ emptyText: "Нет данных — нажми «Обновить журнал»" }}
-        />
+        gradebookLoading ? (
+          <Spin />
+        ) : (gradebook?.students.length ?? 0) === 0 ? (
+          <Paragraph type="secondary">Нет данных — нажми «Обновить журнал».</Paragraph>
+        ) : (
+          <div className="teacher-gradebook">
+            <div className="teacher-gradebook__row teacher-gradebook__row--head">
+              <div className="teacher-gradebook__name">Ученик</div>
+              <div className="teacher-gradebook__cells">
+                {(gradebook?.assignments ?? []).map((a) => (
+                  <div key={a.id} className="teacher-gradebook__cell">
+                    <div className="teacher-gradebook__cell-meta">
+                      <AssignmentKindIcon kind={a.kind} size="sm" />
+                    </div>
+                    <Text style={{ fontSize: 11, textAlign: "center", lineHeight: 1.2 }}>
+                      {a.title}
+                    </Text>
+                  </div>
+                ))}
+              </div>
+            </div>
+            {(gradebook?.students ?? []).map((s) => (
+              <div key={s.id} className="teacher-gradebook__row">
+                <div className="teacher-gradebook__name">{s.nickname}</div>
+                <div className="teacher-gradebook__cells">
+                  {(gradebook?.assignments ?? []).map((a) => {
+                    const c = cellMap.get(`${s.id}_${a.id}`);
+                    if (!c || c.status === "not_started") {
+                      return (
+                        <div key={a.id} className="teacher-gradebook__cell">
+                          <em className="lms-mark lms-mark--empty" style={{ fontStyle: "normal" }}>—</em>
+                        </div>
+                      );
+                    }
+                    if ((c.status === "graded" || c.status === "auto_checked") && c.score != null) {
+                      const cls =
+                        c.score >= 5 ? "lms-mark--5"
+                        : c.score >= 4 ? "lms-mark--4"
+                        : c.score >= 3 ? "lms-mark--3"
+                        : "lms-mark--2";
+                      return (
+                        <div key={a.id} className="teacher-gradebook__cell">
+                          <em className={`lms-mark ${cls}`} style={{ fontStyle: "normal" }}>{c.score}</em>
+                        </div>
+                      );
+                    }
+                    return (
+                      <div key={a.id} className="teacher-gradebook__cell">
+                        <em className="lms-mark lms-mark--review" style={{ fontStyle: "normal" }}>…</em>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+        )
       ) : (
         <Paragraph type="secondary">Выбери класс и обнови журнал.</Paragraph>
       )}

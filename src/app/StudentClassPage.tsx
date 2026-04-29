@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { CheckOutlined } from "@ant-design/icons";
-import { Button, Card, Empty, Input, Select, Space, Spin, Table, Tabs, Tag, Typography, message } from "antd";
+import { CheckOutlined, ClockCircleOutlined } from "@ant-design/icons";
+import { Button, Card, Empty, Input, Select, Space, Spin, Table, Tabs, Typography, message } from "antd";
+import { AssignmentKindIcon } from "@/components/AssignmentKindChip";
 import type { ColumnsType } from "antd/es/table";
 import { Link, useNavigate } from "react-router-dom";
 import { useSessionStore } from "@/store/useSessionStore";
@@ -310,13 +311,17 @@ export function StudentClassPage() {
     {
       title: "Задание",
       key: "title",
-      dataIndex: "title"
-    },
-    {
-      title: "Тип",
-      dataIndex: "kind",
-      key: "kind",
-      render: (k: string) => KIND_RU[k] ?? k
+      render: (_, row) => (
+        <Space size="middle" align="start">
+          <AssignmentKindIcon kind={row.kind} />
+          <div>
+            <Text strong style={{ display: "block", lineHeight: 1.25 }}>{row.title}</Text>
+            <Text type="secondary" style={{ fontSize: 12 }}>
+              {KIND_RU[row.kind] ?? row.kind}
+            </Text>
+          </div>
+        </Space>
+      )
     },
     {
       title: "Срок",
@@ -338,22 +343,26 @@ export function StudentClassPage() {
       key: "st",
       render: (_, row) => {
         const st = row.submission?.status ?? "not_started";
-        const color =
-          st === "needs_revision"
-            ? "orange"
-            : st === "graded" || st === "auto_checked"
-              ? "green"
-              : st === "submitted" || st === "pending_teacher_review"
-                ? "blue"
-                : "default";
         const overdueHw = row.kind === "homework" && isOverdueByDueAt(row.dueAt, st);
+        const cls =
+          st === "graded" || st === "auto_checked"
+            ? "lms-status-badge--done"
+            : st === "submitted" || st === "pending_teacher_review"
+              ? "lms-status-badge--review"
+              : st === "needs_revision"
+                ? "lms-status-badge--warn"
+                : "lms-status-badge--neutral";
         return (
-          <Space size="small" wrap>
+          <Space size={6} wrap>
             {overdueHw ? (
-              <Tag color="red">Просрочено</Tag>
+              <span className="lms-status-badge lms-status-badge--danger">
+                <ClockCircleOutlined /> Просрочено
+              </span>
             ) : null}
-            <Tag color={color}>{STATUS_RU[st] ?? st}</Tag>
-            {needsAttention(row) ? <Tag color="red">Новое</Tag> : null}
+            <span className={`lms-status-badge ${cls}`}>{STATUS_RU[st] ?? st}</span>
+            {needsAttention(row) ? (
+              <span className="lms-status-badge lms-status-badge--danger">Новое</span>
+            ) : null}
           </Space>
         );
       }
@@ -365,20 +374,23 @@ export function StudentClassPage() {
       render: (_, row) => {
         const st = row.submission?.status ?? "not_started";
         if ((st === "graded" || st === "auto_checked") && row.submission?.score != null) {
+          const s = row.submission.score;
+          const cls =
+            s >= 5 ? "lms-mark--5"
+            : s >= 4 ? "lms-mark--4"
+            : s >= 3 ? "lms-mark--3"
+            : "lms-mark--2";
           return (
-            <Text strong>
-              {row.submission.score}/{row.maxScore}
-            </Text>
+            <Space size={6} align="center">
+              <em className={`lms-mark ${cls}`} style={{ fontStyle: "normal" }}>{s}</em>
+              <Text type="secondary" style={{ fontSize: 12 }}>из {row.maxScore}</Text>
+            </Space>
           );
         }
         if (st === "submitted" || st === "pending_teacher_review") {
-          return (
-            <Text type="secondary" style={{ fontSize: 12 }}>
-              На проверке
-            </Text>
-          );
+          return <em className="lms-mark lms-mark--review" style={{ fontStyle: "normal" }}>…</em>;
         }
-        return <Text type="secondary">—</Text>;
+        return <em className="lms-mark lms-mark--empty" style={{ fontStyle: "normal" }}>—</em>;
       }
     },
     {

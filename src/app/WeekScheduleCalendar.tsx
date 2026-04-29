@@ -1,8 +1,9 @@
-import { Button, Card, Popconfirm, Select, Space, Tag, Typography } from "antd";
+import { Button, Card, Popconfirm, Select, Space, Typography } from "antd";
 import dayjs, { type Dayjs } from "dayjs";
 import isoWeek from "dayjs/plugin/isoWeek";
 import "dayjs/locale/ru";
 import { isOverdueByDueAt } from "@/shared/studentAssignmentDue";
+import { AssignmentKindIcon } from "@/components/AssignmentKindChip";
 
 dayjs.extend(isoWeek);
 dayjs.locale("ru");
@@ -244,10 +245,8 @@ export function WeekScheduleCalendar({
                               const caption = diaryStudentAssignmentCaption(la.title, la.kind);
                               return (
                                 <div key={la.id} className="week-schedule-slot__assignment">
-                                  <Space align="start" wrap size={[6, 4]} style={{ width: "100%" }}>
-                                    <Tag color={la.kind === "classwork" ? "blue" : "purple"}>
-                                      {diaryKindLabels[la.kind] ?? (la.kind === "homework" ? "ДЗ" : la.kind)}
-                                    </Tag>
+                                  <Space align="start" wrap size={[8, 4]} style={{ width: "100%" }}>
+                                    <AssignmentKindIcon kind={la.kind} size="sm" />
                                     <div style={{ flex: 1, minWidth: 0 }}>
                                       {caption ? (
                                         <Text strong style={{ fontSize: 12 }}>
@@ -271,12 +270,21 @@ export function WeekScheduleCalendar({
                                       ) : null}
                                       {graded && scoreShown != null ? (
                                         <div className="week-schedule-slot__diary-grade">
-                                          <Text type="secondary" style={{ fontSize: 11 }}>
-                                            Оценка
-                                          </Text>
-                                          <Text strong className="week-schedule-slot__diary-grade-mark">
-                                            {scoreShown}
-                                          </Text>
+                                          {(() => {
+                                            const cls =
+                                              scoreShown >= 5 ? "lms-mark--5"
+                                              : scoreShown >= 4 ? "lms-mark--4"
+                                              : scoreShown >= 3 ? "lms-mark--3"
+                                              : "lms-mark--2";
+                                            return (
+                                              <em
+                                                className={`lms-mark ${cls}`}
+                                                style={{ fontStyle: "normal" }}
+                                              >
+                                                {scoreShown}
+                                              </em>
+                                            );
+                                          })()}
                                           <Text type="secondary" style={{ fontSize: 11 }}>
                                             из {row.maxScore}
                                           </Text>
@@ -287,13 +295,11 @@ export function WeekScheduleCalendar({
                                         </Text>
                                       ) : null}
                                       <Space wrap size="small" style={{ marginTop: 4 }}>
-                                        <Tag color="default" style={{ margin: 0 }}>
+                                        <span className="lms-status-badge lms-status-badge--neutral">
                                           {diaryStatusLabels[st] ?? st}
-                                        </Tag>
+                                        </span>
                                         {studentSlotNeedsAttention(row) ? (
-                                          <Tag color="red" style={{ margin: 0 }}>
-                                            Важно
-                                          </Tag>
+                                          <span className="lms-status-badge lms-status-badge--danger">Важно</span>
                                         ) : null}
                                         {st === "not_started" || !row.submission ? (
                                           <Button

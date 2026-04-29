@@ -4257,21 +4257,24 @@ html[data-theme="dark"] .landing-v2__logo-sheen {
 }
 
 .landing-v2__lms-badge--done {
-  color: #bff3cf;
-  background: rgba(34, 197, 94, 0.16);
-  border-color: rgba(34, 197, 94, 0.42);
+  color: #ffffff;
+  background: linear-gradient(160deg, #22c55e, #16a34a);
+  border-color: rgba(22, 163, 74, 0.6);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.2) inset, 0 6px 14px rgba(22, 163, 74, 0.28);
 }
 
 .landing-v2__lms-badge--warn {
-  color: #fde7b7;
-  background: rgba(245, 158, 11, 0.16);
-  border-color: rgba(245, 158, 11, 0.42);
+  color: #ffffff;
+  background: linear-gradient(160deg, #f59e0b, #d97706);
+  border-color: rgba(217, 119, 6, 0.6);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.2) inset, 0 6px 14px rgba(217, 119, 6, 0.28);
 }
 
 .landing-v2__lms-badge--review {
-  color: #d4dbff;
-  background: rgba(99, 141, 255, 0.16);
-  border-color: rgba(99, 141, 255, 0.42);
+  color: #ffffff;
+  background: linear-gradient(160deg, #6366f1, #4f46e5);
+  border-color: rgba(79, 70, 229, 0.6);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.2) inset, 0 6px 14px rgba(79, 70, 229, 0.28);
 }
 
 .landing-v2__lms-journal {
@@ -4326,13 +4329,17 @@ html[data-theme="dark"] .landing-v2__logo-sheen {
 }
 
 .landing-v2__lms-mark--5 {
-  background: linear-gradient(160deg, rgba(34, 197, 94, 0.36), rgba(34, 197, 94, 0.18));
-  border-color: rgba(34, 197, 94, 0.42);
+  color: #ffffff;
+  background: linear-gradient(160deg, #22c55e, #16a34a);
+  border-color: rgba(22, 163, 74, 0.6);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.2) inset, 0 4px 10px rgba(22, 163, 74, 0.22);
 }
 
 .landing-v2__lms-mark--4 {
-  background: linear-gradient(160deg, rgba(99, 141, 255, 0.32), rgba(99, 141, 255, 0.16));
-  border-color: rgba(99, 141, 255, 0.42);
+  color: #ffffff;
+  background: linear-gradient(160deg, #6366f1, #4f46e5);
+  border-color: rgba(79, 70, 229, 0.6);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.2) inset, 0 4px 10px rgba(79, 70, 229, 0.22);
 }
 
 .landing-v2__lms-mark--review {
@@ -4343,6 +4350,228 @@ html[data-theme="dark"] .landing-v2__logo-sheen {
 
 @media (max-width: 720px) {
   .landing-v2__lms-features { grid-template-columns: 1fr; }
+}
+
+/* =========================================================================
+   Общий стиль LMS-элементов (используется и на лендинге, и в реальных страницах:
+   карточки заданий ученика, расписание, журнал учителя)
+   ========================================================================= */
+
+.lms-kind-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  color: #ffffff;
+  flex: 0 0 auto;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.18) inset;
+}
+
+.lms-kind-icon--md {
+  width: 32px;
+  height: 32px;
+  font-size: 14px;
+}
+
+.lms-kind-icon--sm {
+  width: 22px;
+  height: 22px;
+  font-size: 11px;
+  border-radius: 7px;
+}
+
+.lms-kind-icon--lesson { background: linear-gradient(160deg, #4f8a5a, #2f6a45); }
+.lms-kind-icon--cw     { background: linear-gradient(160deg, #4a5fa6, #2f4288); }
+.lms-kind-icon--hw     { background: linear-gradient(160deg, #8a6a3a, #694a26); }
+
+.lms-kind-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px 3px 4px;
+  border-radius: 999px;
+  border: 1px solid var(--surface-stroke);
+  background: color-mix(in srgb, var(--surface-floating) 88%, transparent);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: var(--app-text);
+  white-space: nowrap;
+}
+
+.lms-kind-chip__label {
+  line-height: 1;
+}
+
+/* Цветные «оценки» в журнале и карточках — единый визуал с лендингом */
+.lms-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  font-style: normal;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #ffffff;
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  background: color-mix(in srgb, var(--surface-floating) 90%, transparent);
+}
+
+.lms-mark--5 {
+  background: linear-gradient(160deg, #22c55e, #16a34a);
+  border-color: rgba(22, 163, 74, 0.6);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.2) inset, 0 4px 10px rgba(22, 163, 74, 0.22);
+}
+
+.lms-mark--4 {
+  background: linear-gradient(160deg, #6366f1, #4f46e5);
+  border-color: rgba(79, 70, 229, 0.6);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.2) inset, 0 4px 10px rgba(79, 70, 229, 0.22);
+}
+
+.lms-mark--3 {
+  background: linear-gradient(160deg, #f59e0b, #d97706);
+  border-color: rgba(217, 119, 6, 0.6);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.2) inset, 0 4px 10px rgba(217, 119, 6, 0.22);
+}
+
+.lms-mark--2 {
+  background: linear-gradient(160deg, #ef4444, #b91c1c);
+  border-color: rgba(185, 28, 28, 0.6);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.2) inset, 0 4px 10px rgba(185, 28, 28, 0.22);
+}
+
+.lms-mark--review {
+  color: var(--app-muted);
+  background: color-mix(in srgb, var(--surface-floating) 90%, transparent);
+  border-style: dashed;
+  font-weight: 700;
+}
+
+.lms-mark--empty {
+  color: var(--app-muted);
+  background: transparent;
+  border-style: dashed;
+}
+
+/* Бейджи статусов задания (используем те же цвета, что на лендинге) */
+.lms-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  border: 1px solid transparent;
+  white-space: nowrap;
+  color: #ffffff;
+}
+
+.lms-status-badge .anticon { font-size: 11px; }
+
+.lms-status-badge--done {
+  background: linear-gradient(160deg, #22c55e, #16a34a);
+  border-color: rgba(22, 163, 74, 0.6);
+}
+
+.lms-status-badge--review {
+  background: linear-gradient(160deg, #6366f1, #4f46e5);
+  border-color: rgba(79, 70, 229, 0.6);
+}
+
+.lms-status-badge--warn {
+  background: linear-gradient(160deg, #f59e0b, #d97706);
+  border-color: rgba(217, 119, 6, 0.6);
+}
+
+.lms-status-badge--danger {
+  background: linear-gradient(160deg, #ef4444, #b91c1c);
+  border-color: rgba(185, 28, 28, 0.6);
+}
+
+.lms-status-badge--neutral {
+  color: var(--app-text);
+  background: color-mix(in srgb, var(--surface-floating) 88%, transparent);
+  border-color: var(--surface-stroke);
+}
+
+/* Журнал учителя: карточки в стиле лендинга */
+.teacher-gradebook {
+  display: grid;
+  gap: 10px;
+}
+
+.teacher-gradebook__row {
+  display: grid;
+  grid-template-columns: 180px 1fr;
+  gap: 14px;
+  align-items: center;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid var(--surface-stroke);
+  background: color-mix(in srgb, var(--surface-floating) 90%, transparent);
+}
+
+.teacher-gradebook__row--head {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: color-mix(in srgb, var(--surface-floating) 96%, transparent);
+}
+
+.teacher-gradebook__name {
+  font-weight: 640;
+  letter-spacing: -0.01em;
+  color: var(--app-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.teacher-gradebook__cells {
+  display: grid;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  gap: 10px;
+  align-items: center;
+}
+
+.teacher-gradebook__cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.teacher-gradebook__cell-meta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  font-size: 10.5px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--app-muted);
+}
+
+.teacher-gradebook__cell-meta .lms-kind-icon {
+  width: 18px;
+  height: 18px;
+  font-size: 10px;
+  border-radius: 6px;
+}
+
+@media (max-width: 900px) {
+  .teacher-gradebook__row {
+    grid-template-columns: 1fr;
+  }
+  .teacher-gradebook__cells {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
 }
 
 .landing-v2__device {
@@ -5012,6 +5241,17 @@ html[data-theme="light"] .app-header .settings-theme-toggle__btn--active {
   padding: 16px 20px 20px;
 }
 
+.app-auth-modal .ant-modal .ant-modal-footer {
+  padding: 12px 20px 16px;
+  margin: 0;
+  border-top: 1px solid var(--surface-stroke);
+  background: color-mix(in srgb, var(--surface-floating) 94%, transparent);
+}
+
+.app-auth-modal .ant-modal .ant-modal-footer .ant-btn + .ant-btn {
+  margin-inline-start: 8px;
+}
+
 .app-auth-modal .ant-modal .ant-tabs-nav {
   margin-bottom: 0 !important;
 }
@@ -5503,14 +5743,10 @@ html[data-theme="light"] .landing-v2__showcase--light .landing-v2__lms-week-cell
   color: var(--app-text);
 }
 
-html[data-theme="light"] .landing-v2__showcase--light .landing-v2__lms-mark {
-  color: var(--app-text);
-  border-color: var(--surface-stroke);
-  background: color-mix(in srgb, var(--surface-floating) 90%, transparent);
-}
-
 html[data-theme="light"] .landing-v2__showcase--light .landing-v2__lms-mark--review {
   color: var(--app-muted);
+  border-color: var(--surface-stroke);
+  background: color-mix(in srgb, var(--surface-floating) 90%, transparent);
 }
 
 html[data-theme="light"] .landing-v2__showcase--light .landing-v2__device {
