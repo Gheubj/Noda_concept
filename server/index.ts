@@ -9,6 +9,7 @@ import type { NextFunction, Request, Response } from "express";
 import { randomBytes, randomInt } from "crypto";
 import { z } from "zod";
 import type { Prisma } from "@prisma/client";
+import { AuthProvider } from "@prisma/client";
 import { prisma } from "./db.js";
 import { config, normalizeBrowserOrigin } from "./config.js";
 import {
@@ -434,12 +435,12 @@ app.post("/api/auth/school-code", authLimiter, async (req, res) => {
       res.status(403).json({ error: "Этот способ входа только для учеников" });
       return;
     }
-    if (existing.provider !== "school_code") {
+    if (existing.provider !== AuthProvider.school_code) {
       res.status(400).json({
         error:
-          existing.provider === "yandex"
+          existing.provider === AuthProvider.yandex
             ? "Для этого аккаунта войдите через Яндекс"
-            : existing.provider === "vk"
+            : existing.provider === AuthProvider.vk
               ? "Для этого аккаунта войдите через VK"
               : "Для этого аккаунта используйте вход по почте и паролю"
       });
@@ -539,7 +540,7 @@ app.post("/api/auth/school-code", authLimiter, async (req, res) => {
     data: {
       email: emailLower ?? null,
       nickname: nick,
-      provider: "school_code",
+      provider: AuthProvider.school_code,
       role: "student",
       studentMode: "school",
       emailVerifiedAt: emailLower ? new Date() : null
