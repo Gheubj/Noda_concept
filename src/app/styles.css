@@ -4051,15 +4051,15 @@ html[data-theme="dark"] .landing-v2__logo-sheen {
   line-height: 1.45;
 }
 
-.landing-v2__showcase-stats {
-  margin-top: 22px;
+.landing-v2__showcase-lms {
+  margin-top: 18px;
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 14px;
 }
 
-.landing-v2__stat {
-  padding: 14px 16px;
+.landing-v2__lms-card {
+  padding: 14px 14px 12px;
   border-radius: 14px;
   border: 1px solid rgba(148, 163, 184, 0.22);
   background: rgba(15, 23, 42, 0.42);
@@ -4067,20 +4067,23 @@ html[data-theme="dark"] .landing-v2__logo-sheen {
   -webkit-backdrop-filter: blur(10px);
 }
 
-.landing-v2__stat-k {
-  font-size: 10.5px;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: rgba(226, 232, 255, 0.62);
+.landing-v2__lms-title {
+  margin: 0 0 8px;
+  font-family: var(--font-display, "Manrope", "Inter", sans-serif);
+  font-size: 15px;
+  font-weight: 660;
+  letter-spacing: -0.012em;
+  color: #f8faff;
 }
 
-.landing-v2__stat-v {
-  margin-top: 4px;
-  font-family: var(--font-display, "Manrope", "Inter", sans-serif);
-  font-size: 16px;
-  font-weight: 660;
-  letter-spacing: -0.01em;
-  color: #f8faff;
+.landing-v2__lms-card ul {
+  margin: 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 6px;
+  color: rgba(226, 232, 255, 0.88);
+  font-size: 13.5px;
+  line-height: 1.45;
 }
 
 .landing-v2__device {
@@ -4261,7 +4264,7 @@ html[data-theme="dark"] .landing-v2__logo-sheen {
 }
 
 @media (max-width: 720px) {
-  .landing-v2__showcase-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .landing-v2__showcase-lms { grid-template-columns: 1fr; }
 }
 
 /* Метрики: оболочка графиков в стиле лендинга (стекло + тонкая сетка) */
@@ -5210,17 +5213,17 @@ html[data-theme="light"] .landing-v2__showcase--light .landing-v2__showcase-flow
   color: var(--app-text);
 }
 
-html[data-theme="light"] .landing-v2__showcase--light .landing-v2__stat {
+html[data-theme="light"] .landing-v2__showcase--light .landing-v2__lms-card {
   border-color: var(--surface-stroke);
   background: color-mix(in srgb, var(--surface-floating) 80%, transparent);
 }
 
-html[data-theme="light"] .landing-v2__showcase--light .landing-v2__stat-k {
-  color: var(--app-muted);
+html[data-theme="light"] .landing-v2__showcase--light .landing-v2__lms-title {
+  color: var(--app-text);
 }
 
-html[data-theme="light"] .landing-v2__showcase--light .landing-v2__stat-v {
-  color: var(--app-text);
+html[data-theme="light"] .landing-v2__showcase--light .landing-v2__lms-card ul {
+  color: var(--app-muted);
 }
 
 html[data-theme="light"] .landing-v2__showcase--light .landing-v2__device {

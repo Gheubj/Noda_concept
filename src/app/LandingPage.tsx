@@ -252,14 +252,14 @@ const PATHS: GuestPath[] = [
     tag: "Учитель",
     icon: <TeamOutlined />,
     title: "Веду кружок или класс",
-    text: "Создайте школу, классы и задания. Та же среда разработки, что и у детей.",
+    text: "LMS для школы: расписание, выдача классных работ и ДЗ, проверка сдач и журнал в одном кабинете.",
     hint: "Роль «Учитель» при регистрации"
   },
   {
     tag: "Школа",
     icon: <UserOutlined />,
     title: "Ученик в классе",
-    text: "Введите код от учителя — и получите расписание, уроки и задания.",
+    text: "Вводишь код класса и видишь всё обучение: расписание, уроки, дедлайны, статус проверки и оценки.",
     hint: "Роль «Ученик» · режим «Школа»"
   },
   {
@@ -457,33 +457,37 @@ function GuestLanding() {
           <div className="landing-v2__showcase-inner">
             <div className="landing-v2__showcase-copy">
               <div className="landing-v2__showcase-badge">
-                <ThunderboltOutlined /> Формат «от идеи до результата»
+                <ThunderboltOutlined /> LMS + AI-студия в одном месте
               </div>
               <h2 id="landing-v2-showcase-title" className="landing-v2__showcase-title">
-                Теория, практика и проверка объединены в один рабочий процесс.
+                Конкретный учебный процесс: урок, практика, ДЗ и проверка без хаоса в чатах.
               </h2>
               <p className="landing-v2__showcase-text">
-                Ученик не переключается между десятком сервисов: получает задачу, собирает
-                решение, обучает модель, анализирует метрики и отправляет результат на проверку.
+                Для школы это полноценная LMS-логика: учитель управляет расписанием и заданиями,
+                ученик видит понятный маршрут обучения с дедлайнами и обратной связью.
               </p>
               <ul className="landing-v2__showcase-flow" role="list">
-                <li>1) Разбор задачи и логики модели</li>
-                <li>2) Практика в визуальном программировании</li>
-                <li>3) Обучение модели и анализ графиков</li>
-                <li>4) Сдача работы и обратная связь</li>
+                <li>1) Урок с материалами и практикой в мини-студии</li>
+                <li>2) Классная работа или ДЗ с дедлайном в календаре</li>
+                <li>3) Сдача проекта и статус: на проверке / доработка / оценка</li>
+                <li>4) Обратная связь учителя и прогресс по модулю</li>
               </ul>
-              <div className="landing-v2__showcase-stats">
-                <div className="landing-v2__stat">
-                  <div className="landing-v2__stat-k">Формат</div>
-                  <div className="landing-v2__stat-v">Путь AI-разработчика</div>
+              <div className="landing-v2__showcase-lms">
+                <div className="landing-v2__lms-card">
+                  <div className="landing-v2__lms-title">Учителю</div>
+                  <ul>
+                    <li>Недельное расписание и темы уроков</li>
+                    <li>Выдача классных работ и ДЗ с дедлайнами</li>
+                    <li>Проверка сдач, комментарии и журнал класса</li>
+                  </ul>
                 </div>
-                <div className="landing-v2__stat">
-                  <div className="landing-v2__stat-k">Бесплатный старт</div>
-                  <div className="landing-v2__stat-v">Модуль A · 4 урока</div>
-                </div>
-                <div className="landing-v2__stat">
-                  <div className="landing-v2__stat-k">Экспертиза</div>
-                  <div className="landing-v2__stat-v">Тренеры РФ и Испании</div>
+                <div className="landing-v2__lms-card">
+                  <div className="landing-v2__lms-title">Ученику</div>
+                  <ul>
+                    <li>Код класса, расписание и лента актуальных задач</li>
+                    <li>Понятные статусы по каждой работе и дедлайну</li>
+                    <li>Открытие урока и сдача проекта в той же среде</li>
+                  </ul>
                 </div>
               </div>
             </div>
