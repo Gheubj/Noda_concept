@@ -3,13 +3,18 @@ import { Alert, Button, Layout, Space, Spin } from "antd";
 import {
   ArrowRightOutlined,
   BookOutlined,
+  CalendarOutlined,
   CaretRightOutlined,
   CheckCircleFilled,
+  ClockCircleOutlined,
   CodeOutlined,
   DatabaseOutlined,
   ExperimentOutlined,
+  FileTextOutlined,
+  LineChartOutlined,
   NodeIndexOutlined,
   RocketOutlined,
+  SolutionOutlined,
   TeamOutlined,
   ThunderboltOutlined,
   UserOutlined
@@ -239,6 +244,61 @@ const ADVANTAGES: Feature[] = [
   }
 ];
 
+type LmsTarget = "rail" | "week" | "tasks" | "journal";
+
+interface LmsFeature {
+  id: string;
+  target: LmsTarget;
+  icon: ReactNode;
+  title: string;
+  text: string;
+}
+
+const LMS_FEATURES: LmsFeature[] = [
+  {
+    id: "sched",
+    target: "week",
+    icon: <CalendarOutlined />,
+    title: "Расписание и темы уроков",
+    text: "Недельный календарь, серии занятий, привязка темы и материалов к слоту."
+  },
+  {
+    id: "tasks",
+    target: "tasks",
+    icon: <FileTextOutlined />,
+    title: "Классные работы и ДЗ",
+    text: "Выдача заданий с дедлайнами, авто-уведомления о просрочке, привязка к шаблону урока."
+  },
+  {
+    id: "review",
+    target: "tasks",
+    icon: <CheckCircleFilled />,
+    title: "Сдача и проверка проектов",
+    text: "Статусы «на проверке / доработка / оценка», комментарии учителя в карточке работы."
+  },
+  {
+    id: "journal",
+    target: "journal",
+    icon: <LineChartOutlined />,
+    title: "Журнал и успеваемость",
+    text: "Таблица «ученики × задания», прогресс по модулям и оценки в одном месте."
+  },
+  {
+    id: "code",
+    target: "rail",
+    icon: <TeamOutlined />,
+    title: "Класс по коду",
+    text: "Ученики подключаются за минуту: ввели код — увидели расписание и задания."
+  },
+  {
+    id: "program",
+    target: "tasks",
+    icon: <BookOutlined />,
+    title: "Готовая программа",
+    text: "Шаблоны уроков и модулей: можно использовать как есть или адаптировать под класс."
+  }
+];
+
 interface GuestPath {
   tag: string;
   icon: ReactNode;
@@ -274,6 +334,7 @@ const PATHS: GuestPath[] = [
 function GuestLanding() {
   const htmlTheme = useHtmlDataTheme();
   const sceneRef = useCursorScene<HTMLDivElement>();
+  const [lmsHover, setLmsHover] = useState<LmsTarget | null>(null);
   const wordmark = htmlTheme === "light" ? "/nodly-wordmark-outline.png" : "/nodly-wordmark-white.png";
 
   return (
@@ -457,39 +518,21 @@ function GuestLanding() {
           <div className="landing-v2__showcase-inner">
             <div className="landing-v2__showcase-copy">
               <div className="landing-v2__showcase-badge">
-                <ThunderboltOutlined /> LMS + AI-студия в одном месте
+                <ThunderboltOutlined /> Формат «от идеи до результата»
               </div>
               <h2 id="landing-v2-showcase-title" className="landing-v2__showcase-title">
-                Конкретный учебный процесс: урок, практика, ДЗ и проверка без хаоса в чатах.
+                Полный цикл AI-разработки в одной понятной среде.
               </h2>
               <p className="landing-v2__showcase-text">
-                Для школы это полноценная LMS-логика: учитель управляет расписанием и заданиями,
-                ученик видит понятный маршрут обучения с дедлайнами и обратной связью.
+                Ученик не переключается между десятком сервисов: получает задачу,
+                работает с данными, обучает модель, анализирует метрики и приходит к результату.
               </p>
               <ul className="landing-v2__showcase-flow" role="list">
-                <li>1) Урок с материалами и практикой в мини-студии</li>
-                <li>2) Классная работа или ДЗ с дедлайном в календаре</li>
-                <li>3) Сдача проекта и статус: на проверке / доработка / оценка</li>
-                <li>4) Обратная связь учителя и прогресс по модулю</li>
+                <li>1) Постановка задачи и выбор данных</li>
+                <li>2) Сборка решения в визуальном программировании</li>
+                <li>3) Обучение модели и анализ графиков качества</li>
+                <li>4) Предсказания и проверка результата</li>
               </ul>
-              <div className="landing-v2__showcase-lms">
-                <div className="landing-v2__lms-card">
-                  <div className="landing-v2__lms-title">Учителю</div>
-                  <ul>
-                    <li>Недельное расписание и темы уроков</li>
-                    <li>Выдача классных работ и ДЗ с дедлайнами</li>
-                    <li>Проверка сдач, комментарии и журнал класса</li>
-                  </ul>
-                </div>
-                <div className="landing-v2__lms-card">
-                  <div className="landing-v2__lms-title">Ученику</div>
-                  <ul>
-                    <li>Код класса, расписание и лента актуальных задач</li>
-                    <li>Понятные статусы по каждой работе и дедлайну</li>
-                    <li>Открытие урока и сдача проекта в той же среде</li>
-                  </ul>
-                </div>
-              </div>
             </div>
             <div className="landing-v2__device" aria-hidden>
               <div className="landing-v2__device-rail">
@@ -513,6 +556,147 @@ function GuestLanding() {
                 <div className="landing-v2__palette-block landing-v2__palette-block--output">Сохранить</div>
               </div>
               <NodlyPromoMetrics />
+            </div>
+          </div>
+        </section>
+
+        <div className="landing-v2__section-intro">
+          <div className="landing-v2__eyebrow">
+            <span className="landing-v2__dot" aria-hidden />
+            LMS для школ и кружков
+          </div>
+          <h2 className="landing-v2__section-title">Полноценная LMS внутри среды AI-разработки</h2>
+        </div>
+        <section
+          className={`landing-v2__showcase landing-v2__showcase--integrated landing-v2__showcase--lms${htmlTheme === "light" ? " landing-v2__showcase--light" : ""}`}
+          onMouseMove={onReactiveCardMove}
+          aria-labelledby="landing-v2-lms-title"
+        >
+          <div className="landing-v2__showcase-glow" aria-hidden />
+          <div className="landing-v2__showcase-inner landing-v2__showcase-inner--reverse">
+            <div
+              className={`landing-v2__lms-mock${lmsHover ? ` landing-v2__lms-mock--has-hl landing-v2__lms-mock--hl-${lmsHover}` : ""}`}
+              aria-hidden
+            >
+              <div className="landing-v2__lms-mock-rail">
+                <CalendarOutlined className="landing-v2__lms-mock-rail-icon" />
+                <span className="landing-v2__lms-mock-rail-title">Расписание · 7А · неделя</span>
+              </div>
+              <div className="landing-v2__lms-week" role="list">
+                {[
+                  { d: "Пн", n: 17 },
+                  { d: "Вт", n: 18 },
+                  { d: "Ср", n: 19 },
+                  { d: "Чт", n: 20, active: true },
+                  { d: "Пт", n: 21 },
+                  { d: "Сб", n: 22 },
+                  { d: "Вс", n: 23 }
+                ].map((c) => (
+                  <div
+                    key={c.d}
+                    className={`landing-v2__lms-week-cell${c.active ? " landing-v2__lms-week-cell--active" : ""}`}
+                    role="listitem"
+                  >
+                    <div className="landing-v2__lms-week-d">{c.d}</div>
+                    <div className="landing-v2__lms-week-n">{c.n}</div>
+                  </div>
+                ))}
+              </div>
+              <div className="landing-v2__lms-tasks" role="list">
+                <div className="landing-v2__lms-task" role="listitem">
+                  <span className="landing-v2__lms-task-icon landing-v2__lms-task-icon--lesson">
+                    <BookOutlined />
+                  </span>
+                  <span className="landing-v2__lms-task-body">
+                    <span className="landing-v2__lms-task-title">Урок: Введение в ИИ</span>
+                    <span className="landing-v2__lms-task-sub">Чт, материалы и мини-практика</span>
+                  </span>
+                  <span className="landing-v2__lms-badge landing-v2__lms-badge--done">
+                    <CheckCircleFilled /> Оценка 5
+                  </span>
+                </div>
+                <div className="landing-v2__lms-task" role="listitem">
+                  <span className="landing-v2__lms-task-icon landing-v2__lms-task-icon--hw">
+                    <FileTextOutlined />
+                  </span>
+                  <span className="landing-v2__lms-task-body">
+                    <span className="landing-v2__lms-task-title">ДЗ: Регрессия</span>
+                    <span className="landing-v2__lms-task-sub">Сдать проект до 21:00</span>
+                  </span>
+                  <span className="landing-v2__lms-badge landing-v2__lms-badge--warn">
+                    <ClockCircleOutlined /> Дедлайн сегодня
+                  </span>
+                </div>
+                <div className="landing-v2__lms-task" role="listitem">
+                  <span className="landing-v2__lms-task-icon landing-v2__lms-task-icon--cw">
+                    <SolutionOutlined />
+                  </span>
+                  <span className="landing-v2__lms-task-body">
+                    <span className="landing-v2__lms-task-title">Классная работа: Классификация</span>
+                    <span className="landing-v2__lms-task-sub">Учитель смотрит сдачу</span>
+                  </span>
+                  <span className="landing-v2__lms-badge landing-v2__lms-badge--review">
+                    На проверке
+                  </span>
+                </div>
+              </div>
+              <div className="landing-v2__lms-journal">
+                <div className="landing-v2__lms-journal-head">
+                  <LineChartOutlined /> Журнал и прогресс
+                </div>
+                <div className="landing-v2__lms-journal-row">
+                  <span className="landing-v2__lms-journal-name">Алиса К.</span>
+                  <span className="landing-v2__lms-journal-marks">
+                    <em className="landing-v2__lms-mark landing-v2__lms-mark--5">5</em>
+                    <em className="landing-v2__lms-mark landing-v2__lms-mark--4">4</em>
+                    <em className="landing-v2__lms-mark landing-v2__lms-mark--5">5</em>
+                    <em className="landing-v2__lms-mark landing-v2__lms-mark--review">…</em>
+                    <em className="landing-v2__lms-mark landing-v2__lms-mark--5">5</em>
+                  </span>
+                </div>
+                <div className="landing-v2__lms-journal-row">
+                  <span className="landing-v2__lms-journal-name">Игорь П.</span>
+                  <span className="landing-v2__lms-journal-marks">
+                    <em className="landing-v2__lms-mark landing-v2__lms-mark--4">4</em>
+                    <em className="landing-v2__lms-mark landing-v2__lms-mark--5">5</em>
+                    <em className="landing-v2__lms-mark landing-v2__lms-mark--review">…</em>
+                    <em className="landing-v2__lms-mark landing-v2__lms-mark--4">4</em>
+                    <em className="landing-v2__lms-mark landing-v2__lms-mark--5">5</em>
+                  </span>
+                </div>
+              </div>
+            </div>
+            <div className="landing-v2__showcase-copy">
+              <div className="landing-v2__showcase-badge">
+                <SolutionOutlined /> Учителям и ученикам
+              </div>
+              <h2 id="landing-v2-lms-title" className="landing-v2__showcase-title">
+                Расписание, ДЗ, проверка и журнал — без сторонних инструментов.
+              </h2>
+              <p className="landing-v2__showcase-text">
+                Учитель ведёт расписание класса, выдаёт классные работы и ДЗ с дедлайнами,
+                проверяет сдачи и видит журнал. Ученик подключается по коду класса
+                и получает понятный маршрут обучения вместе со средой разработки.
+              </p>
+              <div className="landing-v2__lms-features">
+                {LMS_FEATURES.map((f) => (
+                  <div
+                    key={f.id}
+                    className={`landing-v2__lms-feature${lmsHover === f.target ? " landing-v2__lms-feature--active" : ""}`}
+                    onMouseEnter={() => setLmsHover(f.target)}
+                    onMouseLeave={() => setLmsHover((cur) => (cur === f.target ? null : cur))}
+                    onFocus={() => setLmsHover(f.target)}
+                    onBlur={() => setLmsHover((cur) => (cur === f.target ? null : cur))}
+                    tabIndex={0}
+                  >
+                    <span className="landing-v2__lms-feature-icon">{f.icon}</span>
+                    <div>
+                      <div className="landing-v2__lms-feature-title">{f.title}</div>
+                      <div className="landing-v2__lms-feature-text">{f.text}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </section>
