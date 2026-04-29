@@ -242,8 +242,6 @@ export function TeacherPage() {
   const [newSlotHomeworkDaysAfter, setNewSlotHomeworkDaysAfter] = useState(7);
   const [newSlotClassworkTitle, setNewSlotClassworkTitle] = useState("");
   const [newSlotHomeworkTitle, setNewSlotHomeworkTitle] = useState("");
-  const [newSlotClassworkDesc, setNewSlotClassworkDesc] = useState("");
-  const [newSlotHomeworkDesc, setNewSlotHomeworkDesc] = useState("");
   const [newSlotNotes, setNewSlotNotes] = useState("");
   const [scheduleWeekAnchor, setScheduleWeekAnchor] = useState(() => dayjs());
   const [addingSlot, setAddingSlot] = useState(false);
@@ -692,8 +690,8 @@ export function TeacherPage() {
           newSlotAddHomework && newSlotRepeatWeekly ? newSlotHomeworkDaysAfter : undefined,
         classworkTitle: newSlotClassworkTitle.trim() || null,
         homeworkTitle: newSlotHomeworkTitle.trim() || null,
-        classworkDescription: newSlotClassworkDesc.trim() || null,
-        homeworkDescription: newSlotHomeworkDesc.trim() || null
+        classworkDescription: null,
+        homeworkDescription: null
       });
       messageApi.success(repeatWeeks > 1 ? `Добавлено занятий: ${repeatWeeks}` : "Занятие добавлено");
       setScheduleModalOpen(false);
@@ -707,8 +705,6 @@ export function TeacherPage() {
       setNewSlotHomeworkDaysAfter(7);
       setNewSlotClassworkTitle("");
       setNewSlotHomeworkTitle("");
-      setNewSlotClassworkDesc("");
-      setNewSlotHomeworkDesc("");
       setScheduleWeekAnchor(start);
       await reloadSchedule();
     } catch (e) {
@@ -1635,8 +1631,6 @@ export function TeacherPage() {
                 setNewSlotHomeworkDaysAfter(7);
                 setNewSlotClassworkTitle("");
                 setNewSlotHomeworkTitle("");
-                setNewSlotClassworkDesc("");
-                setNewSlotHomeworkDesc("");
                 setNewSlotLessonId(undefined);
                 setNewSlotNotes("");
                 setScheduleModalOpen(true);
@@ -1939,7 +1933,18 @@ export function TeacherPage() {
               style={{ width: "100%", marginTop: 4 }}
               placeholder="Без привязки к уроку"
               value={newSlotLessonId}
-              onChange={(v) => setNewSlotLessonId(v)}
+              onChange={(v) => {
+                setNewSlotLessonId(v);
+                if (v) {
+                  const lesson = courseBundle?.lessons.find((l) => l.id === v);
+                  const title = lesson?.title?.trim() ?? "";
+                  setNewSlotClassworkTitle(title);
+                  setNewSlotHomeworkTitle(title);
+                } else {
+                  setNewSlotClassworkTitle("");
+                  setNewSlotHomeworkTitle("");
+                }
+              }}
               options={courseBundle?.lessons.map((l) => ({ value: l.id, label: l.title })) ?? []}
             />
             {newSlotRepeatWeekly ? (
@@ -1960,19 +1965,15 @@ export function TeacherPage() {
             </div>
           </div>
           {newSlotAttachClasswork ? (
-            <Space direction="vertical" style={{ width: "100%" }} size="small">
-              <Input
-                placeholder="Название (необязательно, иначе «Классная работа: …»)"
-                value={newSlotClassworkTitle}
-                onChange={(e) => setNewSlotClassworkTitle(e.target.value)}
-              />
-              <TextArea
-                rows={2}
-                placeholder="Описание для ученика (необязательно)"
-                value={newSlotClassworkDesc}
-                onChange={(e) => setNewSlotClassworkDesc(e.target.value)}
-              />
-            </Space>
+            <Input
+              placeholder={
+                newSlotLessonId
+                  ? "Название классной работы (по умолчанию — как у урока)"
+                  : "Название (необязательно, иначе «Классная работа: …»)"
+              }
+              value={newSlotClassworkTitle}
+              onChange={(e) => setNewSlotClassworkTitle(e.target.value)}
+            />
           ) : null}
           <div>
             <Text type="secondary">ДЗ</Text>
@@ -2005,19 +2006,15 @@ export function TeacherPage() {
             </div>
           ) : null}
           {newSlotAddHomework ? (
-            <Space direction="vertical" style={{ width: "100%" }} size="small">
-              <Input
-                placeholder="Название ДЗ (необязательно, иначе «ДЗ: …»)"
-                value={newSlotHomeworkTitle}
-                onChange={(e) => setNewSlotHomeworkTitle(e.target.value)}
-              />
-              <TextArea
-                rows={2}
-                placeholder="Описание ДЗ (необязательно)"
-                value={newSlotHomeworkDesc}
-                onChange={(e) => setNewSlotHomeworkDesc(e.target.value)}
-              />
-            </Space>
+            <Input
+              placeholder={
+                newSlotLessonId
+                  ? "Название ДЗ (по умолчанию — как у урока)"
+                  : "Название ДЗ (необязательно, иначе «ДЗ: …»)"
+              }
+              value={newSlotHomeworkTitle}
+              onChange={(e) => setNewSlotHomeworkTitle(e.target.value)}
+            />
           ) : null}
           {newSlotRepeatWeekly && (newSlotAddHomework || newSlotAttachClasswork) ? (
             <Paragraph type="secondary" style={{ fontSize: 12, marginBottom: 0 }}>
