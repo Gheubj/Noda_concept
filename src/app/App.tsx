@@ -910,6 +910,7 @@ export function App() {
       {onboardingInvitePersona ? (
         <Modal
           open={onboardingInviteOpen}
+          rootClassName="app-auth-modal"
           title="Краткая экскурсия по платформе"
           okText="Начать"
           cancelText="Не сейчас"
@@ -935,6 +936,7 @@ export function App() {
         >
           <Paragraph style={{ marginBottom: 0 }}>
             Покажем основные разделы с подсветкой. Экскурсию можно закрыть в любой момент.
+            Повторить её всегда можно в настройках.
           </Paragraph>
         </Modal>
       ) : null}
