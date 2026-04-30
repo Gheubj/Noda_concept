@@ -3465,7 +3465,7 @@ html[data-theme="light"] .blockly-palette-group-title {
 .landing-v2 {
   --app-content-pad-block: 0;
   padding: 0 !important;
-  overflow-x: clip;
+  overflow-x: hidden;
   overflow-y: auto;
   background:
     radial-gradient(ellipse at 70% -10%, color-mix(in srgb, var(--app-accent) 18%, transparent), transparent 60%),
