@@ -118,7 +118,11 @@ body {
   flex-direction: column;
 }
 
+/* flex-basis: 0% — иначе при `auto` контент «раздувает» колонку, скролл
+   уезжает на document/window: ползунок работает, колесо над main — нет. */
 .app-layout-body > .ant-layout-content:not(.app-content--workspace) {
+  flex: 1 1 0%;
+  min-height: 0;
   overflow: auto;
 }
 
@@ -3465,8 +3469,6 @@ html[data-theme="light"] .blockly-palette-group-title {
 .landing-v2 {
   --app-content-pad-block: 0;
   padding: 0 !important;
-  overflow-x: hidden;
-  overflow-y: auto;
   background:
     radial-gradient(ellipse at 70% -10%, color-mix(in srgb, var(--app-accent) 18%, transparent), transparent 60%),
     radial-gradient(ellipse at 10% 120%, color-mix(in srgb, #9d68ff 14%, transparent), transparent 55%),
@@ -6274,7 +6276,10 @@ html[data-theme="light"] .landing-v2__showcase--light .nodly-promo-metrics__loss
    1.5  PAGE-LEVEL SCROLL  (мобильные/планшетные браузеры)
    ----------------------------------------------------------------------
    На десктопе скролл идёт ВНУТРИ `.ant-layout-content { overflow: auto }`,
-   а заголовок остаётся «приклеенным» через flex-shrink. Это удобно для
+   при этом у не-workspace контента `flex: 1 1 0%` (см. выше), иначе
+   `flex-basis: auto` раздувает колонку, скролл оказывается на window, и
+   колесо над main не двигает страницу (ползунок у края экрана всё ещё работает).
+   Заголовок остаётся «приклеенным» через flex-shrink. Это удобно для
    мыши, но iOS/Android считают такой контейнер «desktop scrollbar» и
    часто пропускают touch-жесты — пользователь может прокручивать только
    тягой за полосу прокрутки.
