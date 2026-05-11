@@ -69,7 +69,12 @@ export function StudioTrainingLiveCharts({ className, compact }: StudioTrainingL
         </span>
       </div>
 
-      <StudioTrainingProcessViz modelType={streamModelType} warming={currentEpoch === 0} compact={compact} />
+      <StudioTrainingProcessViz
+        modelType={streamModelType}
+        epochHistory={rows}
+        warming={currentEpoch === 0}
+        compact={compact}
+      />
 
       <div className="studio-training-live__epoch-track" aria-hidden>
         <div className="studio-training-live__epoch-track-fill" style={{ width: `${epochProgressPct}%` }} />

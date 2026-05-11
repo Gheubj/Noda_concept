@@ -5025,8 +5025,10 @@ html[data-theme="dark"] .studio-training-live__epoch-track-fill {
   background: linear-gradient(90deg, #5b8def, #a78bfa);
 }
 
-/* Абстрактная «сеть» — без подписей, только движение и топология */
+/* «Сеть» + мини-кривая того же train loss, что и в графиках; рёбра и ритм — от метрик */
 .studio-training-viz {
+  --stv-loss-n: 0.5;
+  --stv-dash-s: 1.35s;
   width: 100%;
   margin-bottom: 2px;
   border-radius: 12px;
@@ -5043,22 +5045,24 @@ html[data-theme="dark"] .studio-training-live__epoch-track-fill {
   display: block;
   width: 100%;
   height: auto;
-  min-height: 56px;
+  min-height: 64px;
 }
 
 .studio-training-viz--compact .studio-training-viz__svg {
-  min-height: 48px;
+  min-height: 56px;
 }
 
 .studio-training-viz__edge {
   fill: none;
   stroke: color-mix(in srgb, #6aa3ff 55%, var(--surface-stroke));
-  stroke-width: 1.35;
   stroke-linecap: round;
   vector-effect: non-scaling-stroke;
   stroke-dasharray: 5 11;
-  animation: studio-training-viz-dash 1.35s linear infinite;
-  opacity: 0.72;
+  animation-name: studio-training-viz-dash;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+  animation-duration: var(--stv-dash-s, 1.35s);
+  opacity: calc(0.36 + 0.58 * (1 - var(--stv-loss-n, 0.5)));
 }
 
 .studio-training-viz__dash--0 {
@@ -5078,6 +5082,17 @@ html[data-theme="dark"] .studio-training-live__epoch-track-fill {
   to {
     stroke-dashoffset: -32;
   }
+}
+
+.studio-training-viz__spark-line {
+  stroke: #6aa3ff;
+  stroke-width: 2.25;
+  vector-effect: non-scaling-stroke;
+  opacity: 0.92;
+}
+
+.studio-training-viz__spark-area {
+  pointer-events: none;
 }
 
 .studio-training-viz__node {
@@ -5124,8 +5139,21 @@ html[data-theme="dark"] .studio-training-live__epoch-track-fill {
 }
 
 .studio-training-viz--warming .studio-training-viz__edge {
-  animation-duration: 0.95s;
-  opacity: 0.88;
+  animation-duration: calc(var(--stv-dash-s, 1.35s) * 0.88);
+  opacity: calc(0.42 + 0.52 * (1 - var(--stv-loss-n, 0.5)));
+}
+
+.studio-training-viz--epoch-tick .studio-training-viz__svg {
+  animation: studio-training-viz-epoch-tick 0.42s ease-out;
+}
+
+@keyframes studio-training-viz-epoch-tick {
+  0% {
+    filter: brightness(1.12) saturate(1.08);
+  }
+  100% {
+    filter: none;
+  }
 }
 
 .studio-stage-panel__mini-live-charts {
