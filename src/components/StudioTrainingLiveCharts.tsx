@@ -1,5 +1,5 @@
 import { Space, Typography } from "antd";
-import { useId, useMemo } from "react";
+import { Fragment, useId, useMemo } from "react";
 import {
   CartesianGrid,
   Legend,
@@ -35,6 +35,13 @@ type StudioTrainingLiveChartsProps = {
   compact?: boolean;
 };
 
+const PIPE_STEPS = [
+  { id: "data", label: "Данные", hint: "признаки и ответ" },
+  { id: "forward", label: "Прямой ход", hint: "модель считает выход" },
+  { id: "loss", label: "Лосс", hint: "насколько ошиблись" },
+  { id: "update", label: "Веса", hint: "шаг оптимизатора" }
+] as const;
+
 export function StudioTrainingLiveCharts({ className, compact }: StudioTrainingLiveChartsProps) {
   const training = useAppStore((s) => s.training);
   const liveEpochHistory = useAppStore((s) => s.liveEpochHistory);
@@ -60,6 +67,8 @@ export function StudioTrainingLiveCharts({ className, compact }: StudioTrainingL
 
   const currentEpoch = rows.length > 0 ? rows[rows.length - 1]!.epoch : 0;
   const totalPlanned = plannedEpochs ?? currentEpoch;
+  const epochProgressPct =
+    totalPlanned > 0 ? Math.min(100, Math.round((currentEpoch / Math.max(totalPlanned, 1)) * 100)) : 0;
 
   const show = training.isTraining && streamModelType != null && liveEpochHistory !== null;
 
@@ -84,11 +93,70 @@ export function StudioTrainingLiveCharts({ className, compact }: StudioTrainingL
           Эпоха {currentEpoch} / {Math.max(totalPlanned, 1)}
         </Text>
       </div>
+
+      <div className="studio-training-live__process">
+        {compact ? (
+          <Text type="secondary" className="studio-training-live__process-lead studio-training-live__process-lead--compact">
+            Каждая эпоха — полный проход по обучению и шаг оптимизатора. Val — контроль без дообучения на этих строках.
+          </Text>
+        ) : (
+          <Text type="secondary" className="studio-training-live__process-lead">
+            Идёт обучение: за одну эпоху модель один раз просматривает все обучающие примеры, сравнивает ответ с истиной,
+            получает лосс и чуть сдвигает веса в сторону меньшей ошибки. Это повторяется много эпох подряд. Кривые ниже
+            показывают, как меняется ошибка и качество; линия val — отдельная выборка для контроля (на ней веса не
+            дообучаются).
+          </Text>
+        )}
+
+        <div
+          className={[
+            "studio-training-live__pipeline",
+            currentEpoch === 0 ? "studio-training-live__pipeline--warming" : ""
+          ]
+            .filter(Boolean)
+            .join(" ")}
+          aria-label="Этапы одной эпохи обучения"
+        >
+          {PIPE_STEPS.map((step, index) => (
+            <Fragment key={step.id}>
+              <div className="studio-training-live__pipe-step">
+                <span className="studio-training-live__pipe-step-index" aria-hidden>
+                  {index + 1}
+                </span>
+                <span className="studio-training-live__pipe-step-label">{step.label}</span>
+                {!compact ? (
+                  <span className="studio-training-live__pipe-step-hint" title={step.hint}>
+                    {step.hint}
+                  </span>
+                ) : null}
+              </div>
+              {index < PIPE_STEPS.length - 1 ? (
+                <span className="studio-training-live__pipe-arrow" aria-hidden>
+                  →
+                </span>
+              ) : null}
+            </Fragment>
+          ))}
+        </div>
+
+        <div className="studio-training-live__epoch-track" aria-hidden>
+          <div className="studio-training-live__epoch-track-fill" style={{ width: `${epochProgressPct}%` }} />
+        </div>
+        <Text type="secondary" className="studio-training-live__epoch-track-caption">
+          Прогресс по плану эпох: {epochProgressPct}%
+        </Text>
+      </div>
+
       <Space direction="vertical" size={compact ? 6 : 10} style={{ width: "100%" }}>
         <div className="studio-metrics-chart-shell studio-training-live__shell">
           <div className="studio-metrics-chart-shell__head">
             <Text strong>Потери (loss)</Text>
           </div>
+          {!compact ? (
+            <Text type="secondary" className="studio-training-live__chart-caption">
+              train — ошибка на данных, на которых учимся; val — на отложенной части без шага по весам.
+            </Text>
+          ) : null}
           <div className="studio-metrics-chart-shell__plot studio-metrics-line-chart">
             <ResponsiveContainer width="100%" height={chartHeight}>
               <LineChart data={rows} margin={margin}>
