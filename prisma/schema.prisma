@@ -164,11 +164,14 @@ model Enrollment {
   joinedAt           DateTime  @default(now())
   // Учитель отметил просмотр нового ученика (вкладка «Классы»)
   teacherSeenJoinAt  DateTime?
+  /// Логин ученика в рамках класса (вход: код класса + этот логин + пароль)
+  schoolLogin        String
 
   classroom Classroom @relation(fields: [classroomId], references: [id], onDelete: Cascade)
   student   User      @relation(fields: [studentId], references: [id], onDelete: Cascade)
 
   @@unique([classroomId, studentId])
+  @@unique([classroomId, schoolLogin])
 }
 
 model InviteCode {

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Button, Card, Checkbox, Input, Space, Typography, message } from "antd";
+import { Alert, Button, Card, Checkbox, Input, Space, Typography, message } from "antd";
 import { Link, useNavigate } from "react-router-dom";
 import { useSessionStore } from "@/store/useSessionStore";
 import { apiClient, setAccessToken, toUserErrorMessage } from "@/shared/api/client";
@@ -99,6 +99,14 @@ export function AccountPage() {
             ) : null}
             <Card title="Профиль" data-onboarding="account-profile">
               <Space direction="vertical" style={{ width: "100%" }}>
+                {user.role === "student" && user.displayNamePending ? (
+                  <Alert
+                    type="info"
+                    showIcon
+                    message="Придумайте ник"
+                    description="Так вас будут видеть учитель и материалы класса. Логин для входа по коду класса задаёт только учитель."
+                  />
+                ) : null}
                 <Text>
                   Роль: {user.role === "teacher" ? "Учитель" : "Ученик"}
                   {user.nickname ? ` · ${user.nickname}` : ""}

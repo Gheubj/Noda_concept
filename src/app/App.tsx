@@ -112,6 +112,7 @@ export function App() {
   const [yandexRole, setYandexRole] = useState<"teacher" | "student">("student");
   const [yandexStudentMode, setYandexStudentMode] = useState<"school" | "direct">("direct");
   const [schoolClassCode, setSchoolClassCode] = useState("");
+  const [schoolLoginInput, setSchoolLoginInput] = useState("");
   const [schoolPassword, setSchoolPassword] = useState("");
   const [schoolOptionalEmail, setSchoolOptionalEmail] = useState("");
   const [onboardingInviteOpen, setOnboardingInviteOpen] = useState(false);
@@ -328,14 +329,14 @@ export function App() {
       return;
     }
     const code = schoolClassCode.trim();
-    const nick = nickname.trim();
+    const login = schoolLoginInput.trim().toLowerCase();
     const pwd = schoolPassword.trim();
     if (!code) {
       messageApi.error("Введите код приглашения");
       return;
     }
-    if (nick.length < 3) {
-      messageApi.error("Ник не короче 3 символов");
+    if (login.length < 2) {
+      messageApi.error("Логин не короче 2 символов");
       return;
     }
     if (pwd.length < 8) {
@@ -345,7 +346,7 @@ export function App() {
     try {
       await loginWithSchoolCode({
         code,
-        nickname: nick,
+        schoolLogin: login,
         password: pwd,
         email: schoolOptionalEmail.trim() || undefined
       });
@@ -362,6 +363,7 @@ export function App() {
     setAuthLoginTab("email");
     setLegalConsent(false);
     setSchoolClassCode("");
+    setSchoolLoginInput("");
     setSchoolPassword("");
     setSchoolOptionalEmail("");
   };
@@ -525,8 +527,11 @@ export function App() {
                   icon={<UserOutlined className="app-header-account-icon" />}
                   className="header-user-btn app-header-account-btn"
                 />
-                <span className="app-header-nickname" title={user.nickname}>
-                  {user.nickname}
+                <span
+                  className="app-header-nickname"
+                  title={user.displayNamePending ? "Задайте ник в личном кабинете" : user.nickname}
+                >
+                  {user.displayNamePending ? "Новый ученик" : user.nickname}
                 </span>
               </Link>
             </div>
@@ -862,15 +867,19 @@ export function App() {
               label: "Код класса",
               children: (
                 <Space direction="vertical" style={{ width: "100%", marginTop: 8 }}>
+                  <Paragraph type="secondary" style={{ marginBottom: 0 }}>
+                    Логин и пароль выдаёт учитель в классе. Ник можно придумать позже в личном кабинете.
+                  </Paragraph>
                   <Input
                     value={schoolClassCode}
                     onChange={(e) => setSchoolClassCode(e.target.value)}
                     placeholder="Код приглашения в класс"
                   />
                   <Input
-                    value={nickname}
-                    onChange={(e) => setNickname(e.target.value)}
-                    placeholder="Ник"
+                    value={schoolLoginInput}
+                    onChange={(e) => setSchoolLoginInput(e.target.value)}
+                    placeholder="Логин (выдал учитель)"
+                    autoComplete="username"
                   />
                   <Input.Password
                     value={schoolPassword}

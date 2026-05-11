@@ -20,6 +20,8 @@ export interface SessionUser {
   nickname: string;
   role: UserRole;
   studentMode: StudentMode;
+  /** Школьный аккаунт: ник ещё служебный, ученик должен задать свой в профиле */
+  displayNamePending?: boolean;
   /** false для аккаунта только через OAuth без установленного пароля */
   hasPassword?: boolean;
   enrollments?: SessionEnrollment[];
@@ -45,7 +47,7 @@ interface SessionState {
   }) => Promise<void>;
   requestForgotPassword: (email: string) => Promise<void>;
   resetPassword: (token: string, newPassword: string) => Promise<void>;
-  loginWithSchoolCode: (args: { code: string; nickname: string; password: string; email?: string }) => Promise<void>;
+  loginWithSchoolCode: (args: { code: string; schoolLogin: string; password: string; email?: string }) => Promise<void>;
   logout: () => Promise<void>;
   refreshMe: () => Promise<void>;
   restoreSession: () => Promise<void>;
@@ -100,12 +102,12 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   resetPassword: async (token, newPassword) => {
     await apiClient.post<{ ok: boolean }>("/api/auth/reset-password", { token, newPassword });
   },
-  loginWithSchoolCode: async ({ code, nickname, password, email }) => {
+  loginWithSchoolCode: async ({ code, schoolLogin, password, email }) => {
     set({ loading: true });
     try {
       const data = await apiClient.post<{ accessToken: string; user: SessionUser }>("/api/auth/school-code", {
         code,
-        nickname,
+        schoolLogin,
         password,
         ...(email?.trim() ? { email: email.trim() } : {})
       });

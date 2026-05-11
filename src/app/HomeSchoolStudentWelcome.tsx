@@ -21,7 +21,7 @@ type Props = {
 };
 
 export function HomeSchoolStudentWelcome({ user, summary, summaryLoading }: Props) {
-  const nick = user.nickname?.trim() || "ученик";
+  const nick = user.displayNamePending ? "ученик" : user.nickname?.trim() || "ученик";
 
   const hwParts: string[] = [];
   if (summary.homeworkOverdueCount && summary.homeworkOverdueCount > 0) {

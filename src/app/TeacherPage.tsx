@@ -28,7 +28,7 @@ import { CheckOutlined, CopyOutlined, TeamOutlined } from "@ant-design/icons";
 import { AssignmentKindIcon } from "@/components/AssignmentKindChip";
 import dayjs from "dayjs";
 import { useSessionStore } from "@/store/useSessionStore";
-import { apiClient } from "@/shared/api/client";
+import { apiClient, toUserErrorMessage } from "@/shared/api/client";
 import { passedLessonTemplateIdsFromSlots } from "@/shared/scheduleSlotPast";
 import { WeekScheduleCalendar } from "@/app/WeekScheduleCalendar";
 import { AdminLessonTemplatesPage } from "@/app/AdminLessonTemplatesPage";
@@ -50,6 +50,7 @@ interface DashboardStudent {
   joinedAt: string;
   id: string;
   nickname: string;
+  schoolLogin: string;
   email: string | null;
 }
 
@@ -215,6 +216,15 @@ export function TeacherPage() {
   const [classCourseModule, setClassCourseModule] = useState<"A" | "B" | "C" | "D">("A");
   const [deleteClassTarget, setDeleteClassTarget] = useState<DashboardClassroom | null>(null);
   const [deleteClassConfirmTitle, setDeleteClassConfirmTitle] = useState("");
+  const [addStudentClassroomId, setAddStudentClassroomId] = useState<string | null>(null);
+  const [addStudentLoginInput, setAddStudentLoginInput] = useState("");
+  const [addStudentSubmitting, setAddStudentSubmitting] = useState(false);
+  const [newCredResult, setNewCredResult] = useState<{
+    classroomTitle: string;
+    classCode: string;
+    schoolLogin: string;
+    password: string;
+  } | null>(null);
 
   const [lmsClassroomId, setLmsClassroomId] = useState<string>("");
   const [lmsInnerTab, setLmsInnerTab] = useState("assignments");
@@ -580,6 +590,43 @@ export function TeacherPage() {
       await loadDashboard();
     } catch (e) {
       messageApi.error(e instanceof Error ? e.message : "Ошибка");
+    }
+  };
+
+  const handleAddClassroomStudent = async () => {
+    if (!addStudentClassroomId) {
+      return;
+    }
+    setAddStudentSubmitting(true);
+    try {
+      const body: { schoolLogin?: string } = {};
+      const custom = addStudentLoginInput.trim().toLowerCase();
+      if (custom) {
+        body.schoolLogin = custom;
+      }
+      const data = await apiClient.post<{
+        schoolLogin: string;
+        password: string;
+        userId: string;
+        enrollmentId: string;
+        internalNickname: string;
+      }>(`/api/teacher/classrooms/${addStudentClassroomId}/students`, body);
+      const cls = dashboard?.classrooms.find((x) => x.id === addStudentClassroomId);
+      setAddStudentClassroomId(null);
+      setAddStudentLoginInput("");
+      setNewCredResult({
+        classroomTitle: cls?.title ?? "Класс",
+        classCode: cls?.code ?? "",
+        schoolLogin: data.schoolLogin,
+        password: data.password
+      });
+      await loadDashboard();
+      void syncTeacherBadges();
+      messageApi.success("Ученик добавлен");
+    } catch (e) {
+      messageApi.error(toUserErrorMessage(e));
+    } finally {
+      setAddStudentSubmitting(false);
     }
   };
 
@@ -1005,12 +1052,18 @@ export function TeacherPage() {
     const c = dashboard.classrooms.find((x) => x.id === lmsClassroomId);
     const rows = c?.students ?? [];
     return [...rows]
-      .sort((a, b) => a.nickname.localeCompare(b.nickname, "ru"))
-      .map((s) => ({ value: s.id, label: s.nickname }));
+      .sort((a, b) => a.schoolLogin.localeCompare(b.schoolLogin, "ru"))
+      .map((s) => ({ value: s.id, label: `${s.schoolLogin} (${s.nickname})` }));
   }, [dashboard, lmsClassroomId]);
 
   const getStudentColumns = (classroomId: string): ColumnsType<DashboardStudent> => [
-    { title: "Ник", dataIndex: "nickname", key: "nickname" },
+    {
+      title: "Логин (вход)",
+      dataIndex: "schoolLogin",
+      key: "schoolLogin",
+      render: (v: string) => <Text code>{v}</Text>
+    },
+    { title: "Ник в профиле", dataIndex: "nickname", key: "nickname" },
     { title: "Email", dataIndex: "email", key: "email", render: (v: string | null) => v?.trim() || "—" },
     {
       title: "В классе с",
@@ -1273,6 +1326,9 @@ export function TeacherPage() {
                 <Button size="small" icon={<CopyOutlined />} onClick={() => copyCode(c.code)}>
                   Копировать
                 </Button>
+                <Button size="small" type="primary" ghost onClick={() => setAddStudentClassroomId(c.id)}>
+                  Добавить ученика
+                </Button>
                 <Button size="small" danger onClick={() => setDeleteClassTarget(c)}>
                   Удалить класс
                 </Button>
@@ -1280,8 +1336,9 @@ export function TeacherPage() {
             }
           >
             <Paragraph type="secondary" style={{ marginTop: 0 }}>
-              Ученик при входе выбирает вкладку «Код класса», вводит этот код и ник (почта по желанию). Чтобы
-              подключиться ещё к классу позже — раздел «Обучение → Мой класс».
+              Добавьте учеников кнопкой выше — им выдаются логин и пароль для входа. Ученик в «Войти → Код класса»
+              вводит код класса, логин и пароль; ник придумывает в личном кабинете. Почта по желанию. Подключиться к
+              ещё одному классу из аккаунта можно в «Обучение → Мой класс» по коду.
             </Paragraph>
             <Table<DashboardStudent>
               size="small"
@@ -1824,6 +1881,75 @@ export function TeacherPage() {
             Удалить класс навсегда
           </Button>
         </Space>
+      </Modal>
+
+      <Modal
+        rootClassName="app-modal-chrome"
+        title="Новый ученик в классе"
+        open={Boolean(addStudentClassroomId)}
+        onCancel={() => {
+          setAddStudentClassroomId(null);
+          setAddStudentLoginInput("");
+        }}
+        okText="Создать"
+        confirmLoading={addStudentSubmitting}
+        onOk={() => void handleAddClassroomStudent()}
+      >
+        <Space direction="vertical" style={{ width: "100%" }} size="middle">
+          <Paragraph type="secondary" style={{ marginBottom: 0 }}>
+            Логин в классе (латиница, цифры, дефис). Если оставить пустым — будет <Text code>u1</Text>,{" "}
+            <Text code>u2</Text> и т.д. Пароль сгенерируется автоматически и покажется один раз.
+          </Paragraph>
+          <Input
+            placeholder="Свой логин (необязательно), например ivanov"
+            value={addStudentLoginInput}
+            onChange={(e) => setAddStudentLoginInput(e.target.value)}
+          />
+        </Space>
+      </Modal>
+
+      <Modal
+        rootClassName="app-modal-chrome"
+        title="Данные для ученика"
+        open={Boolean(newCredResult)}
+        footer={[
+          <Button
+            key="close"
+            type="primary"
+            onClick={() => {
+              setNewCredResult(null);
+            }}
+          >
+            Закрыть
+          </Button>
+        ]}
+        onCancel={() => setNewCredResult(null)}
+      >
+        {newCredResult ? (
+          <Space direction="vertical" style={{ width: "100%" }} size="middle">
+            <Paragraph style={{ marginBottom: 0 }}>
+              Класс: <Text strong>{newCredResult.classroomTitle}</Text>
+            </Paragraph>
+            <Paragraph style={{ marginBottom: 0 }}>
+              Код класса:{" "}
+              <Text code copyable>
+                {newCredResult.classCode}
+              </Text>
+            </Paragraph>
+            <Paragraph style={{ marginBottom: 0 }}>
+              Логин:{" "}
+              <Text code copyable>
+                {newCredResult.schoolLogin}
+              </Text>
+            </Paragraph>
+            <Paragraph style={{ marginBottom: 0 }}>
+              Пароль (передайте ученику, повторно не покажем):{" "}
+              <Text code copyable>
+                {newCredResult.password}
+              </Text>
+            </Paragraph>
+          </Space>
+        ) : null}
       </Modal>
 
       <Modal
