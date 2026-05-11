@@ -95,6 +95,7 @@ type StudioLiveMetricsProps = {
 export function StudioLiveMetrics({ className, compact }: StudioLiveMetricsProps) {
   const evaluation = useAppStore((s) => s.evaluation);
   const training = useAppStore((s) => s.training);
+  const liveTrainingStreamModelType = useAppStore((s) => s.liveTrainingStreamModelType);
 
   const rows = useMemo((): MetricRow[] => {
     const ev = evaluation;
@@ -132,6 +133,9 @@ export function StudioLiveMetrics({ className, compact }: StudioLiveMetricsProps
     .filter(Boolean)
     .join(" ");
 
+  if (training.isTraining && liveTrainingStreamModelType) {
+    return null;
+  }
   if (training.isTraining) {
     return (
       <div className={`nodly-promo-metrics nodly-promo-metrics--scene-bars ${className ?? ""}`}>

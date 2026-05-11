@@ -184,6 +184,15 @@ function getCompareModelTypeDropdownOptions(): [string, string][] {
   ];
 }
 
+function modelTypeUsesTabularEpochStream(modelType: ModelType): boolean {
+  return (
+    modelType === "tabular_regression" ||
+    modelType === "tabular_classification" ||
+    modelType === "tabular_neural" ||
+    modelType === "tabular_orchestrator"
+  );
+}
+
 function getTrainDatasetOptions(modelType: ModelType) {
   const state = useAppStore.getState();
   const merged = isImageModel(modelType)
@@ -1667,27 +1676,46 @@ export function BlocklyWorkspace({
             message: `Сравнение: ${modelType} (${i + 1}/${modelTypes.length})`,
             coachMood: "working"
           });
-          const outcome = await trainByModelType({
-            modelType,
-            imageDataset: null,
-            tabularDataset,
-            config: {
-              trainSplit: command.trainSplit,
-              valSplit: command.valSplit,
-              testSplit: command.testSplit,
-              epochs: command.epochs,
-              learningRate: command.learningRate
-            },
-            onProgress: (progress, message) => {
-              const base = (i / modelTypes.length) * 100;
-              const portion = progress / modelTypes.length;
-              state.setTraining({
-                progress: Math.min(100, Math.round(base + portion)),
-                message: `Сравнение: ${message}`,
-                coachMood: "working"
+          const streamCompare = modelTypeUsesTabularEpochStream(modelType);
+          if (streamCompare) {
+            state.beginLiveTrainingStream({ modelType, plannedEpochs: command.epochs });
+          }
+          const outcome = await (async () => {
+            try {
+              return await trainByModelType({
+                modelType,
+                imageDataset: null,
+                tabularDataset,
+                config: {
+                  trainSplit: command.trainSplit,
+                  valSplit: command.valSplit,
+                  testSplit: command.testSplit,
+                  epochs: command.epochs,
+                  learningRate: command.learningRate
+                },
+                onProgress: (progress, message) => {
+                  const base = (i / modelTypes.length) * 100;
+                  const portion = progress / modelTypes.length;
+                  state.setTraining({
+                    progress: Math.min(100, Math.round(base + portion)),
+                    message: `Сравнение: ${message}`,
+                    coachMood: "working"
+                  });
+                },
+                tabularEpochStream: streamCompare
+                  ? {
+                      onEpochPlan: (n) => useAppStore.getState().setLiveTrainingPlannedEpochs(n),
+                      onEpochLog: (entry) => useAppStore.getState().appendLiveTrainingEpoch(entry),
+                      onEpochStreamReset: () => useAppStore.getState().resetLiveEpochHistoryPoints()
+                    }
+                  : undefined
               });
+            } finally {
+              if (streamCompare) {
+                useAppStore.getState().endLiveTrainingStream();
+              }
             }
-          });
+          })();
           const primaryMetricKey = modelType === "tabular_regression" ? "testRMSE" : "testAccuracy";
           const primaryMetricValue = Number(outcome.evaluation.metrics[primaryMetricKey] ?? 0);
           const universalScore = universalScoreFromMetrics(modelType, outcome.evaluation.metrics);
@@ -1871,21 +1899,40 @@ export function BlocklyWorkspace({
         if (Math.abs(splitSum - 1) > 0.02) {
           throw new Error("Сумма train/val/test должна быть около 1.0");
         }
-        const trainOutcome = await trainByModelType({
-          modelType,
-          imageDataset: imageDataset ?? null,
-          tabularDataset,
-          config: {
-            trainSplit: command.trainSplit,
-            valSplit: command.valSplit,
-            testSplit: command.testSplit,
-            epochs: command.epochs,
-            learningRate: command.learningRate
-          },
-          onProgress: (progress, message) => {
-            state.setTraining({ progress, message, coachMood: "working" });
+        const streamTrain = modelTypeUsesTabularEpochStream(modelType);
+        if (streamTrain) {
+          state.beginLiveTrainingStream({ modelType, plannedEpochs: command.epochs });
+        }
+        const trainOutcome = await (async () => {
+          try {
+            return await trainByModelType({
+              modelType,
+              imageDataset: imageDataset ?? null,
+              tabularDataset,
+              config: {
+                trainSplit: command.trainSplit,
+                valSplit: command.valSplit,
+                testSplit: command.testSplit,
+                epochs: command.epochs,
+                learningRate: command.learningRate
+              },
+              onProgress: (progress, message) => {
+                state.setTraining({ progress, message, coachMood: "working" });
+              },
+              tabularEpochStream: streamTrain
+                ? {
+                    onEpochPlan: (n) => useAppStore.getState().setLiveTrainingPlannedEpochs(n),
+                    onEpochLog: (entry) => useAppStore.getState().appendLiveTrainingEpoch(entry),
+                    onEpochStreamReset: () => useAppStore.getState().resetLiveEpochHistoryPoints()
+                  }
+                : undefined
+            });
+          } finally {
+            if (streamTrain) {
+              useAppStore.getState().endLiveTrainingStream();
+            }
           }
-        });
+        })();
         lastEvaluationRef.current = trainOutcome.evaluation;
         state.setTrainingRunReport(trainOutcome.report);
         state.setEvaluation(trainOutcome.evaluation);
@@ -2142,6 +2189,7 @@ export function BlocklyWorkspace({
         progress: 100
       });
     } catch (error) {
+      useAppStore.getState().endLiveTrainingStream();
       useAppStore.getState().setTraining({
         isTraining: false,
         scenarioActive: false,

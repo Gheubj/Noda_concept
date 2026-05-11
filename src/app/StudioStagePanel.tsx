@@ -7,6 +7,7 @@ import type { StudioGoal } from "@/shared/types/lessonContent";
 import { coachPngForMood, resolveCoachMood } from "@/shared/coachMood";
 import { COACH_AUTO_RESULTS_LEAD, buildCoachBriefLines } from "@/shared/coachCaption";
 import { StudioLiveMetrics } from "@/components/StudioLiveMetrics";
+import { StudioTrainingLiveCharts } from "@/components/StudioTrainingLiveCharts";
 import { markdownWithCustomEmojiImages } from "@/shared/emojiMarkdown";
 
 const { Text } = Typography;
@@ -145,6 +146,7 @@ export function StudioStagePanel({
               </div>
               <CoachBriefBlock />
             </div>
+            <StudioTrainingLiveCharts compact className="studio-stage-panel__mini-live-charts" />
             <StudioLiveMetrics compact className="studio-stage-panel__mini-metrics" />
           </div>
         </Card>
@@ -168,6 +170,7 @@ export function StudioStagePanel({
               )}
             </div>
             <CoachBriefBlock />
+            <StudioTrainingLiveCharts className="studio-stage-panel__live-charts" />
             <StudioLiveMetrics className="studio-stage-panel__promo-metrics" />
           </div>
         </div>

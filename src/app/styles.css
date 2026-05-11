@@ -4911,6 +4911,78 @@ html[data-theme="dark"] .studio-metrics-chart-shell {
   color: var(--app-muted);
 }
 
+/* Живые графики обучения на сцене (tabular fit) */
+.studio-training-live {
+  width: 100%;
+  margin-top: 6px;
+  padding: 10px 12px 8px;
+  border-radius: 18px;
+  border: 1px solid color-mix(in srgb, var(--surface-stroke) 92%, transparent);
+  background: linear-gradient(
+    155deg,
+    color-mix(in srgb, var(--surface-floating) 72%, transparent) 0%,
+    color-mix(in srgb, var(--surface-floating) 48%, transparent) 100%
+  );
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.28) inset,
+    0 12px 36px rgba(15, 23, 42, 0.08);
+}
+
+html[data-theme="dark"] .studio-training-live {
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.05) inset,
+    0 12px 36px rgba(0, 0, 0, 0.35);
+}
+
+.studio-training-live--compact {
+  margin-top: 4px;
+  padding: 8px 10px 6px;
+  border-radius: 14px;
+}
+
+.studio-training-live__header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.studio-training-live--compact .studio-training-live__header {
+  margin-bottom: 6px;
+}
+
+.studio-training-live__title {
+  font-size: 13px;
+  letter-spacing: -0.02em;
+}
+
+.studio-training-live__epoch {
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.studio-training-live__shell {
+  padding: 8px 10px 4px;
+}
+
+.studio-training-live--compact .studio-training-live__shell {
+  padding: 6px 8px 2px;
+}
+
+.studio-training-live__hint {
+  display: block;
+  margin-top: 6px;
+  font-size: 12px;
+}
+
+.studio-stage-panel__mini-live-charts {
+  width: 100%;
+}
+
 /* =========================== Authed Home v2 =========================== */
 
 .home-v2 {

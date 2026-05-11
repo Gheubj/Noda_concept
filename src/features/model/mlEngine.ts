@@ -53,6 +53,15 @@ let imageKnnExtraLabels: Record<string, string> = {};
 /** Последняя успешно обученная модель (для сохранения в библиотеку). */
 let lastTrainedModelType: ModelType | null = null;
 
+/** Поток метрик по эпохам для UI (сцена) во время tabular fit. */
+export type TabularEpochStreamHandlers = {
+  /** Перед fit: фактическое число эпох (учитывает кап для маленьких таблиц в классификации). */
+  onEpochPlan?: (plannedEpochs: number) => void;
+  onEpochLog?: (entry: TrainingEpochLog, soFar: TrainingEpochLog[]) => void;
+  /** Между линейной и нейросетевой фазой оркестратора — сбросить живую историю. */
+  onEpochStreamReset?: () => void;
+};
+
 const TABULAR_IDB_URL = (id: string) => `indexeddb://noda_tabular_${id}`;
 
 type SharedModelBundleV1 = {
@@ -822,7 +831,8 @@ async function trainTabularModel(
   modelType: ModelType,
   dataset: TabularDataset,
   config: TrainConfig,
-  onProgress: (progress: number, message: string) => void
+  onProgress: (progress: number, message: string) => void,
+  tabularEpochStream?: TabularEpochStreamHandlers
 ): Promise<{ evaluation: ModelEvaluation; report: TrainingRunReport }> {
   const categoricalEncoding: TabularCategoricalEncoding =
     modelType === "tabular_regression" ? "onehot" : "ordinal";
@@ -909,18 +919,21 @@ async function trainTabularModel(
       metrics: ["mse"]
     });
     const regEpochHistory: TrainingEpochLog[] = [];
+    tabularEpochStream?.onEpochPlan?.(config.epochs);
     await tabularModel.fit(xTrain, yTrain, {
       epochs: config.epochs,
       validationData: [xVal, yVal],
       callbacks: {
         onEpochEnd: async (epoch, logs) => {
-          regEpochHistory.push({
+          const entry: TrainingEpochLog = {
             epoch: epoch + 1,
             loss: logNumber(logs, "loss"),
             valLoss: logNumber(logs, "val_loss"),
             mse: logNumber(logs, "mse"),
             valMse: logNumber(logs, "val_mse", "val_mean_squared_error")
-          });
+          };
+          regEpochHistory.push(entry);
+          tabularEpochStream?.onEpochLog?.(entry, [...regEpochHistory]);
           onProgress(
             Math.round(((epoch + 1) / config.epochs) * 100),
             `Эпоха ${epoch + 1} / ${config.epochs}`
@@ -1133,6 +1146,7 @@ async function trainTabularModel(
         loss: "categoricalCrossentropy",
         metrics: ["accuracy"]
       });
+      tabularEpochStream?.onEpochPlan?.(tfTabularEpochs);
       // sampleWeight в tfjs LayersModel.fit не поддерживается (ошибка в рантайме).
       // Баланс классов дают стратифицированный сплит, нормализация признаков и кап LR.
       await m.fit(xTrain, yTrain, {
@@ -1140,13 +1154,15 @@ async function trainTabularModel(
         validationData: [xVal, yVal],
         callbacks: {
           onEpochEnd: async (epoch, logs) => {
-            epochs.push({
+            const entry: TrainingEpochLog = {
               epoch: epoch + 1,
               loss: logNumber(logs, "loss"),
               valLoss: logNumber(logs, "val_loss"),
               accuracy: logNumber(logs, "accuracy"),
               valAccuracy: logNumber(logs, "val_accuracy", "val_acc")
-            });
+            };
+            epochs.push(entry);
+            tabularEpochStream?.onEpochLog?.(entry, [...epochs]);
             onProgress(
               Math.round(((epoch + 1) / tfTabularEpochs) * 100),
               `Эпоха ${epoch + 1} / ${tfTabularEpochs}`
@@ -1186,6 +1202,7 @@ async function trainTabularModel(
       const linear = await runTfTrain("linear");
       const linearScore = linear.modelAcc;
       onProgress(52, "Оркестр: нейросеть MLP");
+      tabularEpochStream?.onEpochStreamReset?.();
       const neural = await runTfTrain("neural");
       const neuralScore = neural.modelAcc;
       const best = neuralScore >= linearScore ? neural : linear;
@@ -1254,6 +1271,7 @@ export async function trainByModelType(args: {
   tabularDataset: TabularDataset | null;
   config: TrainConfig;
   onProgress: (progress: number, message: string) => void;
+  tabularEpochStream?: TabularEpochStreamHandlers;
 }): Promise<TrainByModelTypeResult> {
   if (args.modelType === "image_knn") {
     const ds = args.imageDataset;
@@ -1313,7 +1331,8 @@ export async function trainByModelType(args: {
     args.modelType,
     args.tabularDataset,
     args.config,
-    args.onProgress
+    args.onProgress,
+    args.tabularEpochStream
   );
   lastTrainedModelType = args.modelType;
   return tabularEval;

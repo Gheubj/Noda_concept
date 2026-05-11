@@ -10,6 +10,7 @@ import type {
   TabularDataset,
   TabularDatasetEntry,
   TabularPredictionInput,
+  TrainingEpochLog,
   TrainingRunReport,
   TrainingState
 } from "@/shared/types/ai";
@@ -62,6 +63,13 @@ interface AppState {
   blocklyState: string;
   workspaceLevel: WorkspaceLevel;
   training: TrainingState;
+  /**
+   * Живые точки по эпохам во время tabular fit (только в памяти, не в снимок проекта).
+   * `null` — стрим не активен; `[]` — обучение с эпохами начато, ждём первую точку.
+   */
+  liveEpochHistory: TrainingEpochLog[] | null;
+  liveTrainingPlannedEpochs: number | null;
+  liveTrainingStreamModelType: ModelType | null;
   /** Текст из блока «показать сообщение» за текущий прогон (приоритет над авто-подписью). */
   coachUserMessage: string | null;
   setCoachUserMessage: (value: string | null) => void;
@@ -91,6 +99,12 @@ interface AppState {
   loadProjectSnapshot: (snapshot: NodlyProjectSnapshot) => void;
   setTraining: (state: Partial<TrainingState>) => void;
   setWorkspaceLevel: (level: WorkspaceLevel) => void;
+  beginLiveTrainingStream: (args: { modelType: ModelType; plannedEpochs: number }) => void;
+  setLiveTrainingPlannedEpochs: (plannedEpochs: number) => void;
+  appendLiveTrainingEpoch: (entry: TrainingEpochLog) => void;
+  /** Сбросить только кривую (между фазами оркестратора). */
+  resetLiveEpochHistoryPoints: () => void;
+  endLiveTrainingStream: () => void;
 }
 
 const createLabelId = (title: string) =>
@@ -112,6 +126,9 @@ export const useAppStore = create<AppState>((set, get) => ({
   blocklyState: "",
   workspaceLevel: readWorkspaceLevel(),
   coachUserMessage: null,
+  liveEpochHistory: null,
+  liveTrainingPlannedEpochs: null,
+  liveTrainingStreamModelType: null,
   training: {
     isTraining: false,
     progress: 0,
@@ -311,6 +328,9 @@ export const useAppStore = create<AppState>((set, get) => ({
       trainingRunReport,
       modelComparisonReport,
       coachUserMessage: null,
+      liveEpochHistory: null,
+      liveTrainingPlannedEpochs: null,
+      liveTrainingStreamModelType: null,
       training: {
         isTraining: false,
         progress: 0,
@@ -320,6 +340,27 @@ export const useAppStore = create<AppState>((set, get) => ({
       }
     });
   },
+  beginLiveTrainingStream: ({ modelType, plannedEpochs }) =>
+    set({
+      liveTrainingStreamModelType: modelType,
+      liveTrainingPlannedEpochs: plannedEpochs,
+      liveEpochHistory: []
+    }),
+  setLiveTrainingPlannedEpochs: (plannedEpochs) => set({ liveTrainingPlannedEpochs: plannedEpochs }),
+  appendLiveTrainingEpoch: (entry) =>
+    set((state) => ({
+      liveEpochHistory: [...(state.liveEpochHistory ?? []), entry]
+    })),
+  resetLiveEpochHistoryPoints: () =>
+    set((state) =>
+      state.liveTrainingStreamModelType != null ? { liveEpochHistory: [] } : {}
+    ),
+  endLiveTrainingStream: () =>
+    set({
+      liveEpochHistory: null,
+      liveTrainingPlannedEpochs: null,
+      liveTrainingStreamModelType: null
+    }),
   setTraining: (nextState) =>
     set((state) => ({
       training: { ...state.training, ...nextState }
