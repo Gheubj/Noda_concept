@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { apiClient, postAuthRefresh, setAccessToken } from "@/shared/api/client";
+import { ApiError, apiClient, postAuthRefresh, setAccessToken } from "@/shared/api/client";
 
 export type UserRole = "teacher" | "student" | "admin";
 export type StudentMode = "school" | "direct";
@@ -30,6 +30,9 @@ export interface SessionUser {
     spritePack?: { id: string; title: string } | null;
   } | null;
 }
+
+const PROFILE_LOAD_FAILED =
+  "Не удалось загрузить профиль после входа. Если вы администратор сервера, выполните миграции базы: prisma migrate deploy.";
 
 interface SessionState {
   user: SessionUser | null;
@@ -67,11 +70,13 @@ export const useSessionStore = create<SessionState>((set, get) => ({
         password
       });
       setAccessToken(data.accessToken);
-      set({ loading: false });
       await get().refreshMe();
-    } catch (error) {
+      if (!get().user) {
+        setAccessToken("");
+        throw new ApiError(503, PROFILE_LOAD_FAILED);
+      }
+    } finally {
       set({ loading: false });
-      throw error;
     }
   },
   requestRegistrationCode: async (email) => {
@@ -89,11 +94,13 @@ export const useSessionStore = create<SessionState>((set, get) => ({
         studentMode
       });
       setAccessToken(data.accessToken);
-      set({ loading: false });
       await get().refreshMe();
-    } catch (error) {
+      if (!get().user) {
+        setAccessToken("");
+        throw new ApiError(503, PROFILE_LOAD_FAILED);
+      }
+    } finally {
       set({ loading: false });
-      throw error;
     }
   },
   requestForgotPassword: async (email) => {
@@ -112,11 +119,13 @@ export const useSessionStore = create<SessionState>((set, get) => ({
         ...(email?.trim() ? { email: email.trim() } : {})
       });
       setAccessToken(data.accessToken);
-      set({ loading: false });
       await get().refreshMe();
-    } catch (error) {
+      if (!get().user) {
+        setAccessToken("");
+        throw new ApiError(503, PROFILE_LOAD_FAILED);
+      }
+    } finally {
       set({ loading: false });
-      throw error;
     }
   },
   logout: async () => {
@@ -143,6 +152,9 @@ export const useSessionStore = create<SessionState>((set, get) => ({
       if (res.ok && res.accessToken) {
         setAccessToken(res.accessToken);
         await get().refreshMe();
+        if (!get().user) {
+          setAccessToken("");
+        }
       }
     } finally {
       set({ loading: false, sessionRestored: true });

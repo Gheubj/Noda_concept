@@ -724,65 +724,76 @@ app.get("/api/auth/yandex/callback", async (req, res) => {
 });
 
 app.get("/api/me", authRequired, async (req: AuthenticatedRequest, res) => {
-  const userId = req.session!.sub;
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    include: {
-      enrollments: {
-        include: {
-          classroom: {
-            include: {
-              school: { select: { id: true, name: true } },
-              teacher: { select: { id: true, nickname: true, email: true } }
+  try {
+    const userId = req.session!.sub;
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      include: {
+        enrollments: {
+          include: {
+            classroom: {
+              include: {
+                school: { select: { id: true, name: true } },
+                teacher: { select: { id: true, nickname: true, email: true } }
+              }
             }
           }
-        }
-      },
-      schoolsOwned: true,
-      spriteSelection: { include: { character: true, spritePack: true } }
+        },
+        schoolsOwned: true,
+        spriteSelection: { include: { character: true, spritePack: true } }
+      }
+    });
+    if (!user) {
+      res.status(404).json({ error: "User not found" });
+      return;
     }
-  });
-  if (!user) {
-    res.status(404).json({ error: "User not found" });
-    return;
-  }
-  const displayNamePending =
-    user.role === "student" &&
-    user.studentMode === "school" &&
-    user.provider === AuthProvider.school_code &&
-    isPlaceholderSchoolNickname(user.nickname);
+    const displayNamePending =
+      user.role === "student" &&
+      user.studentMode === "school" &&
+      user.provider === AuthProvider.school_code &&
+      isPlaceholderSchoolNickname(user.nickname);
 
-  res.json({
-    id: user.id,
-    email: user.email,
-    nickname: user.nickname,
-    role: user.role,
-    studentMode: user.studentMode,
-    hasPassword: Boolean(user.passwordHash),
-    displayNamePending,
-    schoolsOwned: user.schoolsOwned,
-    enrollments: user.enrollments.map(
-      (e: {
-        id: string;
-        classroomId: string;
-        classroom: {
-          title: string;
-          code: string;
-          school: { id: string; name: string };
-          teacher: { id: string; nickname: string; email: string | null };
-        };
-      }) => ({
-        id: e.id,
-        classroomId: e.classroomId,
-        classroomTitle: e.classroom.title,
-        classCode: e.classroom.code,
-        schoolName: e.classroom.school.name,
-        teacherNickname: e.classroom.teacher.nickname,
-        teacherEmail: e.classroom.teacher.email ?? ""
-      })
-    ),
-    spriteSelection: user.spriteSelection
-  });
+    res.json({
+      id: user.id,
+      email: user.email,
+      nickname: user.nickname,
+      role: user.role,
+      studentMode: user.studentMode,
+      hasPassword: Boolean(user.passwordHash),
+      displayNamePending,
+      schoolsOwned: user.schoolsOwned,
+      enrollments: user.enrollments.map(
+        (e: {
+          id: string;
+          classroomId: string;
+          classroom: {
+            title: string;
+            code: string;
+            school: { id: string; name: string };
+            teacher: { id: string; nickname: string; email: string | null };
+          };
+        }) => ({
+          id: e.id,
+          classroomId: e.classroomId,
+          classroomTitle: e.classroom.title,
+          classCode: e.classroom.code,
+          schoolName: e.classroom.school.name,
+          teacherNickname: e.classroom.teacher.nickname,
+          teacherEmail: e.classroom.teacher.email ?? ""
+        })
+      ),
+      spriteSelection: user.spriteSelection
+    });
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error("/api/me failed", err);
+    if (!res.headersSent) {
+      res.status(503).json({
+        error:
+          "Не удалось загрузить профиль. Частая причина после обновления кода — не применены миграции Prisma к базе (например, колонка Enrollment.schoolLogin). Проверьте логи сервера и выполните prisma migrate deploy."
+      });
+    }
+  }
 });
 
 app.patch("/api/me/nickname", authRequired, async (req: AuthenticatedRequest, res) => {
