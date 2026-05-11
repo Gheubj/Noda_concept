@@ -4944,25 +4944,21 @@ html[data-theme="dark"] .studio-training-live {
 
 .studio-training-live__header {
   display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 10px;
-  margin-bottom: 8px;
-}
-
-.studio-training-live--compact .studio-training-live__header {
+  align-items: center;
+  justify-content: flex-end;
   margin-bottom: 6px;
 }
 
-.studio-training-live__title {
-  font-size: 13px;
-  letter-spacing: -0.02em;
+.studio-training-live--compact .studio-training-live__header {
+  margin-bottom: 4px;
 }
 
-.studio-training-live__epoch {
+.studio-training-live__epoch-digits {
   font-size: 12px;
+  font-weight: 600;
   font-variant-numeric: tabular-nums;
-  white-space: nowrap;
+  letter-spacing: 0.02em;
+  color: var(--app-muted);
 }
 
 .studio-training-live__shell {
@@ -4973,123 +4969,37 @@ html[data-theme="dark"] .studio-training-live {
   padding: 6px 8px 2px;
 }
 
-.studio-training-live__hint {
-  display: block;
-  margin-top: 6px;
-  font-size: 12px;
-}
-
-.studio-training-live__process {
-  margin-bottom: 10px;
-  padding-bottom: 10px;
-  border-bottom: 1px solid color-mix(in srgb, var(--surface-stroke) 55%, transparent);
-}
-
-.studio-training-live--compact .studio-training-live__process {
-  margin-bottom: 8px;
-  padding-bottom: 8px;
-}
-
-.studio-training-live__process-lead {
-  display: block;
-  margin-bottom: 10px;
-  font-size: 12px;
-  line-height: 1.45;
-}
-
-.studio-training-live__process-lead--compact {
-  margin-bottom: 8px;
-  font-size: 11px;
-  line-height: 1.4;
-}
-
-.studio-training-live__pipeline {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: stretch;
-  justify-content: space-between;
-  gap: 4px 6px;
-  margin-bottom: 10px;
-  padding: 8px 6px;
-  border-radius: 12px;
-  background: color-mix(in srgb, var(--surface-panel) 55%, transparent);
-  border: 1px solid color-mix(in srgb, var(--surface-stroke) 40%, transparent);
-  position: relative;
-  overflow: hidden;
-}
-
-.studio-training-live__pipeline--warming::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(
-    100deg,
-    transparent 0%,
-    color-mix(in srgb, var(--ant-color-primary, #1677ff) 18%, transparent) 45%,
-    transparent 90%
-  );
-  background-size: 200% 100%;
-  animation: studio-training-live-shimmer 2.2s ease-in-out infinite;
-  pointer-events: none;
-}
-
-@keyframes studio-training-live-shimmer {
-  0% {
-    background-position: 100% 0;
-  }
-  100% {
-    background-position: -100% 0;
-  }
-}
-
-.studio-training-live__pipe-step {
-  flex: 1 1 56px;
-  min-width: 52px;
+.studio-training-live__charts {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  text-align: center;
-  gap: 2px;
-  padding: 4px 2px;
-  border-radius: 10px;
-  border: 1px solid transparent;
-  transition:
-    border-color 0.2s ease,
-    box-shadow 0.2s ease,
-    background 0.2s ease;
-  position: relative;
-  z-index: 1;
+  gap: 10px;
+  margin-top: 8px;
 }
 
-.studio-training-live__pipe-step-index {
-  font-size: 10px;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-  color: var(--app-muted);
-  line-height: 1;
+.studio-training-live--compact .studio-training-live__charts {
+  gap: 8px;
+  margin-top: 6px;
 }
 
-.studio-training-live__pipe-step-label {
-  font-size: 11px;
-  font-weight: 600;
-  line-height: 1.15;
-  color: var(--app-text, inherit);
+.studio-training-live__swatches {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 4px;
 }
 
-.studio-training-live__pipe-step-hint {
-  font-size: 10px;
-  line-height: 1.2;
-  color: var(--app-muted);
-  max-width: 120px;
+.studio-training-live__swatch {
+  width: 22px;
+  height: 4px;
+  border-radius: 999px;
+  opacity: 0.92;
 }
 
-.studio-training-live__pipe-arrow {
-  flex: 0 0 auto;
-  align-self: center;
-  font-size: 12px;
-  color: var(--app-muted);
-  padding: 0 1px;
-  user-select: none;
+.studio-training-live__swatch--train {
+  background: linear-gradient(90deg, #6aa3ff, #9d7bff);
+}
+
+.studio-training-live__swatch--val {
+  background: linear-gradient(90deg, #34d399, #30d7d2);
 }
 
 .studio-training-live__epoch-track {
@@ -5097,7 +5007,11 @@ html[data-theme="dark"] .studio-training-live {
   border-radius: 999px;
   background: color-mix(in srgb, var(--surface-stroke) 65%, transparent);
   overflow: hidden;
-  margin-bottom: 4px;
+  margin: 6px 0 2px;
+}
+
+.studio-training-live--compact .studio-training-live__epoch-track {
+  margin: 4px 0 0;
 }
 
 .studio-training-live__epoch-track-fill {
@@ -5111,17 +5025,107 @@ html[data-theme="dark"] .studio-training-live__epoch-track-fill {
   background: linear-gradient(90deg, #5b8def, #a78bfa);
 }
 
-.studio-training-live__epoch-track-caption {
-  display: block;
-  font-size: 11px;
-  margin: 0;
+/* Абстрактная «сеть» — без подписей, только движение и топология */
+.studio-training-viz {
+  width: 100%;
+  margin-bottom: 2px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--surface-panel) 50%, transparent);
+  border: 1px solid color-mix(in srgb, var(--surface-stroke) 45%, transparent);
+  overflow: hidden;
 }
 
-.studio-training-live__chart-caption {
+.studio-training-viz--compact {
+  border-radius: 10px;
+}
+
+.studio-training-viz__svg {
   display: block;
-  margin: 0 0 6px;
-  font-size: 11px;
-  line-height: 1.35;
+  width: 100%;
+  height: auto;
+  min-height: 56px;
+}
+
+.studio-training-viz--compact .studio-training-viz__svg {
+  min-height: 48px;
+}
+
+.studio-training-viz__edge {
+  fill: none;
+  stroke: color-mix(in srgb, #6aa3ff 55%, var(--surface-stroke));
+  stroke-width: 1.35;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+  stroke-dasharray: 5 11;
+  animation: studio-training-viz-dash 1.35s linear infinite;
+  opacity: 0.72;
+}
+
+.studio-training-viz__dash--0 {
+  animation-delay: 0s;
+}
+.studio-training-viz__dash--1 {
+  animation-delay: 0.12s;
+}
+.studio-training-viz__dash--2 {
+  animation-delay: 0.24s;
+}
+.studio-training-viz__dash--3 {
+  animation-delay: 0.36s;
+}
+
+@keyframes studio-training-viz-dash {
+  to {
+    stroke-dashoffset: -32;
+  }
+}
+
+.studio-training-viz__node {
+  fill: color-mix(in srgb, #6aa3ff 35%, var(--surface-panel));
+  stroke: color-mix(in srgb, #9d7bff 65%, transparent);
+  stroke-width: 1.1;
+  animation: studio-training-viz-node 1.6s ease-in-out infinite;
+}
+
+.studio-training-viz__node--out {
+  fill: color-mix(in srgb, #34d399 55%, #6aa3ff);
+  stroke: color-mix(in srgb, #5eead4 70%, transparent);
+  filter: drop-shadow(0 0 5px color-mix(in srgb, #6aa3ff 45%, transparent));
+}
+
+.studio-training-viz__node--p0 {
+  animation-delay: 0s;
+}
+.studio-training-viz__node--p1 {
+  animation-delay: 0.12s;
+}
+.studio-training-viz__node--p2 {
+  animation-delay: 0.24s;
+}
+.studio-training-viz__node--p3 {
+  animation-delay: 0.36s;
+}
+.studio-training-viz__node--p4 {
+  animation-delay: 0.48s;
+}
+
+@keyframes studio-training-viz-node {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.studio-training-viz--warming .studio-training-viz__node {
+  animation-duration: 1s;
+}
+
+.studio-training-viz--warming .studio-training-viz__edge {
+  animation-duration: 0.95s;
+  opacity: 0.88;
 }
 
 .studio-stage-panel__mini-live-charts {

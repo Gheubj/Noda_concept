@@ -1,8 +1,6 @@
-import { Space, Typography } from "antd";
-import { Fragment, useId, useMemo } from "react";
+import { useId } from "react";
 import {
   CartesianGrid,
-  Legend,
   Line,
   LineChart,
   ResponsiveContainer,
@@ -11,36 +9,12 @@ import {
   YAxis
 } from "recharts";
 import { useAppStore } from "@/store/useAppStore";
-import type { ModelType } from "@/shared/types/ai";
-
-const { Text } = Typography;
-
-function modelTitle(modelType: ModelType): string {
-  switch (modelType) {
-    case "tabular_regression":
-      return "Регрессия";
-    case "tabular_classification":
-      return "Классификация";
-    case "tabular_neural":
-      return "Нейросеть (MLP)";
-    case "tabular_orchestrator":
-      return "Оркестр моделей";
-    default:
-      return modelType;
-  }
-}
+import { StudioTrainingProcessViz } from "@/components/StudioTrainingProcessViz";
 
 type StudioTrainingLiveChartsProps = {
   className?: string;
   compact?: boolean;
 };
-
-const PIPE_STEPS = [
-  { id: "data", label: "Данные", hint: "признаки и ответ" },
-  { id: "forward", label: "Прямой ход", hint: "модель считает выход" },
-  { id: "loss", label: "Лосс", hint: "насколько ошиблись" },
-  { id: "update", label: "Веса", hint: "шаг оптимизатора" }
-] as const;
 
 export function StudioTrainingLiveCharts({ className, compact }: StudioTrainingLiveChartsProps) {
   const training = useAppStore((s) => s.training);
@@ -72,91 +46,38 @@ export function StudioTrainingLiveCharts({ className, compact }: StudioTrainingL
 
   const show = training.isTraining && streamModelType != null && liveEpochHistory !== null;
 
-  const title = useMemo(() => {
-    if (!streamModelType) {
-      return "";
-    }
-    return modelTitle(streamModelType);
-  }, [streamModelType]);
-
-  if (!show) {
+  if (!show || !streamModelType) {
     return null;
   }
 
+  const swatchRow = (
+    <div className="studio-training-live__swatches" aria-hidden>
+      <span className="studio-training-live__swatch studio-training-live__swatch--train" />
+      <span className="studio-training-live__swatch studio-training-live__swatch--val" />
+    </div>
+  );
+
   return (
-    <div className={["studio-training-live", compact ? "studio-training-live--compact" : "", className ?? ""].filter(Boolean).join(" ")}>
+    <div
+      className={["studio-training-live", compact ? "studio-training-live--compact" : "", className ?? ""]
+        .filter(Boolean)
+        .join(" ")}
+    >
       <div className="studio-training-live__header">
-        <Text strong className="studio-training-live__title">
-          {title}
-        </Text>
-        <Text type="secondary" className="studio-training-live__epoch">
-          Эпоха {currentEpoch} / {Math.max(totalPlanned, 1)}
-        </Text>
+        <span className="studio-training-live__epoch-digits">
+          {currentEpoch}/{Math.max(totalPlanned, 1)}
+        </span>
       </div>
 
-      <div className="studio-training-live__process">
-        {compact ? (
-          <Text type="secondary" className="studio-training-live__process-lead studio-training-live__process-lead--compact">
-            Каждая эпоха — полный проход по обучению и шаг оптимизатора. Val — контроль без дообучения на этих строках.
-          </Text>
-        ) : (
-          <Text type="secondary" className="studio-training-live__process-lead">
-            Идёт обучение: за одну эпоху модель один раз просматривает все обучающие примеры, сравнивает ответ с истиной,
-            получает лосс и чуть сдвигает веса в сторону меньшей ошибки. Это повторяется много эпох подряд. Кривые ниже
-            показывают, как меняется ошибка и качество; линия val — отдельная выборка для контроля (на ней веса не
-            дообучаются).
-          </Text>
-        )}
+      <StudioTrainingProcessViz modelType={streamModelType} warming={currentEpoch === 0} compact={compact} />
 
-        <div
-          className={[
-            "studio-training-live__pipeline",
-            currentEpoch === 0 ? "studio-training-live__pipeline--warming" : ""
-          ]
-            .filter(Boolean)
-            .join(" ")}
-          aria-label="Этапы одной эпохи обучения"
-        >
-          {PIPE_STEPS.map((step, index) => (
-            <Fragment key={step.id}>
-              <div className="studio-training-live__pipe-step">
-                <span className="studio-training-live__pipe-step-index" aria-hidden>
-                  {index + 1}
-                </span>
-                <span className="studio-training-live__pipe-step-label">{step.label}</span>
-                {!compact ? (
-                  <span className="studio-training-live__pipe-step-hint" title={step.hint}>
-                    {step.hint}
-                  </span>
-                ) : null}
-              </div>
-              {index < PIPE_STEPS.length - 1 ? (
-                <span className="studio-training-live__pipe-arrow" aria-hidden>
-                  →
-                </span>
-              ) : null}
-            </Fragment>
-          ))}
-        </div>
-
-        <div className="studio-training-live__epoch-track" aria-hidden>
-          <div className="studio-training-live__epoch-track-fill" style={{ width: `${epochProgressPct}%` }} />
-        </div>
-        <Text type="secondary" className="studio-training-live__epoch-track-caption">
-          Прогресс по плану эпох: {epochProgressPct}%
-        </Text>
+      <div className="studio-training-live__epoch-track" aria-hidden>
+        <div className="studio-training-live__epoch-track-fill" style={{ width: `${epochProgressPct}%` }} />
       </div>
 
-      <Space direction="vertical" size={compact ? 6 : 10} style={{ width: "100%" }}>
+      <div className="studio-training-live__charts">
         <div className="studio-metrics-chart-shell studio-training-live__shell">
-          <div className="studio-metrics-chart-shell__head">
-            <Text strong>Потери (loss)</Text>
-          </div>
-          {!compact ? (
-            <Text type="secondary" className="studio-training-live__chart-caption">
-              train — ошибка на данных, на которых учимся; val — на отложенной части без шага по весам.
-            </Text>
-          ) : null}
+          {swatchRow}
           <div className="studio-metrics-chart-shell__plot studio-metrics-line-chart">
             <ResponsiveContainer width="100%" height={chartHeight}>
               <LineChart data={rows} margin={margin}>
@@ -174,30 +95,31 @@ export function StudioTrainingLiveCharts({ className, compact }: StudioTrainingL
                 <XAxis dataKey="epoch" tick={axisTick} axisLine={false} tickLine={false} tickMargin={4} />
                 <YAxis tick={axisTick} width={32} axisLine={false} tickLine={false} tickMargin={2} />
                 <Tooltip contentStyle={tipStyle} />
-                <Legend wrapperStyle={{ fontSize: 10, paddingTop: 2 }} />
                 <Line
                   isAnimationActive
                   animationDuration={280}
                   type="monotone"
                   dataKey="loss"
-                  name="train"
+                  name="t"
                   stroke={`url(#${uid}-live-loss-tr)`}
                   dot={false}
                   strokeWidth={2}
                   strokeLinecap="round"
                   connectNulls
+                  legendType="none"
                 />
                 <Line
                   isAnimationActive
                   animationDuration={280}
                   type="monotone"
                   dataKey="valLoss"
-                  name="val"
+                  name="v"
                   stroke={`url(#${uid}-live-loss-val)`}
                   dot={false}
                   strokeWidth={2}
                   strokeLinecap="round"
                   connectNulls
+                  legendType="none"
                 />
               </LineChart>
             </ResponsiveContainer>
@@ -206,9 +128,7 @@ export function StudioTrainingLiveCharts({ className, compact }: StudioTrainingL
 
         {hasAcc ? (
           <div className="studio-metrics-chart-shell studio-training-live__shell">
-            <div className="studio-metrics-chart-shell__head">
-              <Text strong>Точность (accuracy)</Text>
-            </div>
+            {swatchRow}
             <div className="studio-metrics-chart-shell__plot studio-metrics-line-chart">
               <ResponsiveContainer width="100%" height={chartHeight}>
                 <LineChart data={rows} margin={margin}>
@@ -229,30 +149,31 @@ export function StudioTrainingLiveCharts({ className, compact }: StudioTrainingL
                     contentStyle={tipStyle}
                     formatter={(v: number | string) => [typeof v === "number" ? `${(v * 100).toFixed(1)}%` : v, ""]}
                   />
-                  <Legend wrapperStyle={{ fontSize: 10, paddingTop: 2 }} />
                   <Line
                     isAnimationActive
                     animationDuration={280}
                     type="monotone"
                     dataKey="accuracy"
-                    name="train"
+                    name="t"
                     stroke={`url(#${uid}-live-acc-tr)`}
                     dot={false}
                     strokeWidth={2}
                     strokeLinecap="round"
                     connectNulls
+                    legendType="none"
                   />
                   <Line
                     isAnimationActive
                     animationDuration={280}
                     type="monotone"
                     dataKey="valAccuracy"
-                    name="val"
+                    name="v"
                     stroke={`url(#${uid}-live-acc-val)`}
                     dot={false}
                     strokeWidth={2}
                     strokeLinecap="round"
                     connectNulls
+                    legendType="none"
                   />
                 </LineChart>
               </ResponsiveContainer>
@@ -262,9 +183,7 @@ export function StudioTrainingLiveCharts({ className, compact }: StudioTrainingL
 
         {isRegression ? (
           <div className="studio-metrics-chart-shell studio-training-live__shell">
-            <div className="studio-metrics-chart-shell__head">
-              <Text strong>MSE</Text>
-            </div>
+            {swatchRow}
             <div className="studio-metrics-chart-shell__plot studio-metrics-line-chart">
               <ResponsiveContainer width="100%" height={chartHeight}>
                 <LineChart data={rows} margin={margin}>
@@ -282,42 +201,38 @@ export function StudioTrainingLiveCharts({ className, compact }: StudioTrainingL
                   <XAxis dataKey="epoch" tick={axisTick} axisLine={false} tickLine={false} tickMargin={4} />
                   <YAxis tick={axisTick} width={36} axisLine={false} tickLine={false} tickMargin={2} />
                   <Tooltip contentStyle={tipStyle} />
-                  <Legend wrapperStyle={{ fontSize: 10, paddingTop: 2 }} />
                   <Line
                     isAnimationActive
                     animationDuration={280}
                     type="monotone"
                     dataKey="mse"
-                    name="train mse"
+                    name="t"
                     stroke={`url(#${uid}-live-mse-tr)`}
                     dot={false}
                     strokeWidth={2}
                     strokeLinecap="round"
                     connectNulls
+                    legendType="none"
                   />
                   <Line
                     isAnimationActive
                     animationDuration={280}
                     type="monotone"
                     dataKey="valMse"
-                    name="val mse"
+                    name="v"
                     stroke={`url(#${uid}-live-mse-val)`}
                     dot={false}
                     strokeWidth={2}
                     strokeLinecap="round"
                     connectNulls
+                    legendType="none"
                   />
                 </LineChart>
               </ResponsiveContainer>
             </div>
           </div>
         ) : null}
-      </Space>
-      {rows.length === 0 ? (
-        <Text type="secondary" className="studio-training-live__hint">
-          Считаем первую эпоху…
-        </Text>
-      ) : null}
+      </div>
     </div>
   );
 }
