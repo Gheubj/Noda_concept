@@ -4911,102 +4911,6 @@ html[data-theme="dark"] .studio-metrics-chart-shell {
   color: var(--app-muted);
 }
 
-/* Коротко: что такое обучение — для школьников и взрослых */
-.studio-training-concept {
-  margin-bottom: 10px;
-  padding: 10px 11px 12px;
-  border-radius: 14px;
-  border: 1px solid color-mix(in srgb, var(--surface-stroke) 52%, transparent);
-  background: color-mix(in srgb, var(--surface-panel) 88%, transparent);
-}
-
-.studio-training-concept--compact {
-  margin-bottom: 8px;
-  padding: 8px 9px 10px;
-  border-radius: 12px;
-}
-
-.studio-training-concept__intro {
-  margin-bottom: 10px;
-}
-
-.studio-training-concept--compact .studio-training-concept__intro {
-  margin-bottom: 8px;
-}
-
-.studio-training-concept__lead {
-  display: block;
-  font-size: 13px;
-  line-height: 1.35;
-  letter-spacing: -0.015em;
-}
-
-.studio-training-concept--compact .studio-training-concept__lead {
-  font-size: 12px;
-}
-
-.studio-training-concept__sub {
-  display: block;
-  margin-top: 6px;
-  font-size: 12px;
-  line-height: 1.45;
-}
-
-.studio-training-concept--compact .studio-training-concept__sub {
-  margin-top: 4px;
-  font-size: 11px;
-  line-height: 1.4;
-}
-
-.studio-training-concept__grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px 12px;
-}
-
-.studio-training-concept--compact .studio-training-concept__grid {
-  grid-template-columns: 1fr;
-  gap: 8px;
-}
-
-.studio-training-concept__item {
-  padding: 8px 9px;
-  border-radius: 10px;
-  border: 1px solid color-mix(in srgb, var(--surface-stroke) 42%, transparent);
-  background: color-mix(in srgb, var(--surface-floating) 52%, transparent);
-  min-width: 0;
-}
-
-.studio-training-concept__icon {
-  display: block;
-  margin-bottom: 6px;
-  font-size: 17px;
-  color: color-mix(in srgb, var(--ant-color-primary, #1677ff) 82%, var(--app-muted));
-}
-
-.studio-training-concept__item-title {
-  display: block !important;
-  font-size: 12px !important;
-  margin-bottom: 4px !important;
-  line-height: 1.25 !important;
-}
-
-.studio-training-concept__item-body {
-  display: block !important;
-  font-size: 11px !important;
-  line-height: 1.42 !important;
-}
-
-.studio-training-concept--compact .studio-training-concept__item-body {
-  font-size: 10.5px !important;
-}
-
-@media (max-width: 520px) {
-  .studio-training-concept__grid {
-    grid-template-columns: 1fr;
-  }
-}
-
 /* Живые графики обучения на сцене (tabular fit) */
 .studio-training-live {
   width: 100%;
@@ -5121,7 +5025,7 @@ html[data-theme="dark"] .studio-training-live__epoch-track-fill {
   background: linear-gradient(90deg, #5b8def, #a78bfa);
 }
 
-/* «Сеть» + мини-кривая того же train loss, что и в графиках; рёбра и ритм — от метрик */
+/* Визуал без текста: полосы train/val loss + мини-spark (те же метрики, что графики) */
 .studio-training-viz {
   --stv-loss-n: 0.5;
   --stv-dash-s: 1.35s;
@@ -5148,36 +5052,34 @@ html[data-theme="dark"] .studio-training-live__epoch-track-fill {
   min-height: 64px;
 }
 
-.studio-training-viz__edge {
-  fill: none;
-  stroke: color-mix(in srgb, #6aa3ff 55%, var(--surface-stroke));
-  stroke-linecap: round;
-  vector-effect: non-scaling-stroke;
-  stroke-dasharray: 5 11;
-  animation-name: studio-training-viz-dash;
-  animation-timing-function: linear;
-  animation-iteration-count: infinite;
-  animation-duration: var(--stv-dash-s, 1.35s);
-  opacity: calc(0.36 + 0.58 * (1 - var(--stv-loss-n, 0.5)));
+.studio-training-viz__meter-track {
+  fill: color-mix(in srgb, var(--surface-stroke) 62%, transparent);
 }
 
-.studio-training-viz__dash--0 {
-  animation-delay: 0s;
-}
-.studio-training-viz__dash--1 {
-  animation-delay: 0.12s;
-}
-.studio-training-viz__dash--2 {
-  animation-delay: 0.24s;
-}
-.studio-training-viz__dash--3 {
-  animation-delay: 0.36s;
+.studio-training-viz__meter-fill {
+  animation: studio-training-viz-meter-breathe var(--stv-dash-s, 1.35s) ease-in-out infinite;
 }
 
-@keyframes studio-training-viz-dash {
-  to {
-    stroke-dashoffset: -32;
+.studio-training-viz__meter-fill--train {
+  opacity: calc(0.82 + 0.18 * (1 - var(--stv-loss-n, 0.5)));
+}
+
+.studio-training-viz__meter-fill--val {
+  opacity: calc(0.78 + 0.22 * (1 - var(--stv-loss-n, 0.5)));
+}
+
+@keyframes studio-training-viz-meter-breathe {
+  0%,
+  100% {
+    filter: brightness(1);
   }
+  50% {
+    filter: brightness(1.06);
+  }
+}
+
+.studio-training-viz--warming .studio-training-viz__meter-fill {
+  animation-duration: calc(var(--stv-dash-s, 1.35s) * 0.75);
 }
 
 .studio-training-viz__spark-line {
@@ -5189,85 +5091,6 @@ html[data-theme="dark"] .studio-training-live__epoch-track-fill {
 
 .studio-training-viz__spark-area {
   pointer-events: none;
-}
-
-.studio-training-viz__svg-caption {
-  fill: var(--app-muted);
-  stroke: none;
-  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
-}
-
-.studio-training-viz__svg-caption--lane {
-  font-size: 9px;
-  font-weight: 650;
-  letter-spacing: 0.02em;
-}
-
-.studio-training-viz__svg-caption--spark {
-  font-size: 7.75px;
-  font-weight: 500;
-  opacity: 0.92;
-}
-
-.studio-training-viz__svg-caption--waiting {
-  opacity: 0.72;
-  font-style: italic;
-}
-
-.studio-training-viz--compact .studio-training-viz__svg-caption--lane {
-  font-size: 8.25px;
-}
-
-.studio-training-viz--compact .studio-training-viz__svg-caption--spark {
-  font-size: 7.25px;
-}
-
-.studio-training-viz__node {
-  fill: color-mix(in srgb, #6aa3ff 35%, var(--surface-panel));
-  stroke: color-mix(in srgb, #9d7bff 65%, transparent);
-  stroke-width: 1.1;
-  animation: studio-training-viz-node 1.6s ease-in-out infinite;
-}
-
-.studio-training-viz__node--out {
-  fill: color-mix(in srgb, #34d399 55%, #6aa3ff);
-  stroke: color-mix(in srgb, #5eead4 70%, transparent);
-  filter: drop-shadow(0 0 5px color-mix(in srgb, #6aa3ff 45%, transparent));
-}
-
-.studio-training-viz__node--p0 {
-  animation-delay: 0s;
-}
-.studio-training-viz__node--p1 {
-  animation-delay: 0.12s;
-}
-.studio-training-viz__node--p2 {
-  animation-delay: 0.24s;
-}
-.studio-training-viz__node--p3 {
-  animation-delay: 0.36s;
-}
-.studio-training-viz__node--p4 {
-  animation-delay: 0.48s;
-}
-
-@keyframes studio-training-viz-node {
-  0%,
-  100% {
-    opacity: 0.55;
-  }
-  50% {
-    opacity: 1;
-  }
-}
-
-.studio-training-viz--warming .studio-training-viz__node {
-  animation-duration: 1s;
-}
-
-.studio-training-viz--warming .studio-training-viz__edge {
-  animation-duration: calc(var(--stv-dash-s, 1.35s) * 0.88);
-  opacity: calc(0.42 + 0.52 * (1 - var(--stv-loss-n, 0.5)));
 }
 
 .studio-training-viz--epoch-tick .studio-training-viz__svg {

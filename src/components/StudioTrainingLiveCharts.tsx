@@ -9,7 +9,6 @@ import {
   YAxis
 } from "recharts";
 import { useAppStore } from "@/store/useAppStore";
-import { StudioTrainingConceptBanner } from "@/components/StudioTrainingConceptBanner";
 import { StudioTrainingProcessViz } from "@/components/StudioTrainingProcessViz";
 
 type StudioTrainingLiveChartsProps = {
@@ -63,22 +62,14 @@ export function StudioTrainingLiveCharts({ className, compact }: StudioTrainingL
       className={["studio-training-live", compact ? "studio-training-live--compact" : "", className ?? ""]
         .filter(Boolean)
         .join(" ")}
-      aria-describedby="studio-training-concept"
     >
-      <StudioTrainingConceptBanner compact={compact} />
-
       <div className="studio-training-live__header">
         <span className="studio-training-live__epoch-digits">
           {currentEpoch}/{Math.max(totalPlanned, 1)}
         </span>
       </div>
 
-      <StudioTrainingProcessViz
-        modelType={streamModelType}
-        epochHistory={rows}
-        warming={currentEpoch === 0}
-        compact={compact}
-      />
+      <StudioTrainingProcessViz epochHistory={rows} warming={currentEpoch === 0} compact={compact} />
 
       <div className="studio-training-live__epoch-track" aria-hidden>
         <div className="studio-training-live__epoch-track-fill" style={{ width: `${epochProgressPct}%` }} />
