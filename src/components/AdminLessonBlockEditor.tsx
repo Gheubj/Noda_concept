@@ -479,7 +479,7 @@ export function AdminLessonBlockEditor({ blocks, onChange, deckSingleElement = f
                 onChange={(e) => setBlock(index, { caption: e.target.value || null })}
               />
             </Space>
-            )}
+            )
           ) : null}
           {block.type === "studio" ? (
             <Space direction="vertical" style={{ width: "100%" }} className="lesson-block-editor__section">
