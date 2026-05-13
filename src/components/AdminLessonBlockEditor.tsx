@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button, Card, Dropdown, Input, Popover, Segmented, Select, Space, Typography, Upload, message } from "antd";
 import { DeleteOutlined, DownOutlined, PlusOutlined, UpOutlined, UploadOutlined } from "@ant-design/icons";
 import type { LessonContentBlock, StudioGoal } from "@/shared/types/lessonContent";
@@ -7,6 +7,8 @@ import { resolveLessonMediaUrl } from "@/shared/lessonMediaUrl";
 import { newLessonBlockId } from "@/shared/lessonContentBlocks";
 import { useSessionStore } from "@/store/useSessionStore";
 import { listProjects } from "@/features/project/projectRepository";
+import type { DeckTextFormatApi } from "@/components/deck/deckTextSelection";
+import { wrapTextareaSelection } from "@/components/deck/deckTextSelection";
 import type { UploadProps } from "antd";
 
 const { Text } = Typography;
@@ -77,9 +79,24 @@ export type AdminLessonBlockEditorProps = {
   onChange: (next: LessonContentBlock[]) => void;
   /** Режим слайда: один блок, без лишних кнопок; превью текста как у ученика */
   deckSingleElement?: boolean;
+  /** id элемента на слайде (дека), для связи с лентой форматирования */
+  deckCanvasElementId?: string;
+  /** Этот элемент сейчас выделен на канвасе */
+  deckElementSelected?: boolean;
+  /** Кнопки текста/медиа вынесены в шапку редактора слайда */
+  deckChromeInRibbon?: boolean;
+  onRegisterDeckTextFormatApi?: (elementId: string, api: DeckTextFormatApi | null) => void;
 };
 
-export function AdminLessonBlockEditor({ blocks, onChange, deckSingleElement = false }: AdminLessonBlockEditorProps) {
+export function AdminLessonBlockEditor({
+  blocks,
+  onChange,
+  deckSingleElement = false,
+  deckCanvasElementId,
+  deckElementSelected = false,
+  deckChromeInRibbon = false,
+  onRegisterDeckTextFormatApi
+}: AdminLessonBlockEditorProps) {
   const { user } = useSessionStore();
   const [uploadBusy, setUploadBusy] = useState<Record<string, boolean>>({});
   const [projectOptions, setProjectOptions] = useState<Array<{ value: string; label: string }>>([]);
@@ -122,6 +139,45 @@ export function AdminLessonBlockEditor({ blocks, onChange, deckSingleElement = f
     next[index] = { ...cur, ...patch } as LessonContentBlock;
     onChange(next);
   };
+
+  const blocksRef = useRef(blocks);
+  blocksRef.current = blocks;
+  const deckTextWrapRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (
+      !deckSingleElement ||
+      !deckChromeInRibbon ||
+      blocks[0]?.type !== "text" ||
+      !deckCanvasElementId ||
+      !onRegisterDeckTextFormatApi
+    ) {
+      return;
+    }
+    if (!deckElementSelected) {
+      onRegisterDeckTextFormatApi(deckCanvasElementId, null);
+      return;
+    }
+    const api: DeckTextFormatApi = {
+      wrapSelection: (left, right) => {
+        const ta = deckTextWrapRef.current?.querySelector("textarea") as HTMLTextAreaElement | null;
+        const b = blocksRef.current[0];
+        if (!ta || !b || b.type !== "text") {
+          return;
+        }
+        wrapTextareaSelection(ta, ta.value, (next) => onChange([{ ...b, body: next }]), left, right);
+      }
+    };
+    onRegisterDeckTextFormatApi(deckCanvasElementId, api);
+    return () => onRegisterDeckTextFormatApi(deckCanvasElementId, null);
+  }, [
+    deckSingleElement,
+    deckChromeInRibbon,
+    deckElementSelected,
+    deckCanvasElementId,
+    onRegisterDeckTextFormatApi,
+    onChange
+  ]);
 
   const updateStudioGoal = (index: number, goalIndex: number, patch: Partial<StudioGoal>) => {
     const block = blocks[index];
@@ -297,26 +353,43 @@ export function AdminLessonBlockEditor({ blocks, onChange, deckSingleElement = f
           {block.type === "text" ? (
             <Space direction="vertical" style={{ width: "100%", height: deckSingleElement ? "100%" : undefined }} className="lesson-block-editor__section">
               {deckSingleElement ? (
-                <>
-                  <Input.TextArea
-                    className="lesson-block-editor__deck-text-plain-input"
-                    variant="borderless"
-                    placeholder="Текст слайда"
-                    value={block.body}
-                    onChange={(e) => setBlock(index, { body: e.target.value })}
-                    autoSize={false}
-                  />
-                  <Segmented
-                    size="small"
-                    value={block.textScale ?? "md"}
-                    options={[
-                      { label: "М", value: "sm" },
-                      { label: "Н", value: "md" },
-                      { label: "К", value: "lg" }
-                    ]}
-                    onChange={(v) => setBlock(index, { textScale: v as "sm" | "md" | "lg" })}
-                  />
-                </>
+                deckChromeInRibbon ? (
+                  <div
+                    ref={deckTextWrapRef}
+                    className="lesson-block-editor__deck-text-wrap"
+                    style={{ width: "100%", height: "100%" }}
+                  >
+                    <Input.TextArea
+                      className="lesson-block-editor__deck-text-plain-input lesson-block-editor__deck-text-plain-input--ppt"
+                      variant="borderless"
+                      placeholder="Текст"
+                      value={block.body}
+                      onChange={(e) => setBlock(index, { body: e.target.value })}
+                      autoSize={false}
+                    />
+                  </div>
+                ) : (
+                  <>
+                    <Input.TextArea
+                      className="lesson-block-editor__deck-text-plain-input"
+                      variant="borderless"
+                      placeholder="Текст слайда"
+                      value={block.body}
+                      onChange={(e) => setBlock(index, { body: e.target.value })}
+                      autoSize={false}
+                    />
+                    <Segmented
+                      size="small"
+                      value={block.textScale ?? "md"}
+                      options={[
+                        { label: "М", value: "sm" },
+                        { label: "Н", value: "md" },
+                        { label: "К", value: "lg" }
+                      ]}
+                      onChange={(v) => setBlock(index, { textScale: v as "sm" | "md" | "lg" })}
+                    />
+                  </>
+                )
               ) : (
                 <Input.TextArea rows={6} value={block.body} onChange={(e) => setBlock(index, { body: e.target.value })} />
               )}
@@ -331,35 +404,39 @@ export function AdminLessonBlockEditor({ blocks, onChange, deckSingleElement = f
                 title={block.url ? "Наведите на область — кнопки замены и подписи" : undefined}
               >
                 {block.url ? (
-                  <>
+                  deckChromeInRibbon ? (
                     <img className="lesson-block-editor__deck-image-only-img" src={resolveLessonMediaUrl(block.url)} alt="" />
-                    <div className="lesson-block-editor__deck-image-only-bar">
-                      <Upload
-                        accept="image/*"
-                        maxCount={1}
-                        showUploadList={false}
-                        customRequest={uploadImageForMediaBlock(block.id, index)}
-                      >
-                        <Button size="small" type="primary" loading={uploadBusy[block.id]}>
-                          Заменить
-                        </Button>
-                      </Upload>
-                      <Popover
-                        trigger="click"
-                        title="Подпись"
-                        content={
-                          <Input
-                            placeholder="Необязательно"
-                            value={block.caption ?? ""}
-                            onChange={(e) => setBlock(index, { caption: e.target.value || null })}
-                            style={{ width: 260 }}
-                          />
-                        }
-                      >
-                        <Button size="small">Подпись</Button>
-                      </Popover>
-                    </div>
-                  </>
+                  ) : (
+                    <>
+                      <img className="lesson-block-editor__deck-image-only-img" src={resolveLessonMediaUrl(block.url)} alt="" />
+                      <div className="lesson-block-editor__deck-image-only-bar">
+                        <Upload
+                          accept="image/*"
+                          maxCount={1}
+                          showUploadList={false}
+                          customRequest={uploadImageForMediaBlock(block.id, index)}
+                        >
+                          <Button size="small" type="primary" loading={uploadBusy[block.id]}>
+                            Заменить
+                          </Button>
+                        </Upload>
+                        <Popover
+                          trigger="click"
+                          title="Подпись"
+                          content={
+                            <Input
+                              placeholder="Необязательно"
+                              value={block.caption ?? ""}
+                              onChange={(e) => setBlock(index, { caption: e.target.value || null })}
+                              style={{ width: 260 }}
+                            />
+                          }
+                        >
+                          <Button size="small">Подпись</Button>
+                        </Popover>
+                      </div>
+                    </>
+                  )
                 ) : (
                   <Upload
                     accept="image/*"
@@ -376,6 +453,28 @@ export function AdminLessonBlockEditor({ blocks, onChange, deckSingleElement = f
                 )}
               </div>
             ) : deckSingleElement && block.kind === "pdf" ? (
+              deckChromeInRibbon ? (
+                <div className="lesson-block-editor__deck-pdf-slot">
+                  {block.url ? (
+                    <Text type="secondary" className="lesson-block-editor__deck-pdf-slot-hint">
+                      PDF
+                    </Text>
+                  ) : (
+                    <Upload
+                      accept="application/pdf,.pdf"
+                      maxCount={1}
+                      showUploadList={false}
+                      customRequest={uploadPdfForMediaBlock(block.id, index)}
+                      className="lesson-block-editor__deck-image-upload"
+                    >
+                      <button type="button" className="lesson-block-editor__deck-image-drop">
+                        <UploadOutlined style={{ fontSize: 22, marginBottom: 6 }} />
+                        <div>PDF — выберите файл</div>
+                      </button>
+                    </Upload>
+                  )}
+                </div>
+              ) : (
               <Space direction="vertical" style={{ width: "100%" }} size="small" className="lesson-block-editor__section">
                 <Text type="secondary">{block.url ? "PDF подключён" : "Файл PDF"}</Text>
                 <Upload
@@ -394,6 +493,7 @@ export function AdminLessonBlockEditor({ blocks, onChange, deckSingleElement = f
                   onChange={(e) => setBlock(index, { caption: e.target.value || null })}
                 />
               </Space>
+              )
             ) : (
             <Space direction="vertical" style={{ width: "100%" }} className="lesson-block-editor__section">
               <Select
