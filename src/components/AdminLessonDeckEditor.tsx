@@ -1,5 +1,5 @@
-import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { Button, Card, Dropdown, Input, Modal, Space, Typography, Upload, message } from "antd";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { Button, Card, Dropdown, Input, Modal, Select, Space, Typography, Upload, message } from "antd";
 import {
   CopyOutlined,
   DeleteOutlined,
@@ -93,6 +93,10 @@ export function AdminLessonDeckEditor({ deck, onChange }: AdminLessonDeckEditorP
     return () => ro.disconnect();
   }, [safeIndex, slide?.id]);
 
+  useEffect(() => {
+    setSelectedElementId(null);
+  }, [safeIndex]);
+
   const setSlides = useCallback(
     (nextSlides: LessonDeckSlide[]) => {
       onChange({ schemaVersion: 1, slides: nextSlides });
@@ -116,10 +120,10 @@ export function AdminLessonDeckEditor({ deck, onChange }: AdminLessonDeckEditorP
     const el: LessonDeckElement = {
       id: newLessonBlockId(),
       layout: {
-        x: 6,
+        x: 6 + (slide.elements.length % 3) * 8,
         y,
-        w: isStudio ? 88 : 84,
-        h: isStudio ? 58 : 20
+        w: isStudio ? 88 : 48,
+        h: isStudio ? 58 : 24
       },
       zIndex: slide.elements.length,
       block
@@ -319,7 +323,7 @@ export function AdminLessonDeckEditor({ deck, onChange }: AdminLessonDeckEditorP
         </Space>
       </Card>
 
-      <Card size="small" title="Канвас 16:9 — как у ученика; тяните за серую полоску сверху элемента">
+      <Card size="small" title="Канвас 16:9">
         <Space wrap style={{ marginBottom: 8 }}>
           <Dropdown
             menu={{
@@ -335,9 +339,26 @@ export function AdminLessonDeckEditor({ deck, onChange }: AdminLessonDeckEditorP
             </Button>
           </Dropdown>
           <Text type="secondary">
-            Редактирование на слайде. Мини-разработка: фиксированный размер рамки (без растягивания углов).
+            Перетаскивайте элемент за любое место рамки (кроме полей ввода и кнопок). Несколько объектов — выберите в списке ниже.
           </Text>
         </Space>
+        {slide.elements.length > 1 ? (
+          <div className="admin-lesson-deck-editor__element-picker">
+            <Text type="secondary">Активный элемент:</Text>
+            <Select
+              size="small"
+              style={{ minWidth: 240 }}
+              placeholder="Выбрать"
+              value={selectedElementId ?? undefined}
+              options={slide.elements.map((el) => ({
+                value: el.id,
+                label: `${DECK_ELEMENT_TYPE_LABEL[el.block.type as (typeof ADD_TYPES)[number]["key"]] ?? el.block.type} (${el.id.slice(0, 6)}…)`
+              }))}
+              onChange={(id) => setSelectedElementId(id ?? null)}
+              allowClear
+            />
+          </div>
+        ) : null}
         <div
           ref={canvasRef}
           className="admin-lesson-deck-editor__canvas"
@@ -354,7 +375,12 @@ export function AdminLessonDeckEditor({ deck, onChange }: AdminLessonDeckEditorP
                 }
               : {})
           }}
-          onMouseDown={() => setSelectedElementId(null)}
+          onMouseDown={(e) => {
+            if ((e.target as HTMLElement).closest(".admin-lesson-deck-editor__rnd")) {
+              return;
+            }
+            setSelectedElementId(null);
+          }}
         >
           {slide.elements.map((el) => {
             const { w: cw, h: ch } = canvasSize;
@@ -370,7 +396,7 @@ export function AdminLessonDeckEditor({ deck, onChange }: AdminLessonDeckEditorP
                 bounds="parent"
                 size={{ width: pxW, height: pxH }}
                 position={{ x: pxX, y: pxY }}
-                dragHandleClassName="admin-lesson-deck-editor__drag-handle"
+                cancel="textarea, input, button, a, .ant-input, .ant-input-affix-wrapper, .ant-input-number, .ant-select, .ant-select-selector, .ant-upload, .ant-btn, .ant-dropdown-trigger, [role='combobox'], [role='listbox'], [role='menuitem']"
                 enableResizing={!isStudio}
                 onDragStop={(_e, d) => onDragStop(el.id, d)}
                 onResizeStop={!isStudio ? (_e, _dir, ref, _delta, position) => onResizeStop(el.id, ref, position) : undefined}
@@ -382,10 +408,7 @@ export function AdminLessonDeckEditor({ deck, onChange }: AdminLessonDeckEditorP
                 style={{ zIndex: 10 + (el.zIndex ?? 0) }}
               >
                 <div className="admin-lesson-deck-editor__rnd-inner">
-                  <div
-                    className="admin-lesson-deck-editor__drag-handle admin-lesson-deck-editor__rnd-toolbar"
-                    onMouseDown={(e) => e.stopPropagation()}
-                  >
+                  <div className="admin-lesson-deck-editor__rnd-toolbar">
                     <Space size={4} wrap>
                       <Dropdown
                         trigger={["click"]}
@@ -423,12 +446,7 @@ export function AdminLessonDeckEditor({ deck, onChange }: AdminLessonDeckEditorP
                       />
                     </Space>
                   </div>
-                  <div
-                    className="admin-lesson-deck-editor__rnd-body"
-                    onMouseDown={(e) => {
-                      e.stopPropagation();
-                    }}
-                  >
+                  <div className="admin-lesson-deck-editor__rnd-body">
                     <AdminLessonBlockEditor
                       deckSingleElement
                       blocks={[el.block]}

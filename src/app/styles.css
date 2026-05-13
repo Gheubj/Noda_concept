@@ -2865,6 +2865,14 @@ html[data-theme="dark"] .lesson-flow__pdf-page-canvas {
   overflow: hidden;
 }
 
+.admin-lesson-deck-editor__element-picker {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
 .admin-lesson-deck-editor__drag-handle {
   cursor: grab;
 }
