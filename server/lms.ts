@@ -433,7 +433,8 @@ const lessonBlockIdZ = z.string().min(1).max(80);
 const textBlockZ = z.object({
   id: lessonBlockIdZ,
   type: z.literal("text"),
-  body: z.string().min(1).max(20000)
+  body: z.string().min(1).max(20000),
+  textScale: z.enum(["sm", "md", "lg"]).optional()
 });
 const imageBlockZ = z.object({
   id: lessonBlockIdZ,

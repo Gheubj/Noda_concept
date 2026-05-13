@@ -124,9 +124,11 @@ export function LessonDeckPlayer({
 
   const renderBlock = (block: LessonContentBlock) => {
     if (block.type === "text") {
+      const scale = block.textScale === "sm" || block.textScale === "lg" ? block.textScale : null;
+      const mdClass = `lesson-deck-player__markdown${scale ? ` lesson-deck-player__markdown--text-${scale}` : ""}`;
       return (
         <div className="lesson-deck-player__segment lesson-deck-player__segment--text">
-          {renderMarkdown(block.body, "lesson-deck-player__markdown")}
+          {renderMarkdown(block.body, mdClass)}
         </div>
       );
     }
@@ -281,7 +283,11 @@ export function LessonDeckPlayer({
                 zIndex: el.zIndex ?? 1
               }}
             >
-              <div className="lesson-deck-player__abs-inner">{renderBlock(el.block)}</div>
+              <div
+                className={`lesson-deck-player__abs-inner lesson-deck-player__abs-inner--${el.block.type}`}
+              >
+                {renderBlock(el.block)}
+              </div>
             </div>
           ))}
         </div>

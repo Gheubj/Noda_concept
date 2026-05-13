@@ -2745,21 +2745,18 @@ html[data-theme="dark"] .lesson-flow__pdf-page-canvas {
   padding: 0 4px;
 }
 
-.lesson-deck-player--fullscreen .lesson-deck-player__stage-wrap {
-  container-type: size;
-}
-
 .lesson-deck-player__stage.lesson-deck-player__stage--fullscreen {
   border-radius: 12px;
   overflow: hidden;
   border: 1px solid var(--ant-color-border, rgba(148, 163, 184, 0.45));
   box-shadow: var(--app-shadow-soft);
   box-sizing: border-box;
-  width: min(100cqw, calc(100cqh * 16 / 9));
-  max-width: 100%;
-  max-height: 100cqh;
+  /* Без cqw/cqh: в части окружений контейнер давал 0×0 и слайд был пустым */
+  width: 100%;
+  max-width: min(1200px, 96vw);
   aspect-ratio: 16 / 9;
   height: auto;
+  max-height: min(78dvh, calc(100vw * 9 / 16));
 }
 
 .lesson-deck-player__abs {
@@ -2777,6 +2774,13 @@ html[data-theme="dark"] .lesson-flow__pdf-page-canvas {
   border: 1px solid var(--ant-color-border, rgba(148, 163, 184, 0.35));
 }
 
+.lesson-deck-player__abs-inner--text {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  padding: 4px 6px;
+}
+
 .lesson-deck-player__segment {
   min-height: 0;
 }
@@ -2784,6 +2788,18 @@ html[data-theme="dark"] .lesson-flow__pdf-page-canvas {
 .lesson-deck-player__segment--text .lesson-deck-player__markdown {
   font-size: clamp(12px, 1.1vw, 15px);
   line-height: 1.45;
+}
+
+.lesson-deck-player__markdown--text-sm.lesson-deck-player__markdown,
+.lesson-deck-player__markdown--text-sm .lesson-deck-player__markdown {
+  font-size: clamp(10px, 0.95vw, 13px);
+  line-height: 1.42;
+}
+
+.lesson-deck-player__markdown--text-lg.lesson-deck-player__markdown,
+.lesson-deck-player__markdown--text-lg .lesson-deck-player__markdown {
+  font-size: clamp(14px, 1.35vw, 22px);
+  line-height: 1.48;
 }
 
 .lesson-deck-player__segment--text .lesson-deck-player__markdown h1,

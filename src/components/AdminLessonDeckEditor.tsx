@@ -1,13 +1,10 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { Button, Card, Dropdown, Input, Modal, Select, Space, Typography, Upload, message } from "antd";
+import { Button, Card, Dropdown, Input, Modal, Select, Space, Typography, Upload, message, type MenuProps } from "antd";
 import {
   CopyOutlined,
-  DeleteOutlined,
-  DownOutlined,
+  MoreOutlined,
   PlusOutlined,
-  UploadOutlined,
-  VerticalAlignBottomOutlined,
-  VerticalAlignTopOutlined
+  UploadOutlined
 } from "@ant-design/icons";
 import { Rnd } from "react-rnd";
 import type { LessonContentDeck, LessonDeckElement, LessonDeckSlide } from "@/shared/types/lessonContent";
@@ -25,13 +22,6 @@ const ADD_TYPES = [
   { key: "studio", label: "Мини-разработка" },
   { key: "checkpoint", label: "Вопрос" }
 ] as const;
-
-const DECK_ELEMENT_TYPE_LABEL: Record<(typeof ADD_TYPES)[number]["key"], string> = {
-  text: "Текст",
-  media: "Медиа",
-  studio: "Мини-разработка",
-  checkpoint: "Вопрос"
-};
 
 export type AdminLessonDeckEditorProps = {
   deck: LessonContentDeck;
@@ -94,8 +84,12 @@ export function AdminLessonDeckEditor({ deck, onChange }: AdminLessonDeckEditorP
   }, [safeIndex, slide?.id]);
 
   useEffect(() => {
-    setSelectedElementId(null);
-  }, [safeIndex]);
+    if (!slide?.elements.length) {
+      setSelectedElementId(null);
+      return;
+    }
+    setSelectedElementId((cur) => (cur && slide.elements.some((e) => e.id === cur) ? cur : slide.elements[0]!.id));
+  }, [safeIndex, slide?.id, slide?.elements.length]);
 
   const setSlides = useCallback(
     (nextSlides: LessonDeckSlide[]) => {
@@ -273,6 +267,53 @@ export function AdminLessonDeckEditor({ deck, onChange }: AdminLessonDeckEditorP
 
   const bg = slide.backgroundImageUrl?.trim();
 
+  const activeDeckElementId = selectedElementId ?? slide.elements[0]?.id ?? null;
+  const activeDeckElement = activeDeckElementId
+    ? slide.elements.find((e) => e.id === activeDeckElementId)
+    : undefined;
+
+  const deckCanvasMoreMenu: MenuProps["items"] =
+    activeDeckElementId && activeDeckElement
+      ? [
+          {
+            key: "type",
+            label: "Тип элемента",
+            children: ADD_TYPES.map((t) => ({
+              key: `t-${t.key}`,
+              label: t.label,
+              disabled: activeDeckElement.block.type === t.key,
+              onClick: () => replaceElementBlockType(activeDeckElementId, t.key)
+            }))
+          },
+          { type: "divider" },
+          {
+            key: "z-back",
+            label: "Ниже по слою",
+            onClick: () => zOrder(activeDeckElementId, -1)
+          },
+          {
+            key: "z-front",
+            label: "Выше по слою",
+            onClick: () => zOrder(activeDeckElementId, 1)
+          },
+          { type: "divider" },
+          {
+            key: "del",
+            danger: true,
+            label: "Удалить элемент",
+            onClick: () => {
+              Modal.confirm({
+                title: "Удалить элемент?",
+                onOk: () => {
+                  setSlides(removeElement(slides, safeIndex, activeDeckElementId));
+                  setSelectedElementId(null);
+                }
+              });
+            }
+          }
+        ]
+      : [];
+
   return (
     <Space direction="vertical" size="middle" style={{ width: "100%" }} className="admin-lesson-deck-editor">
       <Card size="small" title="Слайды">
@@ -339,24 +380,30 @@ export function AdminLessonDeckEditor({ deck, onChange }: AdminLessonDeckEditorP
             </Button>
           </Dropdown>
           <Text type="secondary">
-            Перетаскивайте элемент за любое место рамки (кроме полей ввода и кнопок). Несколько объектов — выберите в списке ниже.
+            Текст: перетаскивание за рамку (не за поле ввода). Размер букв — «М / Н / К» над полем. Тип и слой — кнопка «⋯».
           </Text>
         </Space>
-        {slide.elements.length > 1 ? (
+        {slide.elements.length > 0 ? (
           <div className="admin-lesson-deck-editor__element-picker">
-            <Text type="secondary">Активный элемент:</Text>
-            <Select
-              size="small"
-              style={{ minWidth: 240 }}
-              placeholder="Выбрать"
-              value={selectedElementId ?? undefined}
-              options={slide.elements.map((el) => ({
-                value: el.id,
-                label: `${DECK_ELEMENT_TYPE_LABEL[el.block.type as (typeof ADD_TYPES)[number]["key"]] ?? el.block.type} (${el.id.slice(0, 6)}…)`
-              }))}
-              onChange={(id) => setSelectedElementId(id ?? null)}
-              allowClear
-            />
+            {slide.elements.length > 1 ? (
+              <>
+                <Text type="secondary">Активный:</Text>
+                <Select
+                  size="small"
+                  style={{ minWidth: 200 }}
+                  placeholder="Элемент"
+                  value={selectedElementId ?? undefined}
+                  options={slide.elements.map((el, idx) => ({
+                    value: el.id,
+                    label: `Элемент ${idx + 1}`
+                  }))}
+                  onChange={(id) => setSelectedElementId(id)}
+                />
+              </>
+            ) : null}
+            <Dropdown menu={{ items: deckCanvasMoreMenu }} trigger={["click"]} disabled={!activeDeckElementId}>
+              <Button size="small" type="default" icon={<MoreOutlined aria-label="Действия с элементом" />} />
+            </Dropdown>
           </div>
         ) : null}
         <div
@@ -375,12 +422,6 @@ export function AdminLessonDeckEditor({ deck, onChange }: AdminLessonDeckEditorP
                 }
               : {})
           }}
-          onMouseDown={(e) => {
-            if ((e.target as HTMLElement).closest(".admin-lesson-deck-editor__rnd")) {
-              return;
-            }
-            setSelectedElementId(null);
-          }}
         >
           {slide.elements.map((el) => {
             const { w: cw, h: ch } = canvasSize;
@@ -390,6 +431,7 @@ export function AdminLessonDeckEditor({ deck, onChange }: AdminLessonDeckEditorP
             const pxY = (el.layout.y / 100) * ch;
             const selected = el.id === selectedElementId;
             const isStudio = el.block.type === "studio";
+            const isText = el.block.type === "text";
             return (
               <Rnd
                 key={el.id}
@@ -397,9 +439,9 @@ export function AdminLessonDeckEditor({ deck, onChange }: AdminLessonDeckEditorP
                 size={{ width: pxW, height: pxH }}
                 position={{ x: pxX, y: pxY }}
                 cancel="textarea, input, button, a, .ant-input, .ant-input-affix-wrapper, .ant-input-number, .ant-select, .ant-select-selector, .ant-upload, .ant-btn, .ant-dropdown-trigger, [role='combobox'], [role='listbox'], [role='menuitem']"
-                enableResizing={!isStudio}
+                enableResizing={!isStudio && !isText}
                 onDragStop={(_e, d) => onDragStop(el.id, d)}
-                onResizeStop={!isStudio ? (_e, _dir, ref, _delta, position) => onResizeStop(el.id, ref, position) : undefined}
+                onResizeStop={!isStudio && !isText ? (_e, _dir, ref, _delta, position) => onResizeStop(el.id, ref, position) : undefined}
                 onMouseDown={(e) => {
                   e.stopPropagation();
                   setSelectedElementId(el.id);
@@ -408,44 +450,6 @@ export function AdminLessonDeckEditor({ deck, onChange }: AdminLessonDeckEditorP
                 style={{ zIndex: 10 + (el.zIndex ?? 0) }}
               >
                 <div className="admin-lesson-deck-editor__rnd-inner">
-                  <div className="admin-lesson-deck-editor__rnd-toolbar">
-                    <Space size={4} wrap>
-                      <Dropdown
-                        trigger={["click"]}
-                        menu={{
-                          items: ADD_TYPES.map((t) => ({
-                            key: t.key,
-                            label: t.label,
-                            disabled: el.block.type === t.key,
-                            onClick: () => replaceElementBlockType(el.id, t.key)
-                          }))
-                        }}
-                      >
-                        <Button size="small" type="text">
-                          {DECK_ELEMENT_TYPE_LABEL[el.block.type as (typeof ADD_TYPES)[number]["key"]] ?? el.block.type}{" "}
-                          <DownOutlined />
-                        </Button>
-                      </Dropdown>
-                      <Button size="small" icon={<VerticalAlignBottomOutlined />} onClick={() => zOrder(el.id, -1)} />
-                      <Button size="small" icon={<VerticalAlignTopOutlined />} onClick={() => zOrder(el.id, 1)} />
-                      <Button
-                        size="small"
-                        danger
-                        icon={<DeleteOutlined />}
-                        onClick={() => {
-                          Modal.confirm({
-                            title: "Удалить элемент?",
-                            onOk: () => {
-                              setSlides(removeElement(slides, safeIndex, el.id));
-                              if (selectedElementId === el.id) {
-                                setSelectedElementId(null);
-                              }
-                            }
-                          });
-                        }}
-                      />
-                    </Space>
-                  </div>
                   <div className="admin-lesson-deck-editor__rnd-body">
                     <AdminLessonBlockEditor
                       deckSingleElement

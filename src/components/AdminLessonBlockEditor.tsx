@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Button, Card, Dropdown, Input, Popover, Select, Space, Typography, Upload, message } from "antd";
+import { Button, Card, Dropdown, Input, Popover, Segmented, Select, Space, Typography, Upload, message } from "antd";
 import { DeleteOutlined, DownOutlined, PlusOutlined, UpOutlined, UploadOutlined } from "@ant-design/icons";
 import type { LessonContentBlock, StudioGoal } from "@/shared/types/lessonContent";
 import { apiClient } from "@/shared/api/client";
@@ -297,14 +297,26 @@ export function AdminLessonBlockEditor({ blocks, onChange, deckSingleElement = f
           {block.type === "text" ? (
             <Space direction="vertical" style={{ width: "100%", height: deckSingleElement ? "100%" : undefined }} className="lesson-block-editor__section">
               {deckSingleElement ? (
-                <Input.TextArea
-                  className="lesson-block-editor__deck-text-plain-input"
-                  variant="borderless"
-                  placeholder="Текст слайда"
-                  value={block.body}
-                  onChange={(e) => setBlock(index, { body: e.target.value })}
-                  autoSize={false}
-                />
+                <>
+                  <Input.TextArea
+                    className="lesson-block-editor__deck-text-plain-input"
+                    variant="borderless"
+                    placeholder="Текст слайда"
+                    value={block.body}
+                    onChange={(e) => setBlock(index, { body: e.target.value })}
+                    autoSize={false}
+                  />
+                  <Segmented
+                    size="small"
+                    value={block.textScale ?? "md"}
+                    options={[
+                      { label: "М", value: "sm" },
+                      { label: "Н", value: "md" },
+                      { label: "К", value: "lg" }
+                    ]}
+                    onChange={(v) => setBlock(index, { textScale: v as "sm" | "md" | "lg" })}
+                  />
+                </>
               ) : (
                 <Input.TextArea rows={6} value={block.body} onChange={(e) => setBlock(index, { body: e.target.value })} />
               )}

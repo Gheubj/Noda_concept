@@ -32,7 +32,7 @@ export type StudioGoal =
 
 /** Блоки «ленты» урока (конструктор + плеер). Если заданы — плеер строит единый поток. */
 export type LessonContentBlock =
-  | { id: string; type: "text"; body: string }
+  | { id: string; type: "text"; body: string; /** Размер текста на слайде (дека); по умолчанию md */ textScale?: "sm" | "md" | "lg" }
   | { id: string; type: "media"; kind: "image" | "pdf"; url: string; caption?: string | null }
   /** Legacy: старые уроки могли хранить image/pdf отдельно. */
   | { id: string; type: "image"; url: string; caption?: string | null }
