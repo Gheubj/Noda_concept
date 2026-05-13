@@ -643,6 +643,32 @@ html[data-theme="dark"] .app-content--workspace {
   overflow-y: visible;
 }
 
+/* Режим слайдов: одна «экранная» колонка без прокрутки страницы целиком */
+.lesson-player-page.lesson-player-page--deck.app-content--workspace {
+  display: flex;
+  flex-direction: column;
+  height: calc(100dvh - var(--app-header-height));
+  max-height: calc(100dvh - var(--app-header-height));
+  min-height: 0;
+  overflow: hidden;
+}
+
+.lesson-player-page.lesson-player-page--deck .lesson-player-page__head {
+  flex-shrink: 0;
+}
+
+.lesson-player-page.lesson-player-page--deck .lesson-player-page__stack.lesson-player-page__stack--deck.ant-space.ant-space-vertical {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  align-items: stretch;
+}
+
+.lesson-player-page.lesson-player-page--deck .lesson-deck-player.lesson-deck-player--fullscreen {
+  flex: 1;
+  min-height: 0;
+}
+
 .placeholder-text.ant-typography {
   font-size: 16px;
 }
@@ -2696,10 +2722,10 @@ html[data-theme="dark"] .lesson-flow__pdf-page-canvas {
 .lesson-deck-player.lesson-deck-player--fullscreen {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
   width: 100%;
   flex: 1;
-  min-height: min(calc(100dvh - var(--app-header-height, 56px) - 120px), 900px);
+  min-height: 0;
 }
 
 .lesson-deck-player__nav {
@@ -2719,16 +2745,21 @@ html[data-theme="dark"] .lesson-flow__pdf-page-canvas {
   padding: 0 4px;
 }
 
+.lesson-deck-player--fullscreen .lesson-deck-player__stage-wrap {
+  container-type: size;
+}
+
 .lesson-deck-player__stage.lesson-deck-player__stage--fullscreen {
   border-radius: 12px;
   overflow: hidden;
   border: 1px solid var(--ant-color-border, rgba(148, 163, 184, 0.45));
   box-shadow: var(--app-shadow-soft);
-  width: min(96vw, calc((100dvh - var(--app-header-height, 56px) - 160px) * 16 / 9));
+  box-sizing: border-box;
+  width: min(100cqw, calc(100cqh * 16 / 9));
   max-width: 100%;
+  max-height: 100cqh;
   aspect-ratio: 16 / 9;
   height: auto;
-  max-height: min(calc(100dvh - var(--app-header-height, 56px) - 140px), 92vh);
 }
 
 .lesson-deck-player__abs {
@@ -2895,18 +2926,13 @@ html[data-theme="dark"] .lesson-flow__pdf-page-canvas {
   min-height: 0;
 }
 
-.lesson-player-page--deck.app-content--workspace {
-  display: flex;
-  flex-direction: column;
-  min-height: calc(100dvh - var(--app-header-height, 56px));
-}
-
 .lesson-player-page--deck .ant-spin-nested-loading,
 .lesson-player-page--deck .ant-spin-container {
   flex: 1;
   display: flex;
   flex-direction: column;
   min-height: 0;
+  overflow: hidden;
 }
 
 .lesson-player-page--deck .lesson-player-page__stack--deck.ant-space.ant-space-vertical {
@@ -3128,6 +3154,81 @@ html[data-theme="dark"] .lesson-flow__pdf-page-canvas {
 
 .lesson-block-editor--deck-single .ant-card-body {
   padding: 10px 12px;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.lesson-block-editor--deck-single .lesson-block-editor__card.ant-card {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.lesson-block-editor.lesson-block-editor--deck-single {
+  height: 100%;
+  min-height: 0;
+}
+
+.lesson-block-editor--deck-single .lesson-block-editor__deck-text-plain-input {
+  flex: 1;
+  min-height: 0;
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+.lesson-block-editor--deck-single .lesson-block-editor__deck-text-plain-input textarea.ant-input {
+  min-height: 100% !important;
+  height: 100% !important;
+  resize: none;
+  overflow-y: auto;
+}
+
+.lesson-block-editor__deck-image-only {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: center;
+}
+
+.lesson-block-editor__deck-image-only-img {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  object-fit: contain;
+}
+
+.lesson-block-editor__deck-image-only-bar {
+  flex-shrink: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding-top: 8px;
+}
+
+.lesson-block-editor__deck-image-upload.ant-upload {
+  display: block;
+  width: 100%;
+  flex: 1;
+  min-height: 0;
+}
+
+.lesson-block-editor__deck-image-drop {
+  width: 100%;
+  min-height: 160px;
+  border: 2px dashed var(--ant-color-border, rgba(148, 163, 184, 0.45));
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--app-surface, #fff) 92%, transparent);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--ant-color-text-secondary);
+  font-size: 14px;
 }
 
 .lesson-block-editor--deck-single .ant-card-head-title {

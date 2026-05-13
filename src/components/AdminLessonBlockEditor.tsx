@@ -1,11 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Button, Card, Dropdown, Input, Select, Space, Typography, Upload, message } from "antd";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
+import { Button, Card, Dropdown, Input, Popover, Select, Space, Typography, Upload, message } from "antd";
 import { DeleteOutlined, DownOutlined, PlusOutlined, UpOutlined, UploadOutlined } from "@ant-design/icons";
 import type { LessonContentBlock, StudioGoal } from "@/shared/types/lessonContent";
 import { apiClient } from "@/shared/api/client";
-import { markdownWithCustomEmojiImages } from "@/shared/emojiMarkdown";
 import { resolveLessonMediaUrl } from "@/shared/lessonMediaUrl";
 import { newLessonBlockId } from "@/shared/lessonContentBlocks";
 import { useSessionStore } from "@/store/useSessionStore";
@@ -325,16 +322,14 @@ export function AdminLessonBlockEditor({ blocks, onChange, deckSingleElement = f
             bordered={block.type !== "divider"}
             title={
               deckSingleElement ? (
-                <Space wrap>
-                  <Text type="secondary">Тип</Text>
-                  <Select
-                    size="small"
-                    style={{ minWidth: 200 }}
-                    value={block.type}
-                    options={typeOptions}
-                    onChange={(v) => replaceBlockType(index, v as LessonContentBlock["type"])}
-                  />
-                </Space>
+                <Select
+                  size="small"
+                  variant="borderless"
+                  style={{ minWidth: 160 }}
+                  value={block.type}
+                  options={typeOptions}
+                  onChange={(v) => replaceBlockType(index, v as LessonContentBlock["type"])}
+                />
               ) : (
                 <Space wrap>
                   <Text type="secondary">#{index + 1}</Text>
@@ -358,26 +353,90 @@ export function AdminLessonBlockEditor({ blocks, onChange, deckSingleElement = f
             }
           >
           {block.type === "text" ? (
-            <Space direction="vertical" style={{ width: "100%" }} className="lesson-block-editor__section">
+            <Space direction="vertical" style={{ width: "100%", height: deckSingleElement ? "100%" : undefined }} className="lesson-block-editor__section">
               {deckSingleElement ? (
-                <div className="lesson-block-editor__deck-wysiwyg-preview lesson-deck-player__markdown">
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{markdownWithCustomEmojiImages(block.body || "_пусто_")}</ReactMarkdown>
-                </div>
-              ) : null}
-              <Input.TextArea
-                rows={deckSingleElement ? 5 : 6}
-                value={block.body}
-                onChange={(e) => setBlock(index, { body: e.target.value })}
-              />
+                <Input.TextArea
+                  className="lesson-block-editor__deck-text-plain-input"
+                  variant="borderless"
+                  placeholder="Текст слайда"
+                  value={block.body}
+                  onChange={(e) => setBlock(index, { body: e.target.value })}
+                  autoSize={false}
+                />
+              ) : (
+                <Input.TextArea rows={6} value={block.body} onChange={(e) => setBlock(index, { body: e.target.value })} />
+              )}
             </Space>
           ) : null}
           {block.type === "media" ? (
+            deckSingleElement && block.kind === "image" ? (
+              <div className="lesson-block-editor__deck-image-only">
+                {block.url ? (
+                  <>
+                    <img className="lesson-block-editor__deck-image-only-img" src={resolveLessonMediaUrl(block.url)} alt="" />
+                    <div className="lesson-block-editor__deck-image-only-bar">
+                      <Upload
+                        accept="image/*"
+                        maxCount={1}
+                        showUploadList={false}
+                        customRequest={uploadImageForMediaBlock(block.id, index)}
+                      >
+                        <Button size="small" type="primary" loading={uploadBusy[block.id]}>
+                          Заменить
+                        </Button>
+                      </Upload>
+                      <Popover
+                        trigger="click"
+                        title="Подпись"
+                        content={
+                          <Input
+                            placeholder="Необязательно"
+                            value={block.caption ?? ""}
+                            onChange={(e) => setBlock(index, { caption: e.target.value || null })}
+                            style={{ width: 260 }}
+                          />
+                        }
+                      >
+                        <Button size="small">Подпись</Button>
+                      </Popover>
+                    </div>
+                  </>
+                ) : (
+                  <Upload
+                    accept="image/*"
+                    maxCount={1}
+                    showUploadList={false}
+                    customRequest={uploadImageForMediaBlock(block.id, index)}
+                    className="lesson-block-editor__deck-image-upload"
+                  >
+                    <button type="button" className="lesson-block-editor__deck-image-drop">
+                      <UploadOutlined style={{ fontSize: 28, marginBottom: 8 }} />
+                      <div>Нажми или перетащи картинку</div>
+                    </button>
+                  </Upload>
+                )}
+              </div>
+            ) : deckSingleElement && block.kind === "pdf" ? (
+              <Space direction="vertical" style={{ width: "100%" }} size="small" className="lesson-block-editor__section">
+                <Text type="secondary">{block.url ? "PDF подключён" : "Файл PDF"}</Text>
+                <Upload
+                  accept="application/pdf,.pdf"
+                  maxCount={1}
+                  showUploadList={false}
+                  customRequest={uploadPdfForMediaBlock(block.id, index)}
+                >
+                  <Button icon={<UploadOutlined />} loading={uploadBusy[block.id]} block>
+                    {block.url ? "Заменить PDF" : "Загрузить PDF"}
+                  </Button>
+                </Upload>
+                <Input
+                  placeholder="Заголовок над презентацией (необязательно)"
+                  value={block.caption ?? ""}
+                  onChange={(e) => setBlock(index, { caption: e.target.value || null })}
+                />
+              </Space>
+            ) : (
             <Space direction="vertical" style={{ width: "100%" }} className="lesson-block-editor__section">
-              {deckSingleElement && block.kind === "image" && block.url ? (
-                <div className="lesson-block-editor__deck-media-preview">
-                  <img src={resolveLessonMediaUrl(block.url)} alt="" />
-                </div>
-              ) : null}
               <Select
                 value={block.kind}
                 options={[
@@ -420,17 +479,17 @@ export function AdminLessonBlockEditor({ blocks, onChange, deckSingleElement = f
                 onChange={(e) => setBlock(index, { caption: e.target.value || null })}
               />
             </Space>
+            )}
           ) : null}
           {block.type === "studio" ? (
             <Space direction="vertical" style={{ width: "100%" }} className="lesson-block-editor__section">
-              {deckSingleElement && block.instruction.trim() ? (
-                <div className="lesson-block-editor__deck-wysiwyg-preview lesson-deck-player__markdown">
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{markdownWithCustomEmojiImages(block.instruction)}</ReactMarkdown>
-                </div>
-              ) : null}
-              <Text type="secondary">Инструкция и параметры мини-разработки</Text>
+              {!deckSingleElement ? <Text type="secondary">Инструкция и параметры мини-разработки</Text> : null}
               <Input.TextArea
-                rows={3}
+                className={deckSingleElement ? "lesson-block-editor__deck-text-plain-input" : undefined}
+                variant={deckSingleElement ? "borderless" : undefined}
+                rows={deckSingleElement ? undefined : 3}
+                autoSize={deckSingleElement ? false : undefined}
+                placeholder={deckSingleElement ? "Инструкция для ученика" : undefined}
                 value={block.instruction}
                 onChange={(e) => setBlock(index, { instruction: e.target.value })}
               />
@@ -558,16 +617,12 @@ export function AdminLessonBlockEditor({ blocks, onChange, deckSingleElement = f
           {block.type === "divider" ? <hr className="lesson-block-editor__divider-line" /> : null}
           {block.type === "checkpoint" ? (
             <Space direction="vertical" style={{ width: "100%" }} className="lesson-block-editor__section">
-              {deckSingleElement ? (
-                <div className="lesson-block-editor__deck-wysiwyg-preview lesson-deck-player__markdown">
-                  <Text strong style={{ display: "block", marginBottom: 4 }}>
-                    Вопрос
-                  </Text>
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{markdownWithCustomEmojiImages(block.question || "_пусто_")}</ReactMarkdown>
-                </div>
-              ) : null}
               <Input.TextArea
-                rows={2}
+                className={deckSingleElement ? "lesson-block-editor__deck-text-plain-input" : undefined}
+                variant={deckSingleElement ? "borderless" : undefined}
+                rows={deckSingleElement ? undefined : 2}
+                autoSize={deckSingleElement ? false : undefined}
+                placeholder={deckSingleElement ? "Вопрос" : undefined}
                 value={block.question}
                 onChange={(e) => setBlock(index, { question: e.target.value })}
               />
