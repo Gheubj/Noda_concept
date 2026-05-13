@@ -3,6 +3,7 @@ import { Button, Card, Dropdown, Input, Modal, Space, Typography, Upload, messag
 import {
   CopyOutlined,
   DeleteOutlined,
+  DownOutlined,
   PlusOutlined,
   UploadOutlined,
   VerticalAlignBottomOutlined,
@@ -24,6 +25,13 @@ const ADD_TYPES = [
   { key: "studio", label: "Мини-разработка" },
   { key: "checkpoint", label: "Вопрос" }
 ] as const;
+
+const DECK_ELEMENT_TYPE_LABEL: Record<(typeof ADD_TYPES)[number]["key"], string> = {
+  text: "Текст",
+  media: "Медиа",
+  studio: "Мини-разработка",
+  checkpoint: "Вопрос"
+};
 
 export type AdminLessonDeckEditorProps = {
   deck: LessonContentDeck;
@@ -125,6 +133,19 @@ export function AdminLessonDeckEditor({ deck, onChange }: AdminLessonDeckEditorP
       return;
     }
     setSlides(updateElement(slides, safeIndex, elementId, { layout }));
+  };
+
+  const replaceElementBlockType = (elementId: string, type: (typeof ADD_TYPES)[number]["key"]) => {
+    if (!slide) {
+      return;
+    }
+    const el = slide.elements.find((e) => e.id === elementId);
+    if (!el || el.block.type === type) {
+      return;
+    }
+    const nb = createAdminLessonBlock(type);
+    const merged = { ...nb, id: el.block.id } as LessonDeckElement["block"];
+    setSlides(updateElement(slides, safeIndex, elementId, { block: merged }));
   };
 
   const onDragStop = (elementId: string, d: { x: number; y: number }) => {
@@ -366,9 +387,22 @@ export function AdminLessonDeckEditor({ deck, onChange }: AdminLessonDeckEditorP
                     onMouseDown={(e) => e.stopPropagation()}
                   >
                     <Space size={4} wrap>
-                      <Text type="secondary" ellipsis style={{ maxWidth: 100 }}>
-                        {el.block.type}
-                      </Text>
+                      <Dropdown
+                        trigger={["click"]}
+                        menu={{
+                          items: ADD_TYPES.map((t) => ({
+                            key: t.key,
+                            label: t.label,
+                            disabled: el.block.type === t.key,
+                            onClick: () => replaceElementBlockType(el.id, t.key)
+                          }))
+                        }}
+                      >
+                        <Button size="small" type="text">
+                          {DECK_ELEMENT_TYPE_LABEL[el.block.type as (typeof ADD_TYPES)[number]["key"]] ?? el.block.type}{" "}
+                          <DownOutlined />
+                        </Button>
+                      </Dropdown>
                       <Button size="small" icon={<VerticalAlignBottomOutlined />} onClick={() => zOrder(el.id, -1)} />
                       <Button size="small" icon={<VerticalAlignTopOutlined />} onClick={() => zOrder(el.id, 1)} />
                       <Button

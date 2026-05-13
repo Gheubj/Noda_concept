@@ -19,8 +19,6 @@ const BLOCK_TYPES: { value: LessonContentBlock["type"]; label: string }[] = [
   { value: "divider", label: "Разделитель (legacy)" }
 ];
 
-const BLOCK_TYPES_DECK: { value: LessonContentBlock["type"]; label: string }[] = BLOCK_TYPES.filter((t) => t.value !== "divider");
-
 const STUDIO_GOAL_TYPES: Array<{ value: StudioGoal["type"]; label: string }> = [
   { value: "add_block", label: "Добавить блок" },
   { value: "select_dataset", label: "Выбрать датасет" },
@@ -262,8 +260,6 @@ export function AdminLessonBlockEditor({ blocks, onChange, deckSingleElement = f
     [projectOptions]
   );
 
-  const typeOptions = deckSingleElement ? BLOCK_TYPES_DECK : BLOCK_TYPES;
-
   return (
     <Space
       direction="vertical"
@@ -295,63 +291,9 @@ export function AdminLessonBlockEditor({ blocks, onChange, deckSingleElement = f
           </Dropdown>
         </div>
       ) : null}
-      {blocks.map((block, index) => (
-        <div key={block.id}>
-          {!deckSingleElement ? (
-            <div className="lesson-block-editor__insert-row">
-              <Dropdown
-                menu={{
-                  items: BLOCK_TYPES.map((t) => ({
-                    key: t.value,
-                    label: t.label,
-                    onClick: () => insertBlockAt(index, t.value)
-                  }))
-                }}
-              >
-                <Button size="small" type="text" icon={<PlusOutlined />}>
-                  Добавить блок
-                </Button>
-              </Dropdown>
-            </div>
-          ) : null}
-          <Card
-            className={`lesson-block-editor__card lesson-block-editor__cell${
-              block.type === "divider" ? " lesson-block-editor__card--divider" : ""
-            }`}
-            size="small"
-            bordered={block.type !== "divider"}
-            title={
-              deckSingleElement ? (
-                <Select
-                  size="small"
-                  variant="borderless"
-                  style={{ minWidth: 160 }}
-                  value={block.type}
-                  options={typeOptions}
-                  onChange={(v) => replaceBlockType(index, v as LessonContentBlock["type"])}
-                />
-              ) : (
-                <Space wrap>
-                  <Text type="secondary">#{index + 1}</Text>
-                  <Select
-                    size="small"
-                    style={{ width: 200 }}
-                    value={block.type}
-                    options={BLOCK_TYPES}
-                    onChange={(v) => replaceBlockType(index, v as LessonContentBlock["type"])}
-                  />
-                  <Button size="small" icon={<UpOutlined />} disabled={index === 0} onClick={() => move(index, -1)} />
-                  <Button
-                    size="small"
-                    icon={<DownOutlined />}
-                    disabled={index === blocks.length - 1}
-                    onClick={() => move(index, 1)}
-                  />
-                  <Button size="small" danger icon={<DeleteOutlined />} onClick={() => remove(index)} />
-                </Space>
-              )
-            }
-          >
+      {blocks.map((block, index) => {
+        const blockEditorInner = (
+          <>
           {block.type === "text" ? (
             <Space direction="vertical" style={{ width: "100%", height: deckSingleElement ? "100%" : undefined }} className="lesson-block-editor__section">
               {deckSingleElement ? (
@@ -370,7 +312,12 @@ export function AdminLessonBlockEditor({ blocks, onChange, deckSingleElement = f
           ) : null}
           {block.type === "media" ? (
             deckSingleElement && block.kind === "image" ? (
-              <div className="lesson-block-editor__deck-image-only">
+              <div
+                className={`lesson-block-editor__deck-image-only${
+                  block.url ? " lesson-block-editor__deck-image-only--has-url" : ""
+                }`}
+                title={block.url ? "Наведите на область — кнопки замены и подписи" : undefined}
+              >
                 {block.url ? (
                   <>
                     <img className="lesson-block-editor__deck-image-only-img" src={resolveLessonMediaUrl(block.url)} alt="" />
@@ -683,8 +630,67 @@ export function AdminLessonBlockEditor({ blocks, onChange, deckSingleElement = f
               ) : null}
             </Space>
           ) : null}
-          </Card>
-          {!deckSingleElement && index === blocks.length - 1 ? (
+          </>
+        );
+        return (
+          <div key={block.id}>
+            {!deckSingleElement ? (
+              <div className="lesson-block-editor__insert-row">
+                <Dropdown
+                  menu={{
+                    items: BLOCK_TYPES.map((t) => ({
+                      key: t.value,
+                      label: t.label,
+                      onClick: () => insertBlockAt(index, t.value)
+                    }))
+                  }}
+                >
+                  <Button size="small" type="text" icon={<PlusOutlined />}>
+                    Добавить блок
+                  </Button>
+                </Dropdown>
+              </div>
+            ) : null}
+            {deckSingleElement ? (
+              <div
+                className={`lesson-block-editor__deck-canvas-cell lesson-block-editor__cell${
+                  block.type === "divider" ? " lesson-block-editor__deck-canvas-cell--divider" : ""
+                }`}
+              >
+                {blockEditorInner}
+              </div>
+            ) : (
+              <Card
+                className={`lesson-block-editor__card lesson-block-editor__cell${
+                  block.type === "divider" ? " lesson-block-editor__card--divider" : ""
+                }`}
+                size="small"
+                bordered={block.type !== "divider"}
+                title={
+                  <Space wrap>
+                    <Text type="secondary">#{index + 1}</Text>
+                    <Select
+                      size="small"
+                      style={{ width: 200 }}
+                      value={block.type}
+                      options={BLOCK_TYPES}
+                      onChange={(v) => replaceBlockType(index, v as LessonContentBlock["type"])}
+                    />
+                    <Button size="small" icon={<UpOutlined />} disabled={index === 0} onClick={() => move(index, -1)} />
+                    <Button
+                      size="small"
+                      icon={<DownOutlined />}
+                      disabled={index === blocks.length - 1}
+                      onClick={() => move(index, 1)}
+                    />
+                    <Button size="small" danger icon={<DeleteOutlined />} onClick={() => remove(index)} />
+                  </Space>
+                }
+              >
+                {blockEditorInner}
+              </Card>
+            )}
+            {!deckSingleElement && index === blocks.length - 1 ? (
             <div className="lesson-block-editor__insert-row">
               <Dropdown
                 menu={{
@@ -702,7 +708,8 @@ export function AdminLessonBlockEditor({ blocks, onChange, deckSingleElement = f
             </div>
           ) : null}
         </div>
-      ))}
+        );
+      })}
     </Space>
   );
 }
