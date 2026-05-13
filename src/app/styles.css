@@ -2891,16 +2891,20 @@ html[data-theme="dark"] .lesson-flow__pdf-page-canvas {
   flex-shrink: 0;
   padding: 8px 10px;
   border-bottom: 1px solid var(--ant-color-border-secondary, rgba(148, 163, 184, 0.35));
-  background: color-mix(in srgb, var(--app-surface, #fff) 96%, transparent);
+  background: var(--ant-color-bg-container, #fff);
 }
 
 .admin-lesson-deck-editor__canvas {
   flex: 1;
   min-height: 0;
-  border: 1px solid var(--ant-color-border, rgba(148, 163, 184, 0.45));
+  border: 1px solid rgba(0, 0, 0, 0.06);
   border-top: none;
   border-radius: 0 0 12px 12px;
   overflow: hidden;
+}
+
+html[data-theme="dark"] .admin-lesson-deck-editor__canvas {
+  border-color: rgba(255, 255, 255, 0.08);
 }
 
 .admin-lesson-deck-editor__element-picker {
@@ -2929,6 +2933,11 @@ html[data-theme="dark"] .lesson-flow__pdf-page-canvas {
   border-style: solid;
 }
 
+.admin-lesson-deck-editor__rnd--text.admin-lesson-deck-editor__rnd--selected .admin-lesson-deck-editor__rnd-inner--text {
+  outline: none;
+  box-shadow: none;
+}
+
 .admin-lesson-deck-editor__rnd-inner {
   height: 100%;
   display: flex;
@@ -2945,6 +2954,15 @@ html[data-theme="dark"] .lesson-flow__pdf-page-canvas {
   border: none;
   background: transparent;
   border-radius: 0;
+}
+
+.admin-lesson-deck-editor__rnd-inner--text {
+  overflow: visible;
+}
+
+.admin-lesson-deck-editor__rnd-inner--media-image,
+.admin-lesson-deck-editor__rnd-inner--media-pdf {
+  overflow: hidden;
 }
 
 .admin-lesson-deck-editor__rnd-inner--text .admin-lesson-deck-editor__rnd-body,
@@ -3273,6 +3291,59 @@ html[data-theme="dark"] .lesson-flow__pdf-page-canvas {
   min-height: 0;
   display: flex;
   flex-direction: column;
+}
+
+.lesson-block-editor__deck-text-wrap--ppt {
+  flex: none !important;
+  height: auto !important;
+  min-height: 0 !important;
+}
+
+.lesson-block-editor--deck-slide-ppt-text.ant-space-vertical {
+  height: auto !important;
+  min-height: 0 !important;
+}
+
+.lesson-block-editor--deck-slide-ppt-text.ant-space-vertical > .ant-space-item {
+  flex: none !important;
+  height: auto !important;
+  min-height: 0 !important;
+}
+
+.admin-lesson-deck-editor__rnd--text .lesson-block-editor__deck-canvas-cell {
+  flex: none !important;
+  height: auto !important;
+  min-height: 0 !important;
+  overflow: visible;
+}
+
+.admin-lesson-deck-editor__rnd--text .lesson-block-editor__section {
+  flex: none !important;
+  height: auto !important;
+  min-height: 0 !important;
+  overflow: visible;
+}
+
+.admin-lesson-deck-editor .lesson-block-editor__deck-text-plain-input--ppt textarea.ant-input,
+.admin-lesson-deck-editor .lesson-block-editor__deck-text-plain-input--ppt.ant-input-outlined {
+  color: var(--ant-color-text) !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.admin-lesson-deck-editor .lesson-block-editor__deck-text-plain-input--ppt textarea.ant-input:focus {
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+.admin-lesson-deck-editor .lesson-block-editor__deck-text-plain-input--ppt.ant-input-affix-wrapper-focused {
+  box-shadow: none !important;
+}
+
+.admin-lesson-deck-editor__rnd--text .lesson-block-editor--deck-single .lesson-block-editor__deck-text-plain-input--ppt textarea.ant-input {
+  min-height: 2.25em !important;
+  height: auto !important;
+  overflow-y: hidden !important;
 }
 
 .lesson-block-editor__deck-text-plain-input--ppt.ant-input-affix-wrapper,

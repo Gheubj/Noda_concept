@@ -121,6 +121,23 @@ export function AdminLessonDeckEditor({ deck, onChange }: AdminLessonDeckEditorP
     [onChange]
   );
 
+  const applyDeckTextNaturalHeight = useCallback(
+    (elementId: string, heightPx: number) => {
+      const ch = Math.max(1, canvasSize.h);
+      const nextH = Math.min(96, Math.max(5, (heightPx / ch) * 100));
+      const s = slidesRef.current[slideIndexRef.current];
+      const el = s?.elements.find((e) => e.id === elementId);
+      if (!el || el.block.type !== "text") {
+        return;
+      }
+      if (Math.abs(el.layout.h - nextH) < 0.28) {
+        return;
+      }
+      setSlides(updateElement(slidesRef.current, slideIndexRef.current, elementId, { layout: { ...el.layout, h: nextH } }));
+    },
+    [setSlides, canvasSize.h]
+  );
+
   const patchActiveElementBlock = useCallback((patch: Record<string, unknown>) => {
     const s = slidesRef.current[slideIndexRef.current];
     const elId = selectedElementIdRef.current ?? s?.elements[0]?.id;
@@ -213,13 +230,14 @@ export function AdminLessonDeckEditor({ deck, onChange }: AdminLessonDeckEditorP
     const block = createAdminLessonBlock(type);
     const y = Math.min(58, 8 + slide.elements.length * 5);
     const isStudio = type === "studio";
+    const isText = type === "text";
     const el: LessonDeckElement = {
       id: newLessonBlockId(),
       layout: {
         x: 6 + (slide.elements.length % 3) * 8,
         y,
-        w: isStudio ? 88 : 48,
-        h: isStudio ? 58 : 24
+        w: isStudio ? 88 : isText ? 88 : 48,
+        h: isStudio ? 58 : isText ? 11 : 24
       },
       zIndex: slide.elements.length,
       block
@@ -282,7 +300,7 @@ export function AdminLessonDeckEditor({ deck, onChange }: AdminLessonDeckEditorP
       elements: [
         {
           id: newLessonBlockId(),
-          layout: { x: 8, y: 10, w: 84, h: 14 },
+          layout: { x: 8, y: 10, w: 84, h: 10 },
           zIndex: 0,
           block: { id: bid, type: "text", body: "Новый слайд" }
         }
@@ -555,7 +573,7 @@ export function AdminLessonDeckEditor({ deck, onChange }: AdminLessonDeckEditorP
             position: "relative",
             width: "100%",
             aspectRatio: "16 / 9",
-            backgroundColor: "var(--ant-color-fill-quaternary, #f5f5f5)",
+            backgroundColor: bg ? undefined : "#ffffff",
             ...(bg
               ? {
                   backgroundImage: `url(${resolveLessonMediaUrl(bg)})`,
@@ -588,7 +606,7 @@ export function AdminLessonDeckEditor({ deck, onChange }: AdminLessonDeckEditorP
                   e.stopPropagation();
                   setSelectedElementId(el.id);
                 }}
-                className={`admin-lesson-deck-editor__rnd${selected ? " admin-lesson-deck-editor__rnd--selected" : ""}${isStudio ? " admin-lesson-deck-editor__rnd--studio" : ""}`}
+                className={`admin-lesson-deck-editor__rnd${selected ? " admin-lesson-deck-editor__rnd--selected" : ""}${isStudio ? " admin-lesson-deck-editor__rnd--studio" : ""}${isText ? " admin-lesson-deck-editor__rnd--text" : ""}`}
                 style={{ zIndex: 10 + (el.zIndex ?? 0) }}
               >
                 <div
@@ -603,6 +621,9 @@ export function AdminLessonDeckEditor({ deck, onChange }: AdminLessonDeckEditorP
                       deckCanvasElementId={el.id}
                       deckElementSelected={selected}
                       onRegisterDeckTextFormatApi={registerDeckTextFormatApi}
+                      onDeckTextNaturalHeightPx={
+                        el.block.type === "text" ? (h) => applyDeckTextNaturalHeight(el.id, h) : undefined
+                      }
                       blocks={[el.block]}
                       onChange={(next) => {
                         const b = next[0];

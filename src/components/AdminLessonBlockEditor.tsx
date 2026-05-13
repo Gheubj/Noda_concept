@@ -86,6 +86,8 @@ export type AdminLessonBlockEditorProps = {
   /** Кнопки текста/медиа вынесены в шапку редактора слайда */
   deckChromeInRibbon?: boolean;
   onRegisterDeckTextFormatApi?: (elementId: string, api: DeckTextFormatApi | null) => void;
+  /** Высота текстового блока по содержимому (px), для подгонки Rnd на слайде */
+  onDeckTextNaturalHeightPx?: (heightPx: number) => void;
 };
 
 export function AdminLessonBlockEditor({
@@ -95,7 +97,8 @@ export function AdminLessonBlockEditor({
   deckCanvasElementId,
   deckElementSelected = false,
   deckChromeInRibbon = false,
-  onRegisterDeckTextFormatApi
+  onRegisterDeckTextFormatApi,
+  onDeckTextNaturalHeightPx
 }: AdminLessonBlockEditorProps) {
   const { user } = useSessionStore();
   const [uploadBusy, setUploadBusy] = useState<Record<string, boolean>>({});
@@ -143,6 +146,8 @@ export function AdminLessonBlockEditor({
   const blocksRef = useRef(blocks);
   blocksRef.current = blocks;
   const deckTextWrapRef = useRef<HTMLDivElement>(null);
+  const onDeckTextNaturalHeightPxRef = useRef(onDeckTextNaturalHeightPx);
+  onDeckTextNaturalHeightPxRef.current = onDeckTextNaturalHeightPx;
 
   useEffect(() => {
     if (
@@ -177,6 +182,39 @@ export function AdminLessonBlockEditor({
     deckCanvasElementId,
     onRegisterDeckTextFormatApi,
     onChange
+  ]);
+
+  useEffect(() => {
+    if (!deckSingleElement || !deckChromeInRibbon || blocks[0]?.type !== "text" || !onDeckTextNaturalHeightPx) {
+      return;
+    }
+    const root = deckTextWrapRef.current;
+    if (!root) {
+      return;
+    }
+    let raf = 0;
+    const report = () => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => {
+        const h = Math.ceil(root.getBoundingClientRect().height);
+        if (h > 0) {
+          onDeckTextNaturalHeightPxRef.current?.(h);
+        }
+      });
+    };
+    const ro = new ResizeObserver(report);
+    ro.observe(root);
+    report();
+    return () => {
+      cancelAnimationFrame(raf);
+      ro.disconnect();
+    };
+  }, [
+    deckSingleElement,
+    deckChromeInRibbon,
+    blocks[0]?.type,
+    blocks[0]?.type === "text" ? blocks[0].body : "",
+    blocks[0]?.type === "text" ? (blocks[0].textScale ?? "md") : ""
   ]);
 
   const updateStudioGoal = (index: number, goalIndex: number, patch: Partial<StudioGoal>) => {
@@ -321,7 +359,11 @@ export function AdminLessonBlockEditor({
       direction="vertical"
       size={deckSingleElement ? "small" : "middle"}
       style={{ width: "100%" }}
-      className={`lesson-block-editor${deckSingleElement ? " lesson-block-editor--deck-single" : ""}`}
+      className={`lesson-block-editor${deckSingleElement ? " lesson-block-editor--deck-single" : ""}${
+        deckSingleElement && deckChromeInRibbon && blocks[0]?.type === "text"
+          ? " lesson-block-editor--deck-slide-ppt-text"
+          : ""
+      }`}
     >
       {!deckSingleElement && blocks.length >= 2 ? (
         <div className="lesson-block-editor__bulk-actions">
@@ -351,21 +393,24 @@ export function AdminLessonBlockEditor({
         const blockEditorInner = (
           <>
           {block.type === "text" ? (
-            <Space direction="vertical" style={{ width: "100%", height: deckSingleElement ? "100%" : undefined }} className="lesson-block-editor__section">
+            <Space
+              direction="vertical"
+              style={{
+                width: "100%",
+                height: deckSingleElement && !deckChromeInRibbon ? "100%" : undefined
+              }}
+              className="lesson-block-editor__section"
+            >
               {deckSingleElement ? (
                 deckChromeInRibbon ? (
-                  <div
-                    ref={deckTextWrapRef}
-                    className="lesson-block-editor__deck-text-wrap"
-                    style={{ width: "100%", height: "100%" }}
-                  >
+                  <div ref={deckTextWrapRef} className="lesson-block-editor__deck-text-wrap lesson-block-editor__deck-text-wrap--ppt" style={{ width: "100%" }}>
                     <Input.TextArea
                       className="lesson-block-editor__deck-text-plain-input lesson-block-editor__deck-text-plain-input--ppt"
                       variant="borderless"
                       placeholder="Текст"
                       value={block.body}
                       onChange={(e) => setBlock(index, { body: e.target.value })}
-                      autoSize={false}
+                      autoSize={{ minRows: 1, maxRows: 500 }}
                     />
                   </div>
                 ) : (
