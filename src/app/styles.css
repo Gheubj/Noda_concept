@@ -3240,6 +3240,30 @@ html[data-theme="dark"] .lesson-flow__pdf-page-canvas {
   color: #bfdbfe;
 }
 
+/* Схемы с прозрачным фоном (PNG): светлая «подложка», иначе на тёмной карточке всё сливается в чёрное */
+.lesson-quest-player__card--diagram-mat {
+  background:
+    radial-gradient(120% 100% at 50% 0%, rgba(255, 255, 255, 0.55) 0%, transparent 55%),
+    linear-gradient(180deg, #f1f5f9 0%, #e2e8f0 100%) !important;
+  border-color: rgba(148, 163, 184, 0.45) !important;
+}
+
+.lesson-quest-player__card--diagram-mat .lesson-quest-player__image {
+  filter: none;
+  padding: 10px 12px 14px;
+  background: rgba(255, 255, 255, 0.55);
+  border-radius: 14px;
+}
+
+.lesson-quest-player__card--diagram-mat .ant-typography {
+  color: #334155;
+}
+
+html[data-theme="light"] .lesson-quest-player__card--diagram-mat {
+  background: linear-gradient(180deg, #ffffff 0%, #f1f5f9 100%) !important;
+  border-color: rgba(148, 163, 184, 0.4) !important;
+}
+
 .lesson-quest-player__mini-frame {
   width: 100%;
   min-height: 520px;

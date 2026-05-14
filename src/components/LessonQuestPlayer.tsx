@@ -43,6 +43,33 @@ function normalizeLessonText(value: string): string {
   return String(value ?? "").replace(/\\n/g, "\n");
 }
 
+/** Детерминированная перетасовка вариантов: порядок стабилен для блока, но верный ответ не «всегда первый». */
+function optionShuffleSeed(blockId: string, options: string[]): number {
+  const key = `${blockId}\x1e${options.join("\x1e")}`;
+  let h = 2166136261;
+  for (let i = 0; i < key.length; i++) {
+    h ^= key.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0 || 1;
+}
+
+function shuffledStringsStable(blockId: string, options: string[]): string[] {
+  const arr = [...options];
+  if (arr.length <= 1) {
+    return arr;
+  }
+  let s = optionShuffleSeed(blockId, options);
+  for (let i = arr.length - 1; i > 0; i--) {
+    s = (Math.imul(s, 1103515245) + 12345) >>> 0;
+    const j = s % (i + 1);
+    const t = arr[i]!;
+    arr[i] = arr[j]!;
+    arr[j] = t;
+  }
+  return arr;
+}
+
 function headingFromTextBody(body: string): string | null {
   const normalized = normalizeLessonText(body);
   const m = normalized.match(/^\s{0,3}#{1,3}\s+(.+)$/m);
@@ -149,8 +176,15 @@ export function LessonQuestPlayer({
       const kind = block.type === "media" ? block.kind : block.type;
       const url = block.url;
       const isHeroShot = kind === "image" && url.includes("iris-quest-hero");
+      const diagramMat =
+        kind === "image" &&
+        (url.includes("iris-quest-dataset-split") || url.includes("iris-quest-overfit"));
       return (
-        <div className="lesson-quest-player__card lesson-quest-player__card--media">
+        <div
+          className={`lesson-quest-player__card lesson-quest-player__card--media${
+            diagramMat ? " lesson-quest-player__card--diagram-mat" : ""
+          }`}
+        >
           {isHeroShot ? (
             <div className="lesson-quest-player__hero">
               <img className="lesson-quest-player__hero-bg" src={resolveLessonMediaUrl(url)} alt="" />
@@ -190,6 +224,7 @@ export function LessonQuestPlayer({
       const ok = checkpointOk(block.id);
       const answerMode = block.answerMode ?? "text";
       const options = (block.options ?? []).filter(Boolean);
+      const displayOptions = shuffledStringsStable(block.id, options);
       const raw = draftAnswers[block.id] ?? "";
       const selected = raw.split("||").map((s) => s.trim()).filter(Boolean);
       return (
@@ -211,14 +246,14 @@ export function LessonQuestPlayer({
               {answerMode === "single" ? (
                 <Radio.Group
                   value={selected[0] ?? ""}
-                  options={options.map((o) => ({ label: o, value: o }))}
+                  options={displayOptions.map((o) => ({ label: o, value: o }))}
                   onChange={(e) => onDraftChange(block.id, String(e.target.value))}
                 />
               ) : null}
               {answerMode === "multi" ? (
                 <Checkbox.Group
                   value={selected}
-                  options={options}
+                  options={displayOptions}
                   onChange={(values) => onDraftChange(block.id, values.map(String).join("||"))}
                 />
               ) : null}
