@@ -2989,13 +2989,23 @@ html[data-theme="dark"] .lesson-flow__pdf-page-canvas {
   display: flex;
   flex-direction: column;
   gap: 10px;
+  border-radius: 22px;
+  padding: 14px;
+  background:
+    radial-gradient(70% 90% at 10% 0%, color-mix(in srgb, #7dd3fc 20%, transparent) 0%, transparent 56%),
+    radial-gradient(80% 90% at 95% 12%, color-mix(in srgb, #c4b5fd 22%, transparent) 0%, transparent 58%),
+    linear-gradient(145deg, color-mix(in srgb, #f8fbff 88%, #e8eef9 12%), color-mix(in srgb, #eef3fb 92%, #dfe8f4 8%));
+  border: 1px solid color-mix(in srgb, #dbe6ff 58%, rgba(148, 163, 184, 0.2));
+  box-shadow: 0 20px 42px rgba(15, 23, 42, 0.12);
 }
 
 .lesson-quest-player__stage-head,
 .lesson-quest-player__stage-actions {
   border-radius: 14px;
   border: 1px solid color-mix(in srgb, #c7d7ee 58%, transparent);
-  background: color-mix(in srgb, #ffffff 90%, transparent);
+  background: color-mix(in srgb, #ffffff 82%, transparent);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
 }
 
 .lesson-quest-player__blocks {
@@ -3014,17 +3024,61 @@ html[data-theme="dark"] .lesson-flow__pdf-page-canvas {
   padding: 14px;
 }
 
+.lesson-quest-player__card--material {
+  position: relative;
+  overflow: hidden;
+}
+
+.lesson-quest-player__card--material::after {
+  content: "";
+  position: absolute;
+  width: 140px;
+  height: 140px;
+  right: -52px;
+  top: -58px;
+  border-radius: 999px;
+  background: radial-gradient(circle, rgba(96, 165, 250, 0.18), transparent 70%);
+  pointer-events: none;
+}
+
+.lesson-quest-player__card-tag {
+  margin-bottom: 8px;
+}
+
 .lesson-quest-player__card--checkpoint {
-  border-color: color-mix(in srgb, #7dd3fc 46%, transparent);
+  border-color: color-mix(in srgb, #7dd3fc 56%, transparent);
+  background:
+    radial-gradient(70% 120% at 0% 0%, color-mix(in srgb, #bae6fd 30%, transparent) 0%, transparent 62%),
+    linear-gradient(145deg, color-mix(in srgb, #ffffff 92%, #e0f2fe 8%), color-mix(in srgb, #ffffff 96%, #dbeafe 4%));
 }
 
 .lesson-quest-player__card--studio {
-  border-color: color-mix(in srgb, #a78bfa 40%, transparent);
+  border-color: color-mix(in srgb, #a78bfa 52%, transparent);
+  background:
+    radial-gradient(80% 110% at 100% 0%, color-mix(in srgb, #ddd6fe 30%, transparent) 0%, transparent 60%),
+    linear-gradient(145deg, color-mix(in srgb, #ffffff 90%, #ede9fe 10%), color-mix(in srgb, #ffffff 96%, #e2e8f0 4%));
 }
 
 .lesson-quest-player__markdown {
   font-size: 15px;
   line-height: 1.55;
+}
+
+.lesson-quest-player__markdown table {
+  width: 100%;
+  border-collapse: collapse;
+  overflow: hidden;
+  border-radius: 12px;
+}
+
+.lesson-quest-player__markdown th,
+.lesson-quest-player__markdown td {
+  padding: 8px 10px;
+  border: 1px solid color-mix(in srgb, #c7d7ee 58%, transparent);
+}
+
+.lesson-quest-player__markdown th {
+  background: color-mix(in srgb, #dbeafe 62%, transparent);
 }
 
 .lesson-quest-player__markdown h1,

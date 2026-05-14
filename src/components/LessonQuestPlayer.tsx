@@ -109,15 +109,7 @@ export function LessonQuestPlayer({
     s.checkpointIds.every((id) => checkpointOk(id)) && s.studioIds.every((id) => miniDevDone(id));
 
   const unlocked = (idx: number): boolean => {
-    if (idx <= 0) {
-      return true;
-    }
-    for (let i = 0; i < idx; i += 1) {
-      if (!sceneDone(scenes[i]!)) {
-        return false;
-      }
-    }
-    return true;
+    return idx >= 0 && idx < scenes.length;
   };
 
   const completedScenes = scenes.filter(sceneDone).length;
@@ -148,7 +140,10 @@ export function LessonQuestPlayer({
   const renderBlock = (block: LessonContentBlock) => {
     if (block.type === "text") {
       return (
-        <div className="lesson-quest-player__card lesson-quest-player__card--text">
+        <div className="lesson-quest-player__card lesson-quest-player__card--text lesson-quest-player__card--material">
+          <Tag color="blue" className="lesson-quest-player__card-tag">
+            Учебный материал
+          </Tag>
           {renderMarkdown(block.body, "lesson-quest-player__markdown")}
         </div>
       );
@@ -157,6 +152,9 @@ export function LessonQuestPlayer({
       const kind = block.type === "media" ? block.kind : block.type;
       return (
         <div className="lesson-quest-player__card lesson-quest-player__card--media">
+          <Tag color="cyan" className="lesson-quest-player__card-tag">
+            Визуальная подсказка
+          </Tag>
           {kind === "image" ? (
             <img className="lesson-quest-player__image" src={resolveLessonMediaUrl(block.url)} alt={block.caption ?? ""} />
           ) : (
@@ -184,7 +182,7 @@ export function LessonQuestPlayer({
       return (
         <div className="lesson-quest-player__card lesson-quest-player__card--checkpoint">
           <div className="lesson-quest-player__checkpoint-title">
-            <Tag color="processing">Мини-игра</Tag>
+            <Tag color="processing">Квест-задание</Tag>
             <strong>Вопрос {ord}</strong>
           </div>
           <div className="lesson-quest-player__checkpoint-q">{normalizeLessonText(block.question)}</div>
@@ -231,6 +229,9 @@ export function LessonQuestPlayer({
         : "";
       return (
         <div className="lesson-quest-player__card lesson-quest-player__card--studio">
+          <Tag color="purple" className="lesson-quest-player__card-tag">
+            Мини-разработка
+          </Tag>
           {renderMarkdown(block.instruction, "lesson-quest-player__markdown")}
           <MiniStudioSessionStore lessonId={lessonId} blockId={block.id} instruction={block.instruction} goals={block.goals ?? []} />
           {projectId ? (
@@ -289,7 +290,7 @@ export function LessonQuestPlayer({
               >
                 <span className="lesson-quest-player__node-index">{idx + 1}</span>
                 <span className="lesson-quest-player__node-title">{s.title}</span>
-                <Tag color={done ? "success" : canOpen ? "processing" : "default"}>{done ? "Готово" : canOpen ? "Открыто" : "Закрыто"}</Tag>
+                <Tag color={done ? "success" : canOpen ? "processing" : "default"}>{done ? "Готово" : "Материал"}</Tag>
               </button>
             );
           })}
@@ -315,7 +316,7 @@ export function LessonQuestPlayer({
             </Button>
             <Button
               type="primary"
-              disabled={safeIndex >= scenes.length - 1 || !sceneDone(scene)}
+              disabled={safeIndex >= scenes.length - 1}
               onClick={() => setSceneIndex((v) => Math.min(scenes.length - 1, v + 1))}
             >
               Следующая миссия
