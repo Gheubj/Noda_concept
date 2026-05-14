@@ -36,6 +36,7 @@ import { isSafeUploadBasename } from "./uploadSafeBasename.js";
 import {
   COURSE_MODULE_HOURS,
   ensureLessonTemplateGuides,
+  ensureModuleAQuestTemplate,
   ensureLessonTemplateSeedContent,
   ensureLessonTemplateSeed,
   registerLmsRoutes
@@ -1535,6 +1536,13 @@ app.listen(config.port, async () => {
     await ensureLessonTemplateSeedContent();
   } catch (error) {
     logger.warn("lesson_template_seed_content_skipped", {
+      error: error instanceof Error ? error.message : String(error)
+    });
+  }
+  try {
+    await ensureModuleAQuestTemplate();
+  } catch (error) {
+    logger.warn("module_a_quest_template_skipped", {
       error: error instanceof Error ? error.message : String(error)
     });
   }

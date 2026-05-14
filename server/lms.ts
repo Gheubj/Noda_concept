@@ -3631,3 +3631,36 @@ export async function ensureLessonTemplateSeedContent() {
     });
   }
 }
+
+const MODULE_A_QUEST_TEMPLATE_ID = "lt_module_a_keeper_quest";
+
+/** Отдельный новый урок-квест в модуле A (создается/обновляется независимо от старых seed-уроков). */
+export async function ensureModuleAQuestTemplate() {
+  const guide = LESSON_GUIDE_SEED.lt_intro_ai;
+  const content = LESSON_CONTENT_SEED.lt_intro_ai as Prisma.InputJsonValue;
+  await prisma.lessonTemplate.upsert({
+    where: { id: MODULE_A_QUEST_TEMPLATE_ID },
+    create: {
+      id: MODULE_A_QUEST_TEMPLATE_ID,
+      title: "Модуль A. Квест: Хранитель историй ИИ",
+      description: "Новый интерактивный урок-квест в формате презентации (60 минут).",
+      moduleKey: "module_a",
+      sortOrder: 0,
+      starterPayload: EMPTY_SNAPSHOT,
+      lessonContent: content,
+      published: true,
+      teacherGuideMd: guide.teacherGuideMd,
+      studentSummary: guide.studentSummary
+    },
+    update: {
+      title: "Модуль A. Квест: Хранитель историй ИИ",
+      description: "Новый интерактивный урок-квест в формате презентации (60 минут).",
+      moduleKey: "module_a",
+      sortOrder: 0,
+      lessonContent: content,
+      published: true,
+      teacherGuideMd: guide.teacherGuideMd,
+      studentSummary: guide.studentSummary
+    }
+  });
+}
