@@ -1,4 +1,4 @@
-import { useId } from "react";
+import { useId, useMemo } from "react";
 import {
   CartesianGrid,
   Line,
@@ -9,7 +9,6 @@ import {
   YAxis
 } from "recharts";
 import { useAppStore } from "@/store/useAppStore";
-import { StudioTrainingProcessViz } from "@/components/StudioTrainingProcessViz";
 
 type StudioTrainingLiveChartsProps = {
   className?: string;
@@ -19,7 +18,6 @@ type StudioTrainingLiveChartsProps = {
 export function StudioTrainingLiveCharts({ className, compact }: StudioTrainingLiveChartsProps) {
   const training = useAppStore((s) => s.training);
   const liveEpochHistory = useAppStore((s) => s.liveEpochHistory);
-  const plannedEpochs = useAppStore((s) => s.liveTrainingPlannedEpochs);
   const streamModelType = useAppStore((s) => s.liveTrainingStreamModelType);
 
   const uid = useId().replace(/:/g, "");
@@ -36,13 +34,17 @@ export function StudioTrainingLiveCharts({ className, compact }: StudioTrainingL
   } as const;
 
   const rows = liveEpochHistory ?? [];
-  const isRegression = streamModelType === "tabular_regression";
-  const hasAcc = !isRegression && rows.some((r) => r.accuracy != null || r.valAccuracy != null);
+  const hasAcc = streamModelType !== "tabular_regression" && rows.some((r) => r.accuracy != null || r.valAccuracy != null);
 
-  const currentEpoch = rows.length > 0 ? rows[rows.length - 1]!.epoch : 0;
-  const totalPlanned = plannedEpochs ?? currentEpoch;
-  const epochProgressPct =
-    totalPlanned > 0 ? Math.min(100, Math.round((currentEpoch / Math.max(totalPlanned, 1)) * 100)) : 0;
+  const chartRows = useMemo(
+    () =>
+      rows.map((r) => ({
+        ...r,
+        chartLoss: r.loss ?? r.mse,
+        chartValLoss: r.valLoss ?? r.valMse
+      })),
+    [rows]
+  );
 
   const show = training.isTraining && streamModelType != null && liveEpochHistory !== null;
 
@@ -50,37 +52,17 @@ export function StudioTrainingLiveCharts({ className, compact }: StudioTrainingL
     return null;
   }
 
-  const swatchRow = (
-    <div className="studio-training-live__swatches" aria-hidden>
-      <span className="studio-training-live__swatch studio-training-live__swatch--train" />
-      <span className="studio-training-live__swatch studio-training-live__swatch--val" />
-    </div>
-  );
-
   return (
     <div
       className={["studio-training-live", compact ? "studio-training-live--compact" : "", className ?? ""]
         .filter(Boolean)
         .join(" ")}
     >
-      <div className="studio-training-live__header">
-        <span className="studio-training-live__epoch-digits">
-          {currentEpoch}/{Math.max(totalPlanned, 1)}
-        </span>
-      </div>
-
-      <StudioTrainingProcessViz epochHistory={rows} warming={currentEpoch === 0} compact={compact} />
-
-      <div className="studio-training-live__epoch-track" aria-hidden>
-        <div className="studio-training-live__epoch-track-fill" style={{ width: `${epochProgressPct}%` }} />
-      </div>
-
-      <div className="studio-training-live__charts">
+      <div className="studio-training-live__charts studio-training-live__charts--loss-acc-only">
         <div className="studio-metrics-chart-shell studio-training-live__shell">
-          {swatchRow}
           <div className="studio-metrics-chart-shell__plot studio-metrics-line-chart">
             <ResponsiveContainer width="100%" height={chartHeight}>
-              <LineChart data={rows} margin={margin}>
+              <LineChart data={chartRows} margin={margin}>
                 <defs>
                   <linearGradient id={`${uid}-live-loss-tr`} x1="0" y1="0" x2="1" y2="0">
                     <stop offset="0%" stopColor="#6aa3ff" />
@@ -99,8 +81,8 @@ export function StudioTrainingLiveCharts({ className, compact }: StudioTrainingL
                   isAnimationActive
                   animationDuration={280}
                   type="monotone"
-                  dataKey="loss"
-                  name="t"
+                  dataKey="chartLoss"
+                  name="train"
                   stroke={`url(#${uid}-live-loss-tr)`}
                   dot={false}
                   strokeWidth={2}
@@ -112,8 +94,8 @@ export function StudioTrainingLiveCharts({ className, compact }: StudioTrainingL
                   isAnimationActive
                   animationDuration={280}
                   type="monotone"
-                  dataKey="valLoss"
-                  name="v"
+                  dataKey="chartValLoss"
+                  name="val"
                   stroke={`url(#${uid}-live-loss-val)`}
                   dot={false}
                   strokeWidth={2}
@@ -128,7 +110,6 @@ export function StudioTrainingLiveCharts({ className, compact }: StudioTrainingL
 
         {hasAcc ? (
           <div className="studio-metrics-chart-shell studio-training-live__shell">
-            {swatchRow}
             <div className="studio-metrics-chart-shell__plot studio-metrics-line-chart">
               <ResponsiveContainer width="100%" height={chartHeight}>
                 <LineChart data={rows} margin={margin}>
@@ -154,7 +135,7 @@ export function StudioTrainingLiveCharts({ className, compact }: StudioTrainingL
                     animationDuration={280}
                     type="monotone"
                     dataKey="accuracy"
-                    name="t"
+                    name="train"
                     stroke={`url(#${uid}-live-acc-tr)`}
                     dot={false}
                     strokeWidth={2}
@@ -167,60 +148,8 @@ export function StudioTrainingLiveCharts({ className, compact }: StudioTrainingL
                     animationDuration={280}
                     type="monotone"
                     dataKey="valAccuracy"
-                    name="v"
+                    name="val"
                     stroke={`url(#${uid}-live-acc-val)`}
-                    dot={false}
-                    strokeWidth={2}
-                    strokeLinecap="round"
-                    connectNulls
-                    legendType="none"
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-        ) : null}
-
-        {isRegression ? (
-          <div className="studio-metrics-chart-shell studio-training-live__shell">
-            {swatchRow}
-            <div className="studio-metrics-chart-shell__plot studio-metrics-line-chart">
-              <ResponsiveContainer width="100%" height={chartHeight}>
-                <LineChart data={rows} margin={margin}>
-                  <defs>
-                    <linearGradient id={`${uid}-live-mse-tr`} x1="0" y1="0" x2="1" y2="0">
-                      <stop offset="0%" stopColor="#8b7ae8" />
-                      <stop offset="100%" stopColor="#6aa3ff" />
-                    </linearGradient>
-                    <linearGradient id={`${uid}-live-mse-val`} x1="0" y1="0" x2="1" y2="0">
-                      <stop offset="0%" stopColor="#3db8b4" />
-                      <stop offset="100%" stopColor="#5ec8b8" />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="4 6" stroke={gridStroke} vertical={false} />
-                  <XAxis dataKey="epoch" tick={axisTick} axisLine={false} tickLine={false} tickMargin={4} />
-                  <YAxis tick={axisTick} width={36} axisLine={false} tickLine={false} tickMargin={2} />
-                  <Tooltip contentStyle={tipStyle} />
-                  <Line
-                    isAnimationActive
-                    animationDuration={280}
-                    type="monotone"
-                    dataKey="mse"
-                    name="t"
-                    stroke={`url(#${uid}-live-mse-tr)`}
-                    dot={false}
-                    strokeWidth={2}
-                    strokeLinecap="round"
-                    connectNulls
-                    legendType="none"
-                  />
-                  <Line
-                    isAnimationActive
-                    animationDuration={280}
-                    type="monotone"
-                    dataKey="valMse"
-                    name="v"
-                    stroke={`url(#${uid}-live-mse-val)`}
                     dot={false}
                     strokeWidth={2}
                     strokeLinecap="round"

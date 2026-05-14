@@ -17,12 +17,16 @@ const SCENARIO_WORKING_HINT = "Выполняю сценарий…";
 
 function useCoachBubbleText(): string {
   const training = useAppStore((s) => s.training);
+  const liveTrainingStreamModelType = useAppStore((s) => s.liveTrainingStreamModelType);
   const coachUserMessage = useAppStore((s) => s.coachUserMessage);
   const evaluation = useAppStore((s) => s.evaluation);
   const prediction = useAppStore((s) => s.prediction);
   const comparison = useAppStore((s) => s.modelComparisonReport);
 
   return useMemo(() => {
+    if (training.isTraining && liveTrainingStreamModelType) {
+      return "";
+    }
     if (training.isTraining) {
       return training.message?.trim() || "Выполняю…";
     }
@@ -41,6 +45,7 @@ function useCoachBubbleText(): string {
     return IDLE_HINT;
   }, [
     training.isTraining,
+    liveTrainingStreamModelType,
     training.scenarioActive,
     training.message,
     coachUserMessage,
@@ -137,13 +142,15 @@ export function StudioStagePanel({
               {showGoalsInPanel && allGoalsDone ? (
                 <Text type="success">Все цели выполнены — отличная работа!</Text>
               ) : null}
-              <div className="studio-stage-panel__mini-bubble">
-                {captionIsSecondary ? (
-                  <Text type="secondary">{caption}</Text>
-                ) : (
-                  <Text>{caption}</Text>
-                )}
-              </div>
+              {caption.trim() ? (
+                <div className="studio-stage-panel__mini-bubble">
+                  {captionIsSecondary ? (
+                    <Text type="secondary">{caption}</Text>
+                  ) : (
+                    <Text>{caption}</Text>
+                  )}
+                </div>
+              ) : null}
               <CoachBriefBlock />
             </div>
             <StudioTrainingLiveCharts compact className="studio-stage-panel__mini-live-charts" />
@@ -162,13 +169,15 @@ export function StudioStagePanel({
             <img className="studio-stage-panel__full-figure" src={coachSrc} alt="" />
           </div>
           <div className="studio-stage-panel__full-copy">
-            <div className="studio-stage-panel__full-bubble">
-              {captionIsSecondary ? (
-                <Text type="secondary">{caption}</Text>
-              ) : (
-                <Text>{caption}</Text>
-              )}
-            </div>
+            {caption.trim() ? (
+              <div className="studio-stage-panel__full-bubble">
+                {captionIsSecondary ? (
+                  <Text type="secondary">{caption}</Text>
+                ) : (
+                  <Text>{caption}</Text>
+                )}
+              </div>
+            ) : null}
             <CoachBriefBlock />
             <StudioTrainingLiveCharts className="studio-stage-panel__live-charts" />
             <StudioLiveMetrics className="studio-stage-panel__promo-metrics" />
