@@ -150,7 +150,14 @@ export function LessonQuestPlayer({
       return (
         <div className="lesson-quest-player__card lesson-quest-player__card--media">
           {kind === "image" ? (
-            <img className="lesson-quest-player__image" src={resolveLessonMediaUrl(block.url)} alt={block.caption ?? ""} />
+            <img
+              className="lesson-quest-player__image"
+              src={resolveLessonMediaUrl(block.url)}
+              alt={block.caption ?? ""}
+              onError={(e) => {
+                e.currentTarget.style.display = "none";
+              }}
+            />
           ) : (
             <Suspense
               fallback={
@@ -265,6 +272,10 @@ export function LessonQuestPlayer({
             <Text type="secondary">Хранитель — твой ментор в Архиве</Text>
           </div>
         </div>
+        <div className="lesson-quest-player__case-meta">
+          <Tag color="error">Archive Incident</Tag>
+          <Text type="secondary">90 минут · стажировка детектива данных</Text>
+        </div>
         <Progress percent={completionPct} size="small" />
         <Space direction="vertical" style={{ width: "100%" }} size="small">
           {scenes.map((s, idx) => {
@@ -281,7 +292,7 @@ export function LessonQuestPlayer({
               >
                 <span className="lesson-quest-player__node-index">{idx + 1}</span>
                 <span className="lesson-quest-player__node-title">{s.title}</span>
-                <Tag color={done ? "success" : canOpen ? "processing" : "default"}>{done ? "Готово" : "Материал"}</Tag>
+                <Tag color={done ? "success" : canOpen ? "processing" : "default"}>{done ? "Закрыто" : "Дело"}</Tag>
               </button>
             );
           })}

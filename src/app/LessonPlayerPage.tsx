@@ -556,7 +556,7 @@ export function LessonPlayerPage() {
                   description="Администратору нужно добавить блоки в конструкторе или заполнить JSON материалов."
                 />
               ) : null}
-              {bootstrap.title === "Модуль A. Квест: Хранитель историй ИИ" ? (
+              {bootstrap.title === "Дело Ирисового шифра" ? (
                 <LessonQuestPlayer
                   title={bootstrap.title}
                   lessonId={lessonId}
