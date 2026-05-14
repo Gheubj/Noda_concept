@@ -141,9 +141,6 @@ export function LessonQuestPlayer({
     if (block.type === "text") {
       return (
         <div className="lesson-quest-player__card lesson-quest-player__card--text lesson-quest-player__card--material">
-          <Tag color="blue" className="lesson-quest-player__card-tag">
-            Учебный материал
-          </Tag>
           {renderMarkdown(block.body, "lesson-quest-player__markdown")}
         </div>
       );
@@ -152,9 +149,6 @@ export function LessonQuestPlayer({
       const kind = block.type === "media" ? block.kind : block.type;
       return (
         <div className="lesson-quest-player__card lesson-quest-player__card--media">
-          <Tag color="cyan" className="lesson-quest-player__card-tag">
-            Визуальная подсказка
-          </Tag>
           {kind === "image" ? (
             <img className="lesson-quest-player__image" src={resolveLessonMediaUrl(block.url)} alt={block.caption ?? ""} />
           ) : (
@@ -229,9 +223,6 @@ export function LessonQuestPlayer({
         : "";
       return (
         <div className="lesson-quest-player__card lesson-quest-player__card--studio">
-          <Tag color="purple" className="lesson-quest-player__card-tag">
-            Мини-разработка
-          </Tag>
           {renderMarkdown(block.instruction, "lesson-quest-player__markdown")}
           <MiniStudioSessionStore lessonId={lessonId} blockId={block.id} instruction={block.instruction} goals={block.goals ?? []} />
           {projectId ? (

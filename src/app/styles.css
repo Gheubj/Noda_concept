@@ -669,6 +669,18 @@ html[data-theme="dark"] .app-content--workspace {
   min-height: 0;
 }
 
+.lesson-player-page.lesson-player-page--deck:has(.lesson-quest-player) {
+  height: auto;
+  max-height: none;
+  min-height: calc(100dvh - var(--app-header-height));
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.lesson-player-page.lesson-player-page--deck:has(.lesson-quest-player) .lesson-player-page__stack.lesson-player-page__stack--deck.ant-space.ant-space-vertical {
+  overflow: visible;
+}
+
 .placeholder-text.ant-typography {
   font-size: 16px;
 }
@@ -2919,9 +2931,14 @@ html[data-theme="dark"] .lesson-flow__pdf-page-canvas {
   grid-template-columns: minmax(260px, 320px) 1fr;
   gap: 14px;
   min-height: 0;
+  align-items: start;
 }
 
 .lesson-quest-player__map {
+  position: sticky;
+  top: 8px;
+  max-height: calc(100dvh - var(--app-header-height) - 24px);
+  overflow-y: auto;
   padding: 12px;
   border-radius: 18px;
   border: 1px solid color-mix(in srgb, var(--surface-stroke, rgba(148, 163, 184, 0.45)) 85%, transparent);
@@ -2986,6 +3003,7 @@ html[data-theme="dark"] .lesson-flow__pdf-page-canvas {
 
 .lesson-quest-player__stage {
   min-height: 0;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -3130,6 +3148,11 @@ html[data-theme="dark"] .lesson-flow__pdf-page-canvas {
 @media (max-width: 1200px) {
   .lesson-quest-player {
     grid-template-columns: 1fr;
+  }
+
+  .lesson-quest-player__map {
+    position: static;
+    max-height: none;
   }
 }
 
