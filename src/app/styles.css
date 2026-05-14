@@ -117,6 +117,14 @@ body {
   flex-direction: column;
 }
 
+/* Квест-урок: иначе `overflow: hidden` на main обрезает длинную ленту и колесо не скроллит */
+.app-layout-body > .ant-layout-content.app-content--workspace.lesson-player-page--quest {
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+}
+
 /* Не-workspace: скролл окна (document), не вложенный overflow на main —
    иначе на части десктопов (Linux/Wayland и др.) колесо не цепляет скролл,
    а ползунок у края экрана работает. */
@@ -3181,7 +3189,7 @@ html[data-theme="dark"] .lesson-flow__pdf-page-canvas {
   width: 100%;
   height: clamp(260px, 38vw, 480px);
   object-fit: cover;
-  object-position: center 35%;
+  object-position: center center;
 }
 
 .lesson-quest-player__hero-scrim {
@@ -3198,10 +3206,10 @@ html[data-theme="dark"] .lesson-flow__pdf-page-canvas {
 
 .lesson-quest-player__hero-nodus {
   position: absolute;
-  right: min(5%, 28px);
+  right: min(4%, 22px);
   bottom: 0;
-  width: min(46%, 320px);
-  max-height: min(104%, 520px);
+  width: min(38%, 280px);
+  max-height: min(98%, 480px);
   height: auto;
   object-fit: contain;
   object-position: bottom center;
@@ -3345,9 +3353,9 @@ html[data-theme="light"] .lesson-quest-player__hero {
 html[data-theme="light"] .lesson-quest-player__hero-scrim {
   background: linear-gradient(
     105deg,
-    rgba(255, 255, 255, 0.08) 0%,
-    rgba(255, 255, 255, 0) 45%,
-    rgba(15, 23, 42, 0.18) 100%
+    rgba(255, 255, 255, 0.18) 0%,
+    rgba(255, 255, 255, 0) 48%,
+    rgba(15, 23, 42, 0.12) 100%
   );
 }
 

@@ -157,7 +157,7 @@ export function LessonQuestPlayer({
               <div className="lesson-quest-player__hero-scrim" aria-hidden />
               <img
                 className="lesson-quest-player__hero-nodus"
-                src={resolveLessonMediaUrl("/api/coach/talking.png")}
+                src={resolveLessonMediaUrl("/api/coach/idle.png")}
                 alt="Нодус"
               />
             </div>
@@ -276,7 +276,7 @@ export function LessonQuestPlayer({
     <div className="lesson-quest-player">
       <aside className="lesson-quest-player__map">
         <div className="lesson-quest-player__map-head">
-          <img src="/api/coach/talking.png" alt="Нодус" className="lesson-quest-player__coach" />
+          <img src="/api/coach/idle.png" alt="Нодус" className="lesson-quest-player__coach" />
           <div>
             <Title level={5} style={{ margin: 0 }}>
               {title ?? "Квест по ИИ"}

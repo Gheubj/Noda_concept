@@ -115,7 +115,9 @@ export function LessonPlayerPage() {
     return { ...EMPTY_LESSON_CONTENT, ...(bootstrap.lessonContent as LessonContent) };
   }, [bootstrap]);
 
-  const useDeckPlayer = lessonHasRenderableDeck(lessonContent) && Boolean(lessonContent.deck);
+  const useQuestPlayer = bootstrap?.title === "Дело Ирисового шифра";
+  const useDeckPlayer =
+    !useQuestPlayer && lessonHasRenderableDeck(lessonContent) && Boolean(lessonContent.deck);
 
   const flowBlocks = useMemo(() => expandLessonContentToBlocks(lessonContent), [lessonContent]);
 
@@ -498,7 +500,9 @@ export function LessonPlayerPage() {
 
   return (
     <Content
-      className={`app-content app-content--workspace lesson-player-page${useDeckPlayer ? " lesson-player-page--deck" : ""}`}
+      className={`app-content app-content--workspace lesson-player-page${useDeckPlayer ? " lesson-player-page--deck" : ""}${
+        useQuestPlayer ? " lesson-player-page--quest" : ""
+      }`}
     >
       {holder}
       <Spin spinning={loading}>
@@ -556,7 +560,7 @@ export function LessonPlayerPage() {
                   description="Администратору нужно добавить блоки в конструкторе или заполнить JSON материалов."
                 />
               ) : null}
-              {bootstrap.title === "Дело Ирисового шифра" ? (
+              {useQuestPlayer ? (
                 <LessonQuestPlayer
                   title={bootstrap.title}
                   lessonId={lessonId}
