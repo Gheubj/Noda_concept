@@ -3175,61 +3175,52 @@ html[data-theme="dark"] .lesson-flow__pdf-page-canvas {
   border-radius: 18px;
 }
 
-.lesson-quest-player__hero {
+.lesson-quest-player__lab-scene {
   position: relative;
+  display: block;
+  width: fit-content;
+  max-width: 100%;
+  margin: 0 auto;
+  border-radius: 18px;
   overflow: hidden;
-  border-radius: 20px;
-  border: 1px solid rgba(125, 211, 252, 0.22);
-  min-height: clamp(260px, 38vw, 480px);
-  box-shadow: 0 18px 40px rgba(2, 6, 23, 0.35);
+  box-shadow: 0 18px 32px rgba(2, 6, 23, 0.28);
 }
 
-.lesson-quest-player__hero.lesson-quest-player__hero--split {
-  display: flex;
-  flex-direction: row;
-  align-items: flex-end;
-  gap: 12px 18px;
-  padding: 10px 12px 10px;
-  min-height: 0;
+.lesson-quest-player__lab-scene .lesson-quest-player__image--in-lab {
+  display: block;
+  margin: 0 auto;
 }
 
-.lesson-quest-player__hero-visual {
-  position: relative;
-  flex: 1 1 56%;
-  min-width: 0;
-  border-radius: 16px;
-  overflow: hidden;
-  max-height: clamp(200px, 32vh, 360px);
+.lesson-quest-player__lab-scrim {
+  position: absolute;
+  inset: 0;
+  border-radius: 18px;
+  pointer-events: none;
+  background: linear-gradient(
+    105deg,
+    rgba(2, 6, 23, 0) 0%,
+    rgba(2, 6, 23, 0.06) 42%,
+    rgba(2, 6, 23, 0.3) 100%
+  );
 }
 
-.lesson-quest-player__hero-nodus-column {
-  flex: 0 1 42%;
-  max-width: 320px;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  justify-content: flex-end;
-  gap: 8px;
-}
-
-.lesson-quest-player__hero--split .lesson-quest-player__hero-bg {
-  width: 100%;
-  height: clamp(200px, 32vh, 360px);
-  object-fit: cover;
-  object-position: center center;
-}
-
-.lesson-quest-player__hero--split .lesson-quest-player__hero-scrim {
-  border-radius: 0;
-}
-
-.lesson-quest-player__hero--split .lesson-quest-player__hero-nodus {
-  position: relative;
-  right: auto;
-  bottom: auto;
-  width: min(100%, 300px);
-  max-height: clamp(220px, 40vh, 440px);
+.lesson-quest-player__lab-nodus {
+  position: absolute;
+  right: min(3%, 14px);
+  bottom: 0;
+  width: min(36%, 240px);
+  max-height: 72%;
+  height: auto;
+  object-fit: contain;
   object-position: bottom center;
+  filter: drop-shadow(0 12px 28px rgba(2, 6, 23, 0.5));
+  pointer-events: none;
+}
+
+@media (max-width: 600px) {
+  .lesson-quest-player__lab-nodus {
+    width: min(46%, 200px);
+  }
 }
 
 .lesson-quest-player__media-caption {
@@ -3238,60 +3229,6 @@ html[data-theme="dark"] .lesson-flow__pdf-page-canvas {
   line-height: 1.5;
   color: #e2e8f0;
   font-weight: 400;
-}
-
-@media (max-width: 900px) {
-  .lesson-quest-player__hero--split {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .lesson-quest-player__hero-visual {
-    max-height: clamp(180px, 36vw, 280px);
-  }
-
-  .lesson-quest-player__hero-nodus-column {
-    align-items: center;
-    max-width: none;
-    width: 100%;
-  }
-
-  .lesson-quest-player__hero--split .lesson-quest-player__hero-nodus {
-    width: min(72%, 260px);
-  }
-}
-
-.lesson-quest-player__hero-bg {
-  display: block;
-  width: 100%;
-  height: clamp(260px, 38vw, 480px);
-  object-fit: cover;
-  object-position: center center;
-}
-
-.lesson-quest-player__hero-scrim {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(
-    105deg,
-    rgba(2, 6, 23, 0.12) 0%,
-    rgba(2, 6, 23, 0.02) 42%,
-    rgba(2, 6, 23, 0.35) 100%
-  );
-  pointer-events: none;
-}
-
-.lesson-quest-player__hero-nodus {
-  position: absolute;
-  right: min(4%, 22px);
-  bottom: 0;
-  width: min(38%, 280px);
-  max-height: min(98%, 480px);
-  height: auto;
-  object-fit: contain;
-  object-position: bottom center;
-  filter: drop-shadow(0 16px 36px rgba(2, 6, 23, 0.45));
-  pointer-events: none;
 }
 
 .lesson-quest-player__checkpoint-title {
@@ -3446,22 +3383,21 @@ html[data-theme="light"] .lesson-quest-player__image {
   filter: drop-shadow(0 16px 28px rgba(15, 23, 42, 0.12));
 }
 
-html[data-theme="light"] .lesson-quest-player__hero {
-  border-color: rgba(148, 163, 184, 0.4);
-  box-shadow: 0 18px 36px rgba(15, 23, 42, 0.1);
+html[data-theme="light"] .lesson-quest-player__lab-scene {
+  box-shadow: 0 16px 30px rgba(15, 23, 42, 0.12);
 }
 
-html[data-theme="light"] .lesson-quest-player__hero-scrim {
+html[data-theme="light"] .lesson-quest-player__lab-scrim {
   background: linear-gradient(
     105deg,
-    rgba(255, 255, 255, 0.18) 0%,
-    rgba(255, 255, 255, 0) 48%,
-    rgba(15, 23, 42, 0.12) 100%
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.12) 48%,
+    rgba(15, 23, 42, 0.1) 100%
   );
 }
 
-html[data-theme="light"] .lesson-quest-player__hero-nodus {
-  filter: drop-shadow(0 14px 28px rgba(15, 23, 42, 0.22));
+html[data-theme="light"] .lesson-quest-player__lab-nodus {
+  filter: drop-shadow(0 12px 24px rgba(15, 23, 42, 0.2));
 }
 
 html[data-theme="light"] .lesson-quest-player__checkpoint-q {

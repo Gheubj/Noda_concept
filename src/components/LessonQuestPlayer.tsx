@@ -175,8 +175,8 @@ export function LessonQuestPlayer({
     if (block.type === "media" || block.type === "image" || block.type === "pdf") {
       const kind = block.type === "media" ? block.kind : block.type;
       const url = block.url;
-      const isHeroShot =
-        (block.type === "media" || block.type === "image") && block.id === "q00_hero" && kind === "image" && url.includes("iris-quest-hero");
+      const isLabWithNodus =
+        kind === "image" && (url.includes("iris-quest-hero") || url.includes("iris-quest-finale"));
       const diagramMat =
         kind === "image" &&
         (url.includes("iris-quest-dataset-split") || url.includes("iris-quest-overfit"));
@@ -186,19 +186,22 @@ export function LessonQuestPlayer({
             diagramMat ? " lesson-quest-player__card--diagram-mat" : ""
           }`}
         >
-          {isHeroShot ? (
-            <div className="lesson-quest-player__hero lesson-quest-player__hero--split">
-              <div className="lesson-quest-player__hero-visual">
-                <img className="lesson-quest-player__hero-bg" src={resolveLessonMediaUrl(url)} alt="" />
-                <div className="lesson-quest-player__hero-scrim" aria-hidden />
-              </div>
-              <div className="lesson-quest-player__hero-nodus-column">
-                <img
-                  className="lesson-quest-player__hero-nodus"
-                  src={resolveLessonMediaUrl("/api/coach/idle.png")}
-                  alt="Нодус"
-                />
-              </div>
+          {isLabWithNodus ? (
+            <div className="lesson-quest-player__lab-scene">
+              <img
+                className="lesson-quest-player__image lesson-quest-player__image--in-lab"
+                src={resolveLessonMediaUrl(url)}
+                alt={block.caption ?? ""}
+                onError={(e) => {
+                  e.currentTarget.style.display = "none";
+                }}
+              />
+              <div className="lesson-quest-player__lab-scrim" aria-hidden />
+              <img
+                className="lesson-quest-player__lab-nodus"
+                src={resolveLessonMediaUrl("/api/coach/idle.png")}
+                alt="Нодус"
+              />
             </div>
           ) : kind === "image" ? (
             <img
