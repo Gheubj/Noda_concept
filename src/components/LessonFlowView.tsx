@@ -96,13 +96,13 @@ export function LessonFlowView({
   lessonId,
   blocks,
   checkpointOk,
-  miniDevDone,
+  miniDevDone: _miniDevDone,
   miniDevProjectId,
   miniDevCreating,
   draftAnswers,
   onDraftChange,
   onVerifyCheckpoint,
-  onToggleMiniDevDone,
+  onToggleMiniDevDone: _onToggleMiniDevDone,
   onEnsureMiniDevProject,
   saving,
   bareMiniStudio = false,
@@ -242,14 +242,6 @@ export function LessonFlowView({
                     </Button>
                   </Space>
                 )}
-                {!readOnly ? (
-                  <Button
-                    type={miniDevDone(block.id) ? "default" : "primary"}
-                    onClick={() => onToggleMiniDevDone(block.id)}
-                  >
-                    {miniDevDone(block.id) ? "Отмечено выполненным" : "Отметить мини-разработку выполненной"}
-                  </Button>
-                ) : null}
                 {isStudioCta(block.ctaAction) ? (
                   <Text type="secondary">Этот блок был импортирован из старого формата Studio и работает как мини-разработка.</Text>
                 ) : null}

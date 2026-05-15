@@ -57,13 +57,13 @@ export function LessonDeckPlayer({
   deck,
   lessonId,
   checkpointOk,
-  miniDevDone,
+  miniDevDone: _miniDevDone,
   miniDevProjectId,
   miniDevCreating,
   draftAnswers,
   onDraftChange,
   onVerifyCheckpoint,
-  onToggleMiniDevDone,
+  onToggleMiniDevDone: _onToggleMiniDevDone,
   onEnsureMiniDevProject,
   saving,
   readOnly = false,
@@ -186,11 +186,6 @@ export function LessonDeckPlayer({
               </Button>
             </Space>
           )}
-          {!readOnly ? (
-            <Button type={miniDevDone(block.id) ? "default" : "primary"} onClick={() => onToggleMiniDevDone(block.id)}>
-              {miniDevDone(block.id) ? "Отмечено выполненным" : "Отметить мини-разработку выполненной"}
-            </Button>
-          ) : null}
           {isStudioCta(block.ctaAction) ? (
             <Text type="secondary">Импортированный блок Studio — мини-разработка.</Text>
           ) : null}

@@ -128,7 +128,7 @@ export function LessonQuestPlayer({
   draftAnswers,
   onDraftChange,
   onVerifyCheckpoint,
-  onToggleMiniDevDone,
+  onToggleMiniDevDone: _onToggleMiniDevDone,
   onEnsureMiniDevProject,
   saving,
   readOnly = false,
@@ -306,10 +306,10 @@ export function LessonQuestPlayer({
               Запустить мини-разработку
             </Button>
           )}
-          {!readOnly ? (
-            <Button type={miniDevDone(block.id) ? "default" : "primary"} onClick={() => onToggleMiniDevDone(block.id)}>
-              {miniDevDone(block.id) ? "Отмечено выполненным" : "Отметить как выполнено"}
-            </Button>
+          {projectId && (block.goals?.length ?? 0) > 0 ? (
+            <Text type="secondary" style={{ display: "block", marginTop: 8 }}>
+              Когда все цели в мини-студии выполнены, шаг засчитывается сам — кнопка «готово» не нужна.
+            </Text>
           ) : null}
           {isStudioCta(block.ctaAction) ? <Text type="secondary">Блок Studio подключен к миссии.</Text> : null}
         </div>
