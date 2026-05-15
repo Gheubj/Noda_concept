@@ -326,21 +326,17 @@ export function LessonQuestPlayer({
     <div className="lesson-quest-player">
       <aside className="lesson-quest-player__map">
         <div className="lesson-quest-player__map-head">
-          <img src="/api/coach/idle.png" alt="Нодус" className="lesson-quest-player__coach" />
           <div>
             <Title level={5} style={{ margin: 0 }}>
               {title ?? "Квест по ИИ"}
             </Title>
-            <Text type="secondary">{summary?.trim() || "Архив и Нодус — ментор"}</Text>
+            <Text type="secondary">{summary?.trim() || "Следуй шагам миссий."}</Text>
             {hubNav ? (
               <div style={{ marginTop: 6 }}>
                 <Link to={hubNav.to}>{hubNav.label}</Link>
               </div>
             ) : null}
           </div>
-        </div>
-        <div className="lesson-quest-player__case-meta">
-          <Tag color="error">Archive Incident</Tag>
         </div>
         <Progress percent={completionPct} size="small" />
         <Space direction="vertical" style={{ width: "100%" }} size="small">

@@ -2974,25 +2974,8 @@ html[data-theme="dark"] .lesson-flow__pdf-page-canvas {
 
 .lesson-quest-player__map-head {
   display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.lesson-quest-player__coach {
-  width: 86px;
-  height: 86px;
-  object-fit: contain;
-  filter: drop-shadow(0 10px 20px rgba(15, 23, 42, 0.2));
-}
-
-.lesson-quest-player__case-meta {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: 8px 10px;
-  border: 1px solid rgba(125, 211, 252, 0.24);
-  border-radius: 12px;
-  background: rgba(15, 23, 42, 0.42);
+  align-items: flex-start;
+  gap: 0;
 }
 
 .lesson-quest-player__node {
@@ -3206,7 +3189,7 @@ html[data-theme="dark"] .lesson-flow__pdf-page-canvas {
 
 .lesson-quest-player__lab-nodus {
   position: absolute;
-  right: min(3%, 14px);
+  right: min(2%, 12px);
   bottom: 0;
   width: min(47%, 312px);
   max-height: 72%;
@@ -3215,11 +3198,15 @@ html[data-theme="dark"] .lesson-flow__pdf-page-canvas {
   object-position: bottom center;
   filter: drop-shadow(0 12px 28px rgba(2, 6, 23, 0.5));
   pointer-events: none;
+  transform: scale(1.35);
+  transform-origin: right bottom;
 }
 
 @media (max-width: 600px) {
   .lesson-quest-player__lab-nodus {
     width: min(60%, 260px);
+    transform: scale(1.3);
+    transform-origin: right bottom;
   }
 }
 
@@ -3623,10 +3610,18 @@ html[data-theme="dark"] .admin-lesson-deck-editor__canvas {
   font-size: 11px;
 }
 
-.studio-mini-host .ant-btn {
+.studio-mini-host .ant-btn:not(.blockly-root__mini-toolbar-btn) {
   font-size: 11px;
   height: 24px;
   padding-inline: 8px;
+}
+
+.studio-mini-host .blockly-root__toolbar .blockly-root__mini-toolbar-btn.ant-btn {
+  font-size: 14px;
+  min-height: 40px;
+  height: auto;
+  padding: 8px 16px;
+  line-height: 1.25;
 }
 
 .studio-mini-host .blockly-root__toolbar {
@@ -3640,9 +3635,10 @@ html[data-theme="dark"] .admin-lesson-deck-editor__canvas {
 }
 
 .blockly-root__mini-tab.ant-btn {
-  padding-inline: 4px 8px;
+  padding-inline: 8px 12px;
+  min-height: 36px;
   height: auto;
-  line-height: 1.2;
+  line-height: 1.25;
 }
 
 .lesson-block-editor__bulk-actions {

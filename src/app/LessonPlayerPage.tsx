@@ -187,6 +187,17 @@ export function LessonPlayerPage() {
     void load();
   }, [load]);
 
+  /** Пока грузится урок, подтягиваем чанк студии — iframe мини-разработки открывается быстрее. */
+  useEffect(() => {
+    if (loading || !bootstrap) {
+      return;
+    }
+    if (!flowBlocks.some((b) => b.type === "studio")) {
+      return;
+    }
+    void import("@/app/StudioPage");
+  }, [loading, bootstrap, flowBlocks]);
+
   useEffect(() => {
     const rev = bootstrap?.review;
     if (!isTeacherReview || !rev) {

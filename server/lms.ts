@@ -4107,7 +4107,7 @@ export async function ensureModuleAQuestTemplate() {
       lessonContent: questContent,
       published: true,
       teacherGuideMd: guide.teacherGuideMd,
-      studentSummary: "Ирисы, train/test и первая цепочка в Nodly с Нодусом."
+      studentSummary: "Детективный квест в Nodly: Нодус вводит стажера в основы ИИ, затем ученик собирает модель для дела Ирисового шифра."
     },
     update: {
       title: "Дело Ирисового шифра",
@@ -4117,7 +4117,7 @@ export async function ensureModuleAQuestTemplate() {
       lessonContent: questContent,
       published: true,
       teacherGuideMd: guide.teacherGuideMd,
-      studentSummary: "Ирисы, train/test и первая цепочка в Nodly с Нодусом."
+      studentSummary: "Детективный квест в Nodly: Нодус вводит стажера в основы ИИ, затем ученик собирает модель для дела Ирисового шифра."
     }
   });
 }
