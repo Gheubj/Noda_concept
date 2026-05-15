@@ -4032,7 +4032,7 @@ export async function ensureModuleAQuestTemplate() {
         id: "q08_blocks_image",
         type: "media",
         kind: "image",
-        url: "/api/coach/iris-quest-noda-blocks.png",
+        url: "/api/coach/iris-quest-noda-blocks.png?v=2",
         caption: "Палитра блоков Nodly: события, данные, обучение, предсказание и вывод."
       },
       {
