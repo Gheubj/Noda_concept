@@ -21,8 +21,7 @@ function normalizeBlock(block: LessonContentBlock): LessonContentBlock {
       type: "media",
       kind: "image",
       url: block.url,
-      caption: block.caption ?? null,
-      ...(block.nodusSpeech != null && block.nodusSpeech !== "" ? { nodusSpeech: block.nodusSpeech } : {})
+      caption: block.caption ?? null
     };
   }
   if (block.type === "pdf") {
@@ -31,8 +30,7 @@ function normalizeBlock(block: LessonContentBlock): LessonContentBlock {
       type: "media",
       kind: "pdf",
       url: block.url,
-      caption: block.caption ?? null,
-      ...(block.nodusSpeech != null && block.nodusSpeech !== "" ? { nodusSpeech: block.nodusSpeech } : {})
+      caption: block.caption ?? null
     };
   }
   return block;

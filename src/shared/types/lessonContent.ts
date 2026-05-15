@@ -38,8 +38,6 @@ export type LessonContentBlock =
       body: string;
       /** Размер текста на слайде (дека); по умолчанию md */
       textScale?: "sm" | "md" | "lg";
-      /** Реплика Нодуса (квест): комикс-облако под текстом, от первого лица. */
-      nodusSpeech?: string | null;
     }
   | {
       id: string;
@@ -47,11 +45,10 @@ export type LessonContentBlock =
       kind: "image" | "pdf";
       url: string;
       caption?: string | null;
-      nodusSpeech?: string | null;
     }
   /** Legacy: старые уроки могли хранить image/pdf отдельно. */
-  | { id: string; type: "image"; url: string; caption?: string | null; nodusSpeech?: string | null }
-  | { id: string; type: "pdf"; url: string; caption?: string | null; nodusSpeech?: string | null }
+  | { id: string; type: "image"; url: string; caption?: string | null }
+  | { id: string; type: "pdf"; url: string; caption?: string | null }
   | {
       id: string;
       type: "studio";
@@ -70,7 +67,6 @@ export type LessonContentBlock =
       studioWorkspaceLevel?: 1 | 2;
       /** Цели мини-разработки: отображаются ученику и проверяются автоматически. */
       goals?: StudioGoal[];
-      nodusSpeech?: string | null;
     }
   | {
       id: string;
@@ -79,7 +75,6 @@ export type LessonContentBlock =
       expectedAnswer: string;
       answerMode?: "text" | "single" | "multi";
       options?: string[];
-      nodusSpeech?: string | null;
     }
   | { id: string; type: "divider" };
 
