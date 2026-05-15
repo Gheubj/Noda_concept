@@ -106,6 +106,8 @@ export function DataLibrary({ variant = "default" }: { variant?: "default" | "dr
     removeSavedModel
   } = useAppStore();
   const allowImages = workspaceLevel === 2;
+  /** Мини-студия / drawer: только короткие подсказки, без длинных инструкций. */
+  const compact = variant === "drawer";
 
   const filteredImageDatasets = useMemo(
     () => imageDatasets.filter((ds) => ds.title.toLowerCase().includes(searchQuery.toLowerCase())),
@@ -135,16 +137,20 @@ export function DataLibrary({ variant = "default" }: { variant?: "default" | "dr
       <Alert
         type="info"
         showIcon
-        className={variant === "drawer" ? "data-library__alert--compact" : undefined}
-        message={variant === "drawer" ? "Данные" : "Как собрать данные"}
+        className={compact ? "data-library__alert--compact" : undefined}
+        message={compact ? "Данные проекта" : "Как собрать данные"}
         description={
-          allowImages
-            ? "Классификация: набор → классы → фото или ZIP. Кластеризация: один набор → фото/ZIP. Форматы: JPG, PNG, WEBP, GIF (до 10 МБ)."
-            : "На уровне 1 доступны только табличные задания (CSV). Работа с изображениями открывается на уровне 2."
+          compact
+            ? allowImages
+              ? "Обучение: наборы и CSV. Входы: для «Предсказать». Модели: импорт/экспорт."
+              : "CSV для обучения; вкладка «Входы» — числа для предсказания; «Модели» — файлы .nodmodel."
+            : allowImages
+              ? "Классификация: набор → классы → фото или ZIP. Кластеризация: один набор → фото/ZIP. Форматы: JPG, PNG, WEBP, GIF (до 10 МБ)."
+              : "На уровне 1 доступны только табличные задания (CSV). Работа с изображениями открывается на уровне 2."
         }
       />
       <Collapse
-        defaultActiveKey={["images", "tabular"]}
+        defaultActiveKey={compact ? ["tabular"] : allowImages ? ["images", "tabular"] : ["tabular"]}
         items={[
           ...(allowImages
             ? [{
@@ -190,11 +196,15 @@ export function DataLibrary({ variant = "default" }: { variant?: "default" | "dr
                     <Space direction="vertical" size={8} style={{ width: "100%" }}>
                       {dataset.taskType === "clustering" ? (
                         <>
-                          <Paragraph type="secondary" style={{ marginBottom: 0 }}>
-                            Без учителя: загрузи фото или ZIP с картинками — имена кластеров не нужны. В Blockly
-                            выбери этот набор для Image KNN: похожие снимки сгруппируются автоматически (K-means
-                            по признакам MobileNet).
-                          </Paragraph>
+                          {!compact ? (
+                            <Paragraph type="secondary" style={{ marginBottom: 0 }}>
+                              Без учителя: загрузи фото или ZIP с картинками — имена кластеров не нужны. В Blockly
+                              выбери этот набор для Image KNN: похожие снимки сгруппируются автоматически (K-means
+                              по признакам MobileNet).
+                            </Paragraph>
+                          ) : (
+                            <Text type="secondary">Фото или ZIP; в Blockly — набор для KNN.</Text>
+                          )}
                           <Text type="secondary">Снимков в наборе: {dataset.unlabeledFiles?.length ?? 0}</Text>
                           <Space wrap>
                             <Upload
@@ -280,7 +290,11 @@ export function DataLibrary({ variant = "default" }: { variant?: "default" | "dr
                             showIcon
                             style={{ marginBottom: 8 }}
                             message="Импорт готовой разметки из ZIP"
-                            description="Поддерживается структура ZIP: class_name/image.jpg (или dataset/class_name/image.jpg). Класс берется из имени папки. Ручная разметка ниже остается без изменений."
+                            description={
+                              compact
+                                ? "Папки = классы: class_name/image.jpg"
+                                : "Поддерживается структура ZIP: class_name/image.jpg (или dataset/class_name/image.jpg). Класс берется из имени папки. Ручная разметка ниже остается без изменений."
+                            }
                           />
                           <Space.Compact style={{ width: "100%" }}>
                             <Input
@@ -442,12 +456,20 @@ export function DataLibrary({ variant = "default" }: { variant?: "default" | "dr
                   type="info"
                   showIcon
                   message="Целевая колонка — в карточке каждого набора ниже"
-                  description="Открой вложенный блок «Таблицы (CSV)» в панели данных, прокрути до карточки своего файла: там селект «Целевая колонка». В Blockly только выбор набора, без столбца."
+                  description={
+                    compact
+                      ? "В карточке набора выбери колонку-метку. В Blockly — только датасет."
+                      : "Открой вложенный блок «Таблицы (CSV)» в панели данных, прокрути до карточки своего файла: там селект «Целевая колонка». В Blockly только выбор набора, без столбца."
+                  }
                 />
-                <Paragraph>
-                  CSV с заголовком: все колонки кроме выбранной цели — признаки. Дубликат строки заголовков в данных
-                  отбрасывается. Разделитель строки выбирается автоматически: запятая, точка с запятой или табуляция.
-                </Paragraph>
+                {!compact ? (
+                  <Paragraph>
+                    CSV с заголовком: все колонки кроме выбранной цели — признаки. Дубликат строки заголовков в данных
+                    отбрасывается. Разделитель строки выбирается автоматически: запятая, точка с запятой или табуляция.
+                  </Paragraph>
+                ) : (
+                  <Text type="secondary">CSV с заголовком; разделитель определяется автоматически.</Text>
+                )}
                 <Space.Compact style={{ width: "100%" }}>
                   <Input
                     value={csvDatasetName}
@@ -572,10 +594,16 @@ export function DataLibrary({ variant = "default" }: { variant?: "default" | "dr
 
   const predictTabContent = (
     <Space direction="vertical" size={12} style={{ width: "100%" }}>
-      <Paragraph>
-        Для таблицы в блоке <Text strong>«предсказать»</Text> выбери либо один из этих входов, либо режим «Вручную» (строка
-        только в блоке). Для картинок — только вход из библиотеки.
-      </Paragraph>
+      {!compact ? (
+        <Paragraph>
+          Для таблицы в блоке <Text strong>«предсказать»</Text> выбери либо один из этих входов, либо режим «Вручную» (строка
+          только в блоке). Для картинок — только вход из библиотеки.
+        </Paragraph>
+      ) : (
+        <Text type="secondary">
+          Таблица: вход из списка или «Вручную» в блоке. Картинки: только сохранённый вход.
+        </Text>
+      )}
       <Collapse
         defaultActiveKey={allowImages ? ["img", "tab"] : ["tab"]}
         items={[
@@ -670,15 +698,23 @@ export function DataLibrary({ variant = "default" }: { variant?: "default" | "dr
 
   const modelsTabContent = (
     <Space direction="vertical" size={12} style={{ width: "100%" }}>
-      <Paragraph type="secondary">
-        Сохраняются блоком «Сохранить модель в библиотеку» после обучения. Веса лежат в IndexedDB этого браузера; в проект
-        попадает только список имён — на другом устройстве загрузка не подтянет файлы, пока модель не сохранена там же.
-      </Paragraph>
+      {!compact ? (
+        <Paragraph type="secondary">
+          Сохраняются блоком «Сохранить модель в библиотеку» после обучения. Веса лежат в IndexedDB этого браузера; в проект
+          попадает только список имён — на другом устройстве загрузка не подтянет файлы, пока модель не сохранена там же.
+        </Paragraph>
+      ) : (
+        <Text type="secondary">Список моделей в проекте; полный перенос — через экспорт/импорт файла.</Text>
+      )}
       <Alert
         type="info"
         showIcon
         message="Обмен моделями"
-        description="Экспортируй модель в .nodmodel.json и загружай этот файл на другом устройстве через кнопку «Импорт модели»."
+        description={
+          compact
+            ? "Экспорт в файл → «Импорт модели» на другом ПК."
+            : "Экспортируй модель в .nodmodel.json и загружай этот файл на другом устройстве через кнопку «Импорт модели»."
+        }
       />
       <Upload
         accept=".json,.nodmodel"

@@ -2979,8 +2979,8 @@ html[data-theme="dark"] .lesson-flow__pdf-page-canvas {
 }
 
 .lesson-quest-player__coach {
-  width: 66px;
-  height: 66px;
+  width: 86px;
+  height: 86px;
   object-fit: contain;
   filter: drop-shadow(0 10px 20px rgba(15, 23, 42, 0.2));
 }
@@ -3208,7 +3208,7 @@ html[data-theme="dark"] .lesson-flow__pdf-page-canvas {
   position: absolute;
   right: min(3%, 14px);
   bottom: 0;
-  width: min(36%, 240px);
+  width: min(47%, 312px);
   max-height: 72%;
   height: auto;
   object-fit: contain;
@@ -3219,7 +3219,7 @@ html[data-theme="dark"] .lesson-flow__pdf-page-canvas {
 
 @media (max-width: 600px) {
   .lesson-quest-player__lab-nodus {
-    width: min(46%, 200px);
+    width: min(60%, 260px);
   }
 }
 

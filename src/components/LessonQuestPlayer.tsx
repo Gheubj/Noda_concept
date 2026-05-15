@@ -1,4 +1,5 @@
 import { lazy, Suspense, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { Alert, Button, Card, Checkbox, Input, Progress, Radio, Space, Spin, Tag, Typography } from "antd";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -23,6 +24,10 @@ type QuestScene = {
 
 export type LessonQuestPlayerProps = {
   title?: string;
+  /** Краткая строка под названием в боковой колонке квеста (например studentSummary). */
+  summary?: string | null;
+  /** Ссылка из квеста в хаб (верхняя шапка урока скрыта). */
+  hubNav?: { to: string; label: string } | null;
   lessonId?: string;
   blocks: LessonContentBlock[];
   checkpointOk: (blockId: string) => boolean;
@@ -112,6 +117,8 @@ function splitScenes(blocks: LessonContentBlock[]): QuestScene[] {
 
 export function LessonQuestPlayer({
   title,
+  summary,
+  hubNav,
   lessonId,
   blocks,
   checkpointOk,
@@ -324,12 +331,16 @@ export function LessonQuestPlayer({
             <Title level={5} style={{ margin: 0 }}>
               {title ?? "Квест по ИИ"}
             </Title>
-            <Text type="secondary">Нодус — твой ментор в Архиве</Text>
+            <Text type="secondary">{summary?.trim() || "Архив и Нодус — ментор"}</Text>
+            {hubNav ? (
+              <div style={{ marginTop: 6 }}>
+                <Link to={hubNav.to}>{hubNav.label}</Link>
+              </div>
+            ) : null}
           </div>
         </div>
         <div className="lesson-quest-player__case-meta">
           <Tag color="error">Archive Incident</Tag>
-          <Text type="secondary">Стажировка детектива данных</Text>
         </div>
         <Progress percent={completionPct} size="small" />
         <Space direction="vertical" style={{ width: "100%" }} size="small">
@@ -354,13 +365,6 @@ export function LessonQuestPlayer({
         </Space>
       </aside>
       <section className="lesson-quest-player__stage">
-        <Card className="lesson-quest-player__stage-head">
-          <Space wrap>
-            <Tag color="blue">Миссия {safeIndex + 1}</Tag>
-            <Text strong>{scene.title}</Text>
-            <Tag color={sceneDone(scene) ? "success" : "processing"}>{sceneDone(scene) ? "Миссия выполнена" : "В процессе"}</Tag>
-          </Space>
-        </Card>
         <div className="lesson-quest-player__blocks">
           {scene.blocks.map((block) => (
             <div key={block.id}>{renderBlock(block)}</div>

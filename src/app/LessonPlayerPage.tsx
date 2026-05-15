@@ -516,6 +516,7 @@ export function LessonPlayerPage() {
           style={{ width: "100%" }}
           className={`lesson-player-page__stack${useDeckPlayer ? " lesson-player-page__stack--deck" : ""}`}
         >
+          {!useQuestPlayer ? (
           <div className="lesson-player-page__head">
             <Title level={4} style={{ marginTop: 0 }} className="lesson-player-page__title">
               {bootstrap?.title ?? "Урок"}
@@ -538,6 +539,7 @@ export function LessonPlayerPage() {
               )}
             </Space>
           </div>
+          ) : null}
           {/* Для школьных учеников убираем верхний блок «Задание: …», чтобы не дублировать контекст ДЗ. */}
           {bootstrap?.assignmentTitle && !(user?.role === "student" && user.studentMode === "school") ? (
             <Alert
@@ -563,6 +565,10 @@ export function LessonPlayerPage() {
               {useQuestPlayer ? (
                 <LessonQuestPlayer
                   title={bootstrap.title}
+                  summary={bootstrap.studentSummary}
+                  hubNav={
+                    isTeacherReview ? { to: "/teacher", label: "Назад в кабинет" } : { to: "/learning", label: "Назад" }
+                  }
                   lessonId={lessonId}
                   blocks={flowBlocks}
                   checkpointOk={checkpointsOk}
