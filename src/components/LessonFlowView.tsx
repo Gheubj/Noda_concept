@@ -46,6 +46,8 @@ export function MiniStudioSessionStore(props: {
   blockId: string;
   instruction: string;
   goals: NonNullable<Extract<LessonContentBlock, { type: "studio" }>["goals"]>;
+  /** Поднять палитру Blockly в iframe (тот же проект, другой шаг урока). */
+  studioWorkspaceLevel?: 1 | 2;
 }) {
   useLayoutEffect(() => {
     if (!props.lessonId) {
@@ -54,12 +56,18 @@ export function MiniStudioSessionStore(props: {
     try {
       sessionStorage.setItem(
         `nodly_mini_ctx__${props.lessonId}__${props.blockId}`,
-        JSON.stringify({ instruction: props.instruction, goals: props.goals })
+        JSON.stringify({
+          instruction: props.instruction,
+          goals: props.goals,
+          ...(props.studioWorkspaceLevel === 1 || props.studioWorkspaceLevel === 2
+            ? { studioWorkspaceLevel: props.studioWorkspaceLevel }
+            : {})
+        })
       );
     } catch {
       /* ignore */
     }
-  }, [props.lessonId, props.blockId, props.instruction, props.goals]);
+  }, [props.lessonId, props.blockId, props.instruction, props.goals, props.studioWorkspaceLevel]);
   return null;
 }
 
@@ -184,6 +192,7 @@ export function LessonFlowView({
                   blockId={block.id}
                   instruction={block.instruction}
                   goals={block.goals ?? []}
+                  studioWorkspaceLevel={block.studioWorkspaceLevel}
                 />
                 {projectId ? (
                   <iframe

@@ -22,13 +22,14 @@ export interface LessonContentHint {
   text: string;
 }
 
-export type StudioGoalType = "add_block" | "select_dataset" | "train_model" | "run_prediction";
+export type StudioGoalType = "add_block" | "select_dataset" | "train_model" | "run_prediction" | "save_model";
 
 export type StudioGoal =
   | { id: string; title: string; type: "add_block"; blockType: string }
   | { id: string; title: string; type: "select_dataset"; datasetKind: "image" | "tabular" }
   | { id: string; title: string; type: "train_model" }
-  | { id: string; title: string; type: "run_prediction" };
+  | { id: string; title: string; type: "run_prediction" }
+  | { id: string; title: string; type: "save_model" };
 
 /** Блоки «ленты» урока (конструктор + плеер). Если заданы — плеер строит единый поток. */
 export type LessonContentBlock =
@@ -67,6 +68,11 @@ export type LessonContentBlock =
       studioWorkspaceLevel?: 1 | 2;
       /** Цели мини-разработки: отображаются ученику и проверяются автоматически. */
       goals?: StudioGoal[];
+      /**
+       * Не создавать новый проект: использовать тот же cloud-проект, что уже создан для другого блока Studio
+       * (id того блока в этом уроке). Удобно для «сначала обучи и сохрани → потом предскажи» в одном черновике.
+       */
+      reuseMiniDevFromBlockId?: string;
     }
   | {
       id: string;

@@ -439,6 +439,14 @@ function getPaletteItems(level: 1 | 2): PaletteItem[] {
       },
       { type: "noda_train_model_simple", title: "Обучить модель", group: "model", shape: "stack" },
       {
+        type: "noda_save_model",
+        title: "Сохранить модель в библиотеку",
+        group: "model",
+        shape: "stack",
+        description:
+          "После обучения сохраняет модель в памяти браузера и в списке «Библиотека». Нужна для второго шага квеста."
+      },
+      {
         type: "noda_predict_l1",
         title: "Предсказать",
         group: "predict",
@@ -1144,7 +1152,7 @@ export type BlocklyWorkspaceProps = {
   onOpenDataLibrary?: () => void;
   onSaveProject?: () => void;
   onMiniStudioActivity?: (event: {
-    type: "train" | "predict";
+    type: "train" | "predict" | "save_model";
     modelType: string;
     datasetRef?: string;
     inputRef?: string;
@@ -2041,9 +2049,6 @@ export function BlocklyWorkspace({
         }
       }
       if (command.type === "save_model") {
-        if (effectiveToolboxLevel(useAppStore.getState().workspaceLevel) === 1) {
-          throw new Error("Сохранение модели в библиотеку доступно с уровня 2. Переключи уровень или убери блок «сохранить модель».");
-        }
         const lastType = getLastTrainedModelType();
         if (lastType === "tabular_svm" || lastType === "tabular_random_forest") {
           throw new Error(
@@ -2067,6 +2072,11 @@ export function BlocklyWorkspace({
           isTraining: false,
           message: `Модель «${title}» (${modelType}) в библиотеке`,
           coachMood: duringSave ? "working" : "success"
+        });
+        onMiniStudioActivity?.({
+          type: "save_model",
+          modelType,
+          label: title
         });
       }
       if (command.type === "wait") {

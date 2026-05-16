@@ -3,6 +3,7 @@ export type LessonPlayerCheckpointStatus = "pending" | "ok";
 export type MiniDevTelemetry = {
   trained?: boolean;
   predicted?: boolean;
+  saved?: boolean;
   lastModelType?: string | null;
   lastDatasetRef?: string | null;
   lastInputRef?: string | null;

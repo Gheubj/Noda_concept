@@ -1072,6 +1072,15 @@ html[data-theme="dark"] .studio-metrics-panel__cm-table td {
   width: 100%;
   line-height: 0;
   text-align: center;
+  padding: 10px 10px 6px;
+  border-radius: 12px;
+  border: 1px solid rgba(148, 163, 184, 0.45);
+  background: linear-gradient(
+    165deg,
+    color-mix(in srgb, var(--surface-panel) 92%, #0f172a 8%) 0%,
+    color-mix(in srgb, var(--surface-panel) 98%, transparent) 100%
+  );
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.06) inset, 0 8px 22px rgba(15, 23, 42, 0.12);
 }
 
 .studio-stage-panel--mini .studio-stage-panel__mini-figure {
