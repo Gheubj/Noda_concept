@@ -182,21 +182,18 @@ export function LessonQuestPlayer({
     if (block.type === "media" || block.type === "image" || block.type === "pdf") {
       const kind = block.type === "media" ? block.kind : block.type;
       const url = block.url;
-      /** Фон локации + Нодус поверх (агентство, оранжерея, досье, финал). */
+      /** Фон локации + Нодус поверх (зал агентства, оранжерея, финал). Досье — без персонажа. */
       const isLabWithNodus =
         kind === "image" &&
         (url.includes("iris-quest-hero") ||
           url.includes("iris-quest-finale") ||
           url.includes("nodus-agency-hall") ||
-          url.includes("iris-quest-greenhouse") ||
-          url.includes("iris-quest-dossier"));
+          url.includes("iris-quest-greenhouse"));
       const nodusOverlayUrl = url.includes("greenhouse")
         ? "/api/coach/working.png"
         : url.includes("finale")
           ? "/api/coach/success.png"
-          : url.includes("dossier")
-            ? "/api/coach/talking.png"
-            : "/api/coach/idle.png";
+          : "/api/coach/idle.png";
       const diagramMat =
         kind === "image" &&
         (url.includes("iris-quest-dataset-split") || url.includes("iris-quest-overfit"));
@@ -207,7 +204,11 @@ export function LessonQuestPlayer({
           }`}
         >
           {isLabWithNodus ? (
-            <div className="lesson-quest-player__lab-scene">
+            <div
+              className={`lesson-quest-player__lab-scene${
+                url.includes("nodus-agency-hall") ? " lesson-quest-player__lab-scene--agency-hall" : ""
+              }`}
+            >
               <img
                 className="lesson-quest-player__image lesson-quest-player__image--in-lab"
                 src={resolveLessonMediaUrl(url)}

@@ -3247,6 +3247,19 @@ html[data-theme="dark"] .lesson-flow__pdf-page-canvas {
   }
 }
 
+.lesson-quest-player__lab-scene--agency-hall .lesson-quest-player__lab-nodus {
+  left: auto;
+  right: min(5%, 18px);
+  transform-origin: right bottom;
+}
+
+@media (max-width: 600px) {
+  .lesson-quest-player__lab-scene--agency-hall .lesson-quest-player__lab-nodus {
+    right: min(3%, 10px);
+    width: min(52%, 280px);
+  }
+}
+
 .lesson-quest-player__media-caption {
   margin: 10px 0 0;
   font-size: 15px;
