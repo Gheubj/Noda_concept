@@ -21,6 +21,7 @@ function useCoachBubbleText(): string {
   const coachUserMessage = useAppStore((s) => s.coachUserMessage);
   const evaluation = useAppStore((s) => s.evaluation);
   const prediction = useAppStore((s) => s.prediction);
+  const predictionBatch = useAppStore((s) => s.predictionBatch);
   const comparison = useAppStore((s) => s.modelComparisonReport);
 
   return useMemo(() => {
@@ -36,7 +37,12 @@ function useCoachBubbleText(): string {
     if (coachUserMessage?.trim()) {
       return coachUserMessage.trim();
     }
-    if (evaluation || prediction || comparison) {
+    if (
+      evaluation ||
+      prediction ||
+      comparison ||
+      (predictionBatch && predictionBatch.length > 0)
+    ) {
       return COACH_AUTO_RESULTS_LEAD;
     }
     if (training.message?.trim()) {
@@ -51,6 +57,7 @@ function useCoachBubbleText(): string {
     coachUserMessage,
     evaluation,
     prediction,
+    predictionBatch,
     comparison
   ]);
 }
@@ -59,15 +66,32 @@ function CoachBriefBlock() {
   const training = useAppStore((s) => s.training);
   const evaluation = useAppStore((s) => s.evaluation);
   const prediction = useAppStore((s) => s.prediction);
+  const predictionBatch = useAppStore((s) => s.predictionBatch);
+  const scenarioBatchReport = useAppStore((s) => s.scenarioBatchReport);
   const comparison = useAppStore((s) => s.modelComparisonReport);
   const lines = useMemo(() => {
     if (training.isTraining || training.scenarioActive) {
       return [];
     }
     const raw = buildCoachBriefLines(evaluation, prediction, comparison);
+    const hideSinglePrediction =
+      (predictionBatch && predictionBatch.length > 0) || Boolean(scenarioBatchReport?.trim());
     /** Дублируют полосы метрик на сцене — оставляем только сводку / предсказание / сравнение. */
-    return raw.filter((l) => l.key !== "acc" && l.key !== "f1");
-  }, [training.isTraining, training.scenarioActive, evaluation, prediction, comparison]);
+    return raw.filter(
+      (l) =>
+        l.key !== "acc" &&
+        l.key !== "f1" &&
+        !(hideSinglePrediction && l.key === "pred")
+    );
+  }, [
+    training.isTraining,
+    training.scenarioActive,
+    evaluation,
+    prediction,
+    predictionBatch,
+    scenarioBatchReport,
+    comparison
+  ]);
   if (lines.length === 0) {
     return null;
   }
@@ -107,7 +131,11 @@ export function StudioStagePanel({
   irisQuestKidUi = false
 }: StudioStagePanelProps) {
   const training = useAppStore((s) => s.training);
-  const coachSrc = useMemo(() => coachPngForMood(resolveCoachMood(training)), [training]);
+  const coachUserMessage = useAppStore((s) => s.coachUserMessage);
+  const coachSrc = useMemo(
+    () => coachPngForMood(resolveCoachMood(training, { coachUserMessage })),
+    [training, coachUserMessage]
+  );
   const caption = useCoachBubbleText();
   const scenarioBatchReport = useAppStore((s) => s.scenarioBatchReport);
   const captionIsSecondary = caption === IDLE_HINT || caption === SCENARIO_WORKING_HINT;

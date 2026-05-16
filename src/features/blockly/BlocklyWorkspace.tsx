@@ -117,6 +117,15 @@ type BlockCommand =
   | { type: "add_journal"; text: string }
   | { type: "show_eval" };
 
+function commandsTailContainsIf(commands: BlockCommand[]): boolean {
+  for (const c of commands) {
+    if (c.type === "if") {
+      return true;
+    }
+  }
+  return false;
+}
+
 type LogicExpr =
   | { type: "bool"; value: boolean }
   | { type: "num"; value: number }
@@ -1657,12 +1666,18 @@ export function BlocklyWorkspace({
     scenarioAccum?: ScenarioBatchAccum;
     /** Для пакетного прогона: писать в «сработало» только из ветки then при истинном условии. */
     scenarioRecordHits?: boolean;
+    /**
+     * Глубина вложенности относительно корня цепочки после «Предсказать».
+     * Запись в hitLines только при > 0 (внутри хотя бы одного «если»), чтобы блоки до первого «если» не попадали в отчёт по каждой строке.
+     */
+    scenarioIfNesting?: number;
   };
 
   const executeCommands = async (commands: BlockCommand[], opts?: ExecuteCommandsOpts) => {
     const fromEvent = opts?.fromEvent ?? false;
     const scenarioAccum = opts?.scenarioAccum;
     const recordHits = opts?.scenarioRecordHits !== false;
+    const scenarioIfNesting = opts?.scenarioIfNesting ?? 0;
     const state = useAppStore.getState();
     const journal: string[] = [];
     const sleep = (ms: number) => new Promise<void>((resolve) => window.setTimeout(resolve, ms));
@@ -1679,7 +1694,8 @@ export function BlocklyWorkspace({
         await executeCommands(pass ? command.thenCommands : command.elseCommands, {
           fromEvent: true,
           scenarioAccum,
-          scenarioRecordHits: recordHits && pass
+          scenarioRecordHits: recordHits && pass,
+          scenarioIfNesting: scenarioIfNesting + 1
         });
         continue;
       }
@@ -2160,6 +2176,7 @@ export function BlocklyWorkspace({
               await finishTabularFlow(result?.title ?? null);
             } else if (mode === "all") {
               const tail = commands.slice(cmdIdx + 1);
+              const tailHasIf = commandsTailContainsIf(tail);
               const batch: { rowIndex: number; title: string; confidence: number }[] = [];
               const accum: ScenarioBatchAccum = {
                 listLines: [],
@@ -2190,7 +2207,8 @@ export function BlocklyWorkspace({
                   await executeCommands(tail, {
                     fromEvent: true,
                     scenarioAccum: accum,
-                    scenarioRecordHits: true
+                    scenarioRecordHits: true,
+                    scenarioIfNesting: 0
                   });
                 }
               }
@@ -2204,16 +2222,20 @@ export function BlocklyWorkspace({
                       confidence: batch[batch.length - 1].confidence
                     }
                   : null;
-              useAppStore.getState().setPredictionBatch(batch.length > 0 ? batch : null, last);
 
-              const reportParts = [
-                `Предсказания по файлу (${batch.length} строк):`,
-                ...accum.listLines
-              ];
-              if (accum.hitLines.length > 0) {
-                reportParts.push("", "Когда условие выполнено:", ...accum.hitLines);
-              }
-              useAppStore.getState().setScenarioBatchReport(reportParts.join("\n"));
+              const reportText = tailHasIf
+                ? accum.hitLines.length > 0
+                  ? [`Подошли под условие (${accum.hitLines.length}):`, "", ...accum.hitLines].join("\n")
+                  : "Условие ни для одной строки не выполнилось."
+                : batch.length > 0
+                  ? [`Все строки (${batch.length}):`, "", ...accum.listLines].join("\n")
+                  : "Нет строк для предсказания.";
+
+              useAppStore.getState().setPredictionBatchWithScenarioReport(
+                batch.length > 0 ? batch : null,
+                last,
+                reportText
+              );
 
               await finishTabularFlow(last?.title ?? null);
               skipTail = tail.length;
@@ -2243,7 +2265,11 @@ export function BlocklyWorkspace({
       if (command.type === "show_message") {
         const scriptText = command.text.trim();
         const acc = scenarioAccum;
-        const shouldRecord = recordHits && acc && acc.currentRow != null;
+        const shouldRecord =
+          recordHits &&
+          acc &&
+          acc.currentRow != null &&
+          (opts?.scenarioIfNesting ?? 0) > 0;
         if (shouldRecord) {
           acc!.hitLines.push(`Строка ${acc!.currentRow}: ${scriptText.length > 0 ? scriptText : "—"}`);
         }
@@ -2255,13 +2281,13 @@ export function BlocklyWorkspace({
         useAppStore.getState().setTraining({
           isTraining: false,
           message: "",
-          coachMood: "working"
+          coachMood: scenarioAccum ? "working" : "talking"
         });
       }
       if (command.type === "show_result") {
         const acc = scenarioAccum;
         const pred = useAppStore.getState().prediction;
-        if (recordHits && acc && acc.currentRow != null && pred) {
+        if (recordHits && acc && acc.currentRow != null && pred && (opts?.scenarioIfNesting ?? 0) > 0) {
           acc.hitLines.push(
             `Строка ${acc.currentRow}: класс ${pred.title} (${(pred.confidence * 100).toFixed(1)}%)`
           );
@@ -2271,14 +2297,14 @@ export function BlocklyWorkspace({
         const line = command.text.trim();
         if (line) {
           journal.push(line);
-          state.setTraining({ isTraining: false, message: `Журнал: ${journal.join(" | ")}`, coachMood: "working" });
+          state.setTraining({ isTraining: false, message: `Журнал: ${journal.join(" | ")}`, coachMood: "talking" });
         }
       }
       if (command.type === "show_eval") {
         const evalToShow = lastEvaluationRef.current ?? useAppStore.getState().evaluation;
         if (evalToShow) {
           state.setEvaluation(evalToShow);
-          state.setTraining({ isTraining: false, message: "", coachMood: "working" });
+          state.setTraining({ isTraining: false, message: "", coachMood: "talking" });
         } else {
           throw new Error("Оценка модели появится после обучения/тестирования");
         }

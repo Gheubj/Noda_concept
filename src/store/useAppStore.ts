@@ -96,6 +96,11 @@ interface AppState {
   removeSavedModel: (id: string) => void;
   setPrediction: (result: PredictionResult | null) => void;
   setPredictionBatch: (rows: TabularPredictionBatchRow[] | null, last: PredictionResult | null) => void;
+  setPredictionBatchWithScenarioReport: (
+    rows: TabularPredictionBatchRow[] | null,
+    last: PredictionResult | null,
+    scenarioReport: string | null
+  ) => void;
   setScenarioBatchReport: (value: string | null) => void;
   setEvaluation: (value: ModelEvaluation | null) => void;
   setTrainingRunReport: (value: TrainingRunReport | null) => void;
@@ -287,6 +292,13 @@ export const useAppStore = create<AppState>((set, get) => ({
   setPrediction: (result) => set({ prediction: result, predictionBatch: null, scenarioBatchReport: null }),
   setPredictionBatch: (rows, last) =>
     set({ predictionBatch: rows, prediction: last, scenarioBatchReport: null }),
+  /** Одним обновлением: без промежуточного сброса отчёта сцены. */
+  setPredictionBatchWithScenarioReport: (rows, last, scenarioReport) =>
+    set({
+      predictionBatch: rows && rows.length > 0 ? rows : null,
+      prediction: last,
+      scenarioBatchReport: scenarioReport
+    }),
   setScenarioBatchReport: (value) => set({ scenarioBatchReport: value }),
   setEvaluation: (value) => set({ evaluation: value }),
   setTrainingRunReport: (value) => set({ trainingRunReport: value }),

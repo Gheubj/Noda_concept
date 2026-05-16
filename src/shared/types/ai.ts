@@ -74,7 +74,7 @@ export interface TabularPredictionBatchRow {
   confidence: number;
 }
 
-export type CoachMood = "idle" | "working" | "success" | "error";
+export type CoachMood = "idle" | "working" | "success" | "error" | "talking";
 
 export interface TrainingState {
   isTraining: boolean;
