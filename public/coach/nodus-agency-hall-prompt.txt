@@ -1,0 +1,15 @@
+# Reference only — not used in lesson content. Copy into your image generator.
+
+EN — positive:
+Nodus Story Bureau — interior, wide establishing shot. Photoreal 3D render or high-end digital matte painting, cinematic, warm tungsten light. Timeless “old money” investigative office: 1940s–1970s prestige (All the President’s Men / Tinker Tailor mood) but crisp on screen. NO holograms, NO neon cyberpunk, NO floating UI, NO sci-fi gadgets, NO glass skyscraper futurism. Grand but slightly worn reading room / archive bureau hybrid: tall dark wood paneling, coffered ceiling, brass picture lights, green banker’s lamps on heavy desks, wall of document drawers or card-catalog cabinets, rolling ladder optional, leather chairs, green felt blotters, neat stacks of folders tied with string, rubber stamps and wax-seal props on a side table. Small brass plaque legible: “Nodus — Bureau of Recorded Histories”. Serious, trustworthy, slightly secretive; late afternoon sun through tall windows with sheer curtains. Subtle human presence: empty chair, half-open case file, NO visible faces. 35mm lens feel, eye-level, one-point perspective, shallow depth of field only on foreground props. 16:9 landscape, 2560×1440 or larger, high detail, no watermark.
+
+EN — negative:
+futuristic, sci-fi, neon, hologram, cyberpunk, spaceship, LED strips, minimalist Apple store, empty white void, anime, low-poly, cartoon, gore, horror, text paragraphs on walls, modern open-plan loft
+
+RU — positive:
+Фотореалистичный 3D или матовая живопись, кинематографично, тёплый свет ламп накаливания. Престижное классическое детективное бюро (настроение фильмов про журналистов или разведку 1940–1970-х), без футуризма: никаких голограмм, неона, киберпанка, стеклянных небоскрёбов, минималистичного «Apple Store». Высокие тёмные деревянные панели, кессонный потолок, латунные бра, зелёные настольные «банковские» лампы на массивных столах, стена картотечных шкафов, по желанию накатная лестница, кожаные кресла, зелёные фетровые подкладки, стопки папок на шпагате, печати и сургуч. Небольшая латунная табличка: «Nodus — Bureau of Recorded Histories». Серьёзно, надёжно, чуть секретно; поздний день, солнце в высоких окнах с занавесками. След человека без лиц: пустое кресло, полуоткрытое дело. Камера как 35 мм, уровень глаз, одна точка схода, боке только на переднем плане. Формат 16:9, от 2560×1440, без водяного знака.
+
+RU — negative:
+футуризм, sci-fi, неон, голограммы, космос, LED-ленты, пустой белый зал, аниме, low-poly, мультяшность, кровь, хоррор, абзацы текста на стенах, лофт open space
+
+Suggested export: public/coach/nodus-agency-hall.png → URL /api/coach/nodus-agency-hall.png
