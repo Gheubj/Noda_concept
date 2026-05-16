@@ -313,11 +313,11 @@ export function LessonQuestPlayer({
           ) : creating ? (
             <div className="lesson-quest-player__loading">
               <Spin />
-              <Text type="secondary">Открываем мини-разработку…</Text>
+              <Text type="secondary">Открываем мини-студию…</Text>
             </div>
           ) : (
             <Button type="primary" onClick={() => onEnsureMiniDevProject?.(block.id)} disabled={!onEnsureMiniDevProject || readOnly}>
-              Запустить мини-разработку
+              Запустить мини-студию
             </Button>
           )}
           {projectId && (block.goals?.length ?? 0) > 0 ? (
