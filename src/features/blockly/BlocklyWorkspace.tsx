@@ -1646,16 +1646,41 @@ export function BlocklyWorkspace({
     };
   };
 
-  const executeCommands = async (commands: BlockCommand[], options?: { fromEvent?: boolean }) => {
-    const fromEvent = options?.fromEvent ?? false;
+  type ScenarioBatchAccum = {
+    listLines: string[];
+    hitLines: string[];
+    currentRow: number | null;
+  };
+
+  type ExecuteCommandsOpts = {
+    fromEvent?: boolean;
+    scenarioAccum?: ScenarioBatchAccum;
+    /** Для пакетного прогона: писать в «сработало» только из ветки then при истинном условии. */
+    scenarioRecordHits?: boolean;
+  };
+
+  const executeCommands = async (commands: BlockCommand[], opts?: ExecuteCommandsOpts) => {
+    const fromEvent = opts?.fromEvent ?? false;
+    const scenarioAccum = opts?.scenarioAccum;
+    const recordHits = opts?.scenarioRecordHits !== false;
     const state = useAppStore.getState();
     const journal: string[] = [];
     const sleep = (ms: number) => new Promise<void>((resolve) => window.setTimeout(resolve, ms));
 
-    for (const command of commands) {
+    let skipTail = 0;
+    for (let cmdIdx = 0; cmdIdx < commands.length; cmdIdx += 1) {
+      if (skipTail > 0) {
+        skipTail -= 1;
+        continue;
+      }
+      const command = commands[cmdIdx]!;
       if (command.type === "if") {
         const pass = Boolean(resolveExpr(command.condition));
-        await executeCommands(pass ? command.thenCommands : command.elseCommands, { fromEvent: true });
+        await executeCommands(pass ? command.thenCommands : command.elseCommands, {
+          fromEvent: true,
+          scenarioAccum,
+          scenarioRecordHits: recordHits && pass
+        });
         continue;
       }
       if (command.type === "compare_models") {
@@ -2134,21 +2159,43 @@ export function BlocklyWorkspace({
               state.setPrediction(result);
               await finishTabularFlow(result?.title ?? null);
             } else if (mode === "all") {
+              const tail = commands.slice(cmdIdx + 1);
               const batch: { rowIndex: number; title: string; confidence: number }[] = [];
-              for (let i = 0; i < dataset.rows.length; i += 1) {
-                const line = featureStringFromDatasetRow(dataset, i);
+              const accum: ScenarioBatchAccum = {
+                listLines: [],
+                hitLines: [],
+                currentRow: null
+              };
+
+              for (let ri = 0; ri < dataset.rows.length; ri += 1) {
+                const line = featureStringFromDatasetRow(dataset, ri);
                 if (!line) {
                   continue;
                 }
                 const result = await predictOneLine(line);
-                if (result) {
-                  batch.push({
-                    rowIndex: i + 1,
-                    title: result.title,
-                    confidence: result.confidence
+                if (!result) {
+                  continue;
+                }
+                batch.push({
+                  rowIndex: ri + 1,
+                  title: result.title,
+                  confidence: result.confidence
+                });
+                useAppStore.getState().setPrediction(result);
+                accum.listLines.push(
+                  `Строка ${ri + 1}: ${result.title} (${(result.confidence * 100).toFixed(1)}%)`
+                );
+                accum.currentRow = ri + 1;
+                if (tail.length > 0) {
+                  await executeCommands(tail, {
+                    fromEvent: true,
+                    scenarioAccum: accum,
+                    scenarioRecordHits: true
                   });
                 }
               }
+              accum.currentRow = null;
+
               const last =
                 batch.length > 0
                   ? {
@@ -2157,8 +2204,19 @@ export function BlocklyWorkspace({
                       confidence: batch[batch.length - 1].confidence
                     }
                   : null;
-              state.setPredictionBatch(batch.length > 0 ? batch : null, last);
+              useAppStore.getState().setPredictionBatch(batch.length > 0 ? batch : null, last);
+
+              const reportParts = [
+                `Предсказания по файлу (${batch.length} строк):`,
+                ...accum.listLines
+              ];
+              if (accum.hitLines.length > 0) {
+                reportParts.push("", "Когда условие выполнено:", ...accum.hitLines);
+              }
+              useAppStore.getState().setScenarioBatchReport(reportParts.join("\n"));
+
               await finishTabularFlow(last?.title ?? null);
+              skipTail = tail.length;
             } else {
               throw new Error("Неизвестный режим предсказания по файлу.");
             }
@@ -2184,16 +2242,30 @@ export function BlocklyWorkspace({
       }
       if (command.type === "show_message") {
         const scriptText = command.text.trim();
-        state.setCoachUserMessage(scriptText.length > 0 ? scriptText : null);
-        state.setTraining({
+        const acc = scenarioAccum;
+        const shouldRecord = recordHits && acc && acc.currentRow != null;
+        if (shouldRecord) {
+          acc!.hitLines.push(`Строка ${acc!.currentRow}: ${scriptText.length > 0 ? scriptText : "—"}`);
+        }
+        if (!acc) {
+          useAppStore.getState().setCoachUserMessage(scriptText.length > 0 ? scriptText : null);
+        } else {
+          useAppStore.getState().setCoachUserMessage(null);
+        }
+        useAppStore.getState().setTraining({
           isTraining: false,
           message: "",
           coachMood: "working"
         });
       }
       if (command.type === "show_result") {
-        // Ничего не показываем в большой плашке сцены:
-        // результат уже доступен в состоянии prediction для условий и логики блоков.
+        const acc = scenarioAccum;
+        const pred = useAppStore.getState().prediction;
+        if (recordHits && acc && acc.currentRow != null && pred) {
+          acc.hitLines.push(
+            `Строка ${acc.currentRow}: класс ${pred.title} (${(pred.confidence * 100).toFixed(1)}%)`
+          );
+        }
       }
       if (command.type === "add_journal") {
         const line = command.text.trim();
@@ -2223,6 +2295,7 @@ export function BlocklyWorkspace({
       const state = useAppStore.getState();
       lastEvaluationRef.current = state.evaluation;
       state.setCoachUserMessage(null);
+      state.setScenarioBatchReport(null);
       const workspace = workspaceRef.current;
       if (!workspace) {
         return;

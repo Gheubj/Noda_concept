@@ -109,6 +109,7 @@ export function StudioStagePanel({
   const training = useAppStore((s) => s.training);
   const coachSrc = useMemo(() => coachPngForMood(resolveCoachMood(training)), [training]);
   const caption = useCoachBubbleText();
+  const scenarioBatchReport = useAppStore((s) => s.scenarioBatchReport);
   const captionIsSecondary = caption === IDLE_HINT || caption === SCENARIO_WORKING_HINT;
 
   if (mode === "mini_coach") {
@@ -154,6 +155,19 @@ export function StudioStagePanel({
                   )}
                 </div>
               ) : null}
+              {scenarioBatchReport?.trim() ? (
+                <div className="studio-stage-panel__scenario-batch">
+                  <Text strong style={{ display: "block", marginBottom: 6 }}>
+                    Результаты по файлу
+                  </Text>
+                  <Text
+                    type="secondary"
+                    style={{ whiteSpace: "pre-wrap", fontSize: 12, lineHeight: 1.45, display: "block", maxHeight: 220, overflow: "auto" }}
+                  >
+                    {scenarioBatchReport.trim()}
+                  </Text>
+                </div>
+              ) : null}
               <CoachBriefBlock />
             </div>
             {irisQuestKidUi ? null : (
@@ -185,6 +199,19 @@ export function StudioStagePanel({
                 ) : (
                   <Text>{caption}</Text>
                 )}
+              </div>
+            ) : null}
+            {scenarioBatchReport?.trim() ? (
+              <div className="studio-stage-panel__scenario-batch studio-stage-panel__scenario-batch--full">
+                <Text strong style={{ display: "block", marginBottom: 6 }}>
+                  Результаты по файлу
+                </Text>
+                <Text
+                  type="secondary"
+                  style={{ whiteSpace: "pre-wrap", fontSize: 13, lineHeight: 1.45, display: "block", maxHeight: 280, overflow: "auto" }}
+                >
+                  {scenarioBatchReport.trim()}
+                </Text>
               </div>
             ) : null}
             <CoachBriefBlock />
