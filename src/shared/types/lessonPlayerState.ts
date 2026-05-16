@@ -3,7 +3,8 @@ export type LessonPlayerCheckpointStatus = "pending" | "ok";
 export type MiniDevTelemetry = {
   trained?: boolean;
   predicted?: boolean;
-  saved?: boolean;
+  /** Выполнено «Сохранить модель в библиотеку». */
+  savedModel?: boolean;
   lastModelType?: string | null;
   lastDatasetRef?: string | null;
   lastInputRef?: string | null;

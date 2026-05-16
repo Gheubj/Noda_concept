@@ -168,7 +168,6 @@ export function LessonDeckPlayer({
             blockId={block.id}
             instruction={block.instruction}
             goals={block.goals ?? []}
-            studioWorkspaceLevel={block.studioWorkspaceLevel}
           />
           {projectId ? (
             <iframe className="lesson-deck-player__mini-frame" title={`mini-dev-${block.id}`} src={frameSrc} />

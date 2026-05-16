@@ -292,14 +292,8 @@ export function LessonQuestPlayer({
         : "";
       return (
         <div className="lesson-quest-player__card lesson-quest-player__card--studio">
-          {renderMarkdown(block.instruction, "lesson-quest-player__markdown")}
-          <MiniStudioSessionStore
-            lessonId={lessonId}
-            blockId={block.id}
-            instruction={block.instruction}
-            goals={block.goals ?? []}
-            studioWorkspaceLevel={block.studioWorkspaceLevel}
-          />
+          {renderMarkdown(block.instruction, "lesson-quest-player__markdown lesson-quest-player__markdown--studio")}
+          <MiniStudioSessionStore lessonId={lessonId} blockId={block.id} instruction={block.instruction} goals={block.goals ?? []} />
           {projectId ? (
             <iframe className="lesson-quest-player__mini-frame" title={`mini-dev-${block.id}`} src={frameSrc} />
           ) : creating ? (

@@ -26,7 +26,7 @@ const STUDIO_GOAL_TYPES: Array<{ value: StudioGoal["type"]; label: string }> = [
   { value: "select_dataset", label: "Выбрать датасет" },
   { value: "train_model", label: "Запустить обучение" },
   { value: "run_prediction", label: "Сделать предсказание" },
-  { value: "save_model", label: "Сохранить модель в библиотеку" }
+  { value: "save_model", label: "Сохранить модель (выполнить блок)" }
 ];
 
 const STUDIO_BLOCK_TYPE_OPTIONS = [
@@ -633,15 +633,6 @@ export function AdminLessonBlockEditor({
                     { value: 1, label: "Уровень Blockly 1" },
                     { value: 2, label: "Уровень Blockly 2" }
                   ]}
-                />
-                <Input
-                  placeholder="Продолжить тот же проект: id другого блока Studio (reuseMiniDevFromBlockId)"
-                  value={block.reuseMiniDevFromBlockId ?? ""}
-                  onChange={(e) =>
-                    setBlock(index, {
-                      reuseMiniDevFromBlockId: e.target.value.trim() || undefined
-                    })
-                  }
                 />
                 <Card size="small" title="Цели мини-разработки">
                   <Space direction="vertical" style={{ width: "100%" }} size="small">

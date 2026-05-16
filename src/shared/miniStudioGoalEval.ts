@@ -72,7 +72,7 @@ export function evalMiniStudioGoal(
     return Boolean(telemetry?.predicted);
   }
   if (goal.type === "save_model") {
-    return Boolean(telemetry?.saved);
+    return Boolean(telemetry?.savedModel);
   }
   return false;
 }

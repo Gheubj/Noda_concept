@@ -444,7 +444,7 @@ function getPaletteItems(level: 1 | 2): PaletteItem[] {
         group: "model",
         shape: "stack",
         description:
-          "После обучения сохраняет модель в памяти браузера и в списке «Библиотека». Нужна для второго шага квеста."
+          "После обучения — в библиотеку (вкладка «Библиотека»). В полной разработке уровня 1 этот блок скрыт; в мини-уроке доступен."
       },
       {
         type: "noda_predict_l1",
@@ -1152,7 +1152,7 @@ export type BlocklyWorkspaceProps = {
   onOpenDataLibrary?: () => void;
   onSaveProject?: () => void;
   onMiniStudioActivity?: (event: {
-    type: "train" | "predict" | "save_model";
+    type: "train" | "predict" | "save";
     modelType: string;
     datasetRef?: string;
     inputRef?: string;
@@ -2049,6 +2049,12 @@ export function BlocklyWorkspace({
         }
       }
       if (command.type === "save_model") {
+        const level = effectiveToolboxLevel(useAppStore.getState().workspaceLevel);
+        if (level === 1 && !miniStudioToolbar) {
+          throw new Error(
+            "Сохранение модели в полной разработке доступно с уровня 2. Переключи уровень или убери блок «сохранить модель»."
+          );
+        }
         const lastType = getLastTrainedModelType();
         if (lastType === "tabular_svm" || lastType === "tabular_random_forest") {
           throw new Error(
@@ -2074,7 +2080,7 @@ export function BlocklyWorkspace({
           coachMood: duringSave ? "working" : "success"
         });
         onMiniStudioActivity?.({
-          type: "save_model",
+          type: "save",
           modelType,
           label: title
         });

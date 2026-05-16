@@ -197,16 +197,11 @@ export function StudioPage() {
   const isMiniMode = isMiniLegacy || hasLessonEmbed;
   const irisQuestMiniLesson =
     isMiniMode && miniLessonId === IRIS_QUEST_LESSON_TEMPLATE_ID && Boolean(miniBlockId);
-  type MiniCoachPayload = {
-    instruction: string;
-    goals: StudioGoal[];
-    /** Поднять палитру Blockly для второго шага квеста (тот же проект). */
-    studioWorkspaceLevel?: 1 | 2;
-  };
+  type MiniCoachPayload = { instruction: string; goals: StudioGoal[] };
   const [miniCoach, setMiniCoach] = useState<MiniCoachPayload | null>(null);
   const [goalUiStatus, setGoalUiStatus] = useState<Record<string, boolean>>({});
   const [allLessonGoalsDone, setAllLessonGoalsDone] = useState(false);
-  const miniTelemetryRef = useRef({ trained: false, predicted: false, saved: false });
+  const miniTelemetryRef = useRef({ trained: false, predicted: false, savedModel: false });
   const lastPostedGoalsJson = useRef<string>("");
   const [messageApi, contextHolder] = message.useMessage();
   const [guestUserId] = useState(() => {
@@ -291,18 +286,10 @@ export function StudioPage() {
         setMiniCoach({ instruction: "", goals: [] });
         return;
       }
-      const parsed = JSON.parse(raw) as {
-        instruction?: string;
-        goals?: StudioGoal[];
-        studioWorkspaceLevel?: 1 | 2;
-      };
+      const parsed = JSON.parse(raw) as { instruction?: string; goals?: StudioGoal[] };
       setMiniCoach({
         instruction: typeof parsed.instruction === "string" ? parsed.instruction : "",
-        goals: Array.isArray(parsed.goals) ? parsed.goals : [],
-        studioWorkspaceLevel:
-          parsed.studioWorkspaceLevel === 1 || parsed.studioWorkspaceLevel === 2
-            ? parsed.studioWorkspaceLevel
-            : undefined
+        goals: Array.isArray(parsed.goals) ? parsed.goals : []
       });
     } catch {
       setMiniCoach({ instruction: "", goals: [] });
@@ -310,17 +297,10 @@ export function StudioPage() {
   }, [isMiniMode, miniLessonId, miniBlockId]);
 
   useEffect(() => {
-    if (!hasLessonEmbed || !miniCoach?.studioWorkspaceLevel) {
-      return;
-    }
-    useAppStore.getState().setWorkspaceLevel(miniCoach.studioWorkspaceLevel);
-  }, [hasLessonEmbed, miniCoach?.studioWorkspaceLevel, activeProject?.id]);
-
-  useEffect(() => {
     if (!isMiniMode) {
       return;
     }
-    miniTelemetryRef.current = { trained: false, predicted: false, saved: false };
+    miniTelemetryRef.current = { trained: false, predicted: false, savedModel: false };
     setGoalUiStatus({});
     setAllLessonGoalsDone(false);
     lastPostedGoalsJson.current = "";
@@ -925,7 +905,7 @@ export function StudioPage() {
   };
 
   const handleMiniStudioActivity = (event: {
-    type: "train" | "predict" | "save_model";
+    type: "train" | "predict" | "save";
     modelType: string;
     datasetRef?: string;
     inputRef?: string;
@@ -937,8 +917,8 @@ export function StudioPage() {
     if (event.type === "predict") {
       miniTelemetryRef.current.predicted = true;
     }
-    if (event.type === "save_model") {
-      miniTelemetryRef.current.saved = true;
+    if (event.type === "save") {
+      miniTelemetryRef.current.savedModel = true;
     }
     if (!isMiniMode || !miniLessonId || !miniBlockId) {
       return;
@@ -1100,12 +1080,12 @@ export function StudioPage() {
       {isMiniMode && miniLessonId && miniBlockId ? (
         <StudioSidePanelTabs
           variant="mini"
-          instructionMarkdown={irisQuestMiniLesson ? "" : miniCoach?.instruction ?? ""}
+          instructionMarkdown={miniCoach?.instruction ?? ""}
           goals={miniCoach?.goals ?? []}
           goalStatus={goalUiStatus}
           allGoalsDone={allLessonGoalsDone}
           showGoalsInPanel={false}
-          irisQuestKidUi={false}
+          irisQuestKidUi={irisQuestMiniLesson}
         />
       ) : null}
       {/* Десктоп / планшет шире 720px: side-panel инлайн в строке.

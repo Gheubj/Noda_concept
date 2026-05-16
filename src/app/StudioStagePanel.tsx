@@ -197,15 +197,24 @@ export function StudioStagePanel({
 
   if (mode === "mini_coach") {
     return (
-      <aside className="studio-stage-panel studio-stage-panel--mini" aria-label="Сцена">
+      <aside
+        className={`studio-stage-panel studio-stage-panel--mini${irisQuestKidUi ? " studio-stage-panel--iris-quest" : ""}`}
+        aria-label="Сцена"
+      >
         <Card size="small" title="Сцена" className="studio-stage-card">
           <div className="studio-stage-panel__mini-layout">
-            <div className="studio-stage-panel__mini-figure-wrap">
+            <div
+              className={`studio-stage-panel__mini-figure-wrap${irisQuestKidUi ? " studio-stage-panel__mini-figure-wrap--framed" : ""}`}
+            >
               <img className="studio-stage-panel__mini-figure" src={coachSrc} alt="" />
             </div>
             <div className="studio-stage-panel__mini-copy">
               {instructionMarkdown.trim() ? (
-                <div className="studio-stage-panel__mini-instruction lesson-flow__markdown">
+                <div
+                  className={`studio-stage-panel__mini-instruction lesson-flow__markdown${
+                    irisQuestKidUi ? " studio-stage-panel__mini-instruction--compact" : ""
+                  }`}
+                >
                   <ReactMarkdown remarkPlugins={[remarkGfm]}>
                     {markdownWithCustomEmojiImages(instructionMarkdown)}
                   </ReactMarkdown>
@@ -240,9 +249,7 @@ export function StudioStagePanel({
               ) : null}
               <CoachBriefBlock />
             </div>
-            {irisQuestKidUi ? null : (
-              <StudioTrainingLiveCharts compact className="studio-stage-panel__mini-live-charts" />
-            )}
+            <StudioTrainingLiveCharts compact className="studio-stage-panel__mini-live-charts" />
             <StudioLiveMetrics
               compact
               className="studio-stage-panel__mini-metrics"

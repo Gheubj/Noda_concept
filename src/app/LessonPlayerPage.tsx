@@ -68,7 +68,7 @@ type MiniStudioMessage = {
   blockId: string;
   projectId?: string | null;
   event: {
-    type: "train" | "predict" | "save_model";
+    type: "train" | "predict" | "save";
     modelType: string;
     datasetRef?: string;
     inputRef?: string;
@@ -226,21 +226,11 @@ export function LessonPlayerPage() {
       setSaving(true);
       try {
         const q = assignmentId ? `?assignmentId=${encodeURIComponent(assignmentId)}` : "";
-        const studioBlock = flowBlocks.find(
-          (b): b is Extract<(typeof flowBlocks)[number], { type: "studio" }> =>
-            b.type === "studio" && b.id === blockId
-        );
-        const reuseFrom = studioBlock?.reuseMiniDevFromBlockId;
-        const reuseProjectId =
-          typeof reuseFrom === "string" && reuseFrom.length > 0
-            ? miniProjectIdsLocal[reuseFrom] ?? playerStateRef.current.miniDevProjectIds?.[reuseFrom]
-            : undefined;
         const { projectId } = await apiClient.post<{ projectId: string }>(
           `/api/student/lessons/${encodeURIComponent(lessonId)}/mini-dev-project${q}`,
           {
             blockId,
-            title: `${bootstrap.title} · мини`,
-            ...(typeof reuseProjectId === "string" && reuseProjectId.length > 0 ? { reuseProjectId } : {})
+            title: `${bootstrap.title} · мини`
           }
         );
         // Отображаем iframe сразу после создания, даже если сохранение прогресса задержалось.
@@ -267,7 +257,7 @@ export function LessonPlayerPage() {
         setSaving(false);
       }
     },
-    [assignmentId, bootstrap, flowBlocks, isTeacherReview, lessonId, messageApi, miniProjectIdsLocal, persistState]
+    [assignmentId, bootstrap, isTeacherReview, lessonId, messageApi, persistState]
   );
 
   const miniProjectIdsKey = useMemo(() => JSON.stringify(playerState.miniDevProjectIds ?? {}), [playerState.miniDevProjectIds]);
@@ -344,7 +334,7 @@ export function LessonPlayerPage() {
         lastPredictionLabel: payload.event.label ?? current.lastPredictionLabel ?? null,
         trained: current.trained || payload.event.type === "train",
         predicted: current.predicted || payload.event.type === "predict",
-        saved: current.saved || payload.event.type === "save_model",
+        savedModel: current.savedModel || payload.event.type === "save",
         updatedAt: new Date().toISOString()
       };
       const next: LessonPlayerStateV1 = {
