@@ -117,11 +117,17 @@ body {
   flex-direction: column;
 }
 
-/* Квест-урок: иначе `overflow: hidden` на main обрезает длинную ленту и колесо не скроллит */
+/* Квест-урок: bounded scrollport. Иначе ниже `.lesson-player-page.app-content--workspace` даёт
+   height:auto — при overflow-y:auto колесо цепляет «пустой» скроллпорт и лента не двигается. */
 .app-layout-body > .ant-layout-content.app-content--workspace.lesson-player-page--quest {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: calc(100dvh - var(--app-header-height));
+  max-height: calc(100dvh - var(--app-header-height));
   overflow-x: hidden;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
   overscroll-behavior-y: contain;
 }
 
