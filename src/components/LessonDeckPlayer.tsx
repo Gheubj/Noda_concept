@@ -167,6 +167,7 @@ export function LessonDeckPlayer({
             lessonId={lessonId}
             blockId={block.id}
             instruction={block.instruction}
+            stageInstruction={block.stageInstruction}
             goals={block.goals ?? []}
           />
           {projectId ? (

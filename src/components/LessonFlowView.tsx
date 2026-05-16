@@ -5,6 +5,7 @@ import remarkGfm from "remark-gfm";
 import type { LessonContentBlock } from "@/shared/types/lessonContent";
 import { resolveLessonMediaUrl } from "@/shared/lessonMediaUrl";
 import { markdownWithCustomEmojiImages } from "@/shared/emojiMarkdown";
+import { LessonRevealBody, splitRevealBody } from "@/components/LessonRevealBody";
 
 const LessonPdfReader = lazy(() =>
   import("@/components/LessonPdfReader").then((m) => ({ default: m.LessonPdfReader }))
@@ -45,6 +46,7 @@ export function MiniStudioSessionStore(props: {
   lessonId?: string;
   blockId: string;
   instruction: string;
+  stageInstruction?: string | null;
   goals: NonNullable<Extract<LessonContentBlock, { type: "studio" }>["goals"]>;
 }) {
   useLayoutEffect(() => {
@@ -52,14 +54,18 @@ export function MiniStudioSessionStore(props: {
       return;
     }
     try {
+      const stage =
+        typeof props.stageInstruction === "string" && props.stageInstruction.trim().length > 0
+          ? props.stageInstruction.trim()
+          : props.instruction;
       sessionStorage.setItem(
         `nodly_mini_ctx__${props.lessonId}__${props.blockId}`,
-        JSON.stringify({ instruction: props.instruction, goals: props.goals })
+        JSON.stringify({ instruction: stage, goals: props.goals })
       );
     } catch {
       /* ignore */
     }
-  }, [props.lessonId, props.blockId, props.instruction, props.goals]);
+  }, [props.lessonId, props.blockId, props.instruction, props.stageInstruction, props.goals]);
   return null;
 }
 
@@ -157,9 +163,11 @@ export function LessonFlowView({
           return null;
         }
         if (block.type === "text") {
+          const { lead, reveal } = splitRevealBody(block.body);
           return (
             <div key={block.id} className={`lesson-flow__segment lesson-flow__text${isColab ? " lesson-flow__segment--colab" : ""}`}>
-              {renderMarkdown(block.body, "lesson-flow__markdown")}
+              {lead.trim().length > 0 ? renderMarkdown(lead, "lesson-flow__markdown") : null}
+              {reveal ? <LessonRevealBody markdown={reveal} className="lesson-flow__markdown" /> : null}
             </div>
           );
         }
@@ -183,6 +191,7 @@ export function LessonFlowView({
                   lessonId={lessonId}
                   blockId={block.id}
                   instruction={block.instruction}
+                  stageInstruction={block.stageInstruction}
                   goals={block.goals ?? []}
                 />
                 {projectId ? (
@@ -216,6 +225,13 @@ export function LessonFlowView({
           return (
             <div key={block.id} className={`lesson-flow__segment lesson-flow__studio${isColab ? " lesson-flow__segment--colab" : ""}`}>
               <div className="lesson-flow__studio-markdown">{renderMarkdown(block.instruction, "lesson-flow__markdown")}</div>
+              <MiniStudioSessionStore
+                lessonId={lessonId}
+                blockId={block.id}
+                instruction={block.instruction}
+                stageInstruction={block.stageInstruction}
+                goals={block.goals ?? []}
+              />
               <Space direction="vertical" size="small" style={{ width: "100%" }}>
                 {projectId ? (
                   <iframe

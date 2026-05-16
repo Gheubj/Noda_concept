@@ -350,6 +350,7 @@ export function AdminLessonBlockEditor({
   const studioProjectSelectOptions = useMemo(
     () => [
       { value: "__empty__", label: "Пустая практика" },
+      { value: "__template__", label: "Снимок из шаблона урока (starterPayload)" },
       ...projectOptions.map((item) => ({ value: item.value, label: item.label }))
     ],
     [projectOptions]
@@ -598,9 +599,28 @@ export function AdminLessonBlockEditor({
                 value={block.instruction}
                 onChange={(e) => setBlock(index, { instruction: e.target.value })}
               />
+              {!deckSingleElement ? (
+                <>
+                  <Text type="secondary">Короткий текст на панели «Сцена» внутри мини-студии (если пусто — туда попадает полная инструкция выше)</Text>
+                  <Input.TextArea
+                    rows={2}
+                    placeholder="Например: нажми Старт, когда цепочка готова; на сцене — график и метрики."
+                    value={block.stageInstruction ?? ""}
+                    onChange={(e) =>
+                      setBlock(index, { stageInstruction: e.target.value.trim() ? e.target.value : null })
+                    }
+                  />
+                </>
+              ) : null}
               <Select
                   style={{ width: "100%" }}
-                  value={block.studioPracticeKind === "project_clone" && block.referenceProjectId ? block.referenceProjectId : "__empty__"}
+                  value={
+                    block.studioPracticeKind === "template"
+                      ? "__template__"
+                      : block.studioPracticeKind === "project_clone" && block.referenceProjectId
+                        ? block.referenceProjectId
+                        : "__empty__"
+                  }
                   options={studioProjectSelectOptions}
                   showSearch
                   optionFilterProp="label"
@@ -608,6 +628,14 @@ export function AdminLessonBlockEditor({
                     if (v === "__empty__") {
                       setBlock(index, {
                         studioPracticeKind: "empty",
+                        referenceProjectId: null,
+                        studioWorkspaceLevel: block.studioWorkspaceLevel ?? 1
+                      });
+                      return;
+                    }
+                    if (v === "__template__") {
+                      setBlock(index, {
+                        studioPracticeKind: "template",
                         referenceProjectId: null,
                         studioWorkspaceLevel: block.studioWorkspaceLevel ?? 1
                       });
@@ -623,8 +651,17 @@ export function AdminLessonBlockEditor({
                 <Select
                   style={{ width: "100%" }}
                   value={block.studioWorkspaceLevel ?? 1}
-                  disabled={block.studioPracticeKind === "project_clone" && Boolean(block.referenceProjectId)}
-                  title={block.studioPracticeKind === "project_clone" ? "Для проекта из библиотеки уровень берется из проекта" : undefined}
+                  disabled={
+                    (block.studioPracticeKind === "project_clone" && Boolean(block.referenceProjectId)) ||
+                    block.studioPracticeKind === "template"
+                  }
+                  title={
+                    block.studioPracticeKind === "project_clone"
+                      ? "Для проекта из библиотеки уровень берется из проекта"
+                      : block.studioPracticeKind === "template"
+                        ? "Для снимка шаблона уровень берется из starterPayload"
+                        : undefined
+                  }
                   placeholder="Уровень Blockly"
                   onChange={(v) => {
                     setBlock(index, { studioWorkspaceLevel: v as 1 | 2 });

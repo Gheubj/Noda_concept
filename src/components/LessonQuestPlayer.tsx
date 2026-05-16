@@ -7,6 +7,7 @@ import type { LessonContentBlock } from "@/shared/types/lessonContent";
 import { resolveLessonMediaUrl } from "@/shared/lessonMediaUrl";
 import { markdownWithCustomEmojiImages } from "@/shared/emojiMarkdown";
 import { MiniStudioSessionStore, isStudioCta, studioLessonFrameSrc } from "@/components/LessonFlowView";
+import { LessonRevealBody, splitRevealBody } from "@/components/LessonRevealBody";
 
 const LessonPdfReader = lazy(() =>
   import("@/components/LessonPdfReader").then((m) => ({ default: m.LessonPdfReader }))
@@ -175,9 +176,11 @@ export function LessonQuestPlayer({
 
   const renderBlock = (block: LessonContentBlock) => {
     if (block.type === "text") {
+      const { lead, reveal } = splitRevealBody(normalizeLessonText(block.body));
       return (
         <div className="lesson-quest-player__card lesson-quest-player__card--text lesson-quest-player__card--material">
-          {renderMarkdown(block.body, "lesson-quest-player__markdown")}
+          {lead.trim().length > 0 ? renderMarkdown(lead, "lesson-quest-player__markdown") : null}
+          {reveal ? <LessonRevealBody markdown={reveal} className="lesson-quest-player__markdown" /> : null}
         </div>
       );
     }
@@ -309,7 +312,13 @@ export function LessonQuestPlayer({
       return (
         <div className="lesson-quest-player__card lesson-quest-player__card--studio">
           {renderMarkdown(block.instruction, "lesson-quest-player__markdown lesson-quest-player__markdown--studio")}
-          <MiniStudioSessionStore lessonId={lessonId} blockId={block.id} instruction={block.instruction} goals={block.goals ?? []} />
+          <MiniStudioSessionStore
+            lessonId={lessonId}
+            blockId={block.id}
+            instruction={block.instruction}
+            stageInstruction={block.stageInstruction}
+            goals={block.goals ?? []}
+          />
           {projectId ? (
             <iframe className="lesson-quest-player__mini-frame" title={`mini-dev-${block.id}`} src={frameSrc} />
           ) : creating ? (

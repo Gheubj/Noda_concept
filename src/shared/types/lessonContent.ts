@@ -54,6 +54,8 @@ export type LessonContentBlock =
       id: string;
       type: "studio";
       instruction: string;
+      /** Короткий текст на панели «Сцена» в мини-студии; если не задан — используется `instruction`. */
+      stageInstruction?: string | null;
       ctaAction?: string | null;
       /**
        * Источник стартового проекта для мини-разработки ученика.
