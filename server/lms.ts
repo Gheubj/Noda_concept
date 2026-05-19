@@ -3036,8 +3036,8 @@ export function registerLmsRoutes(app: Express) {
 const LESSON_GUIDE_SEED: Record<string, { teacherGuideMd: string; studentSummary: string }> = {
   lt_module_a_keeper_quest: {
     studentSummary:
-      "Лабораторное дело: только Iris setosa по спецификации; подпорченные метки; Iris.csv и лабораторный файл; две мини-студии в Nodly; во второй мини-студии можно подключить готовый облачный проект в админке.",
-    teacherGuideMd: `# Методичка: «Лабораторное дело №1: Iris и метки» (мини-студия)
+      "Дело №1: ирисы для единорогов — основы ИИ, чтобы найти нужный вид и спасти единорогов; две мини-студии в Nodly; во второй можно подключить готовый проект в админке.",
+    teacherGuideMd: `# Методичка: «Дело №1: Ирисы для единорогов» (мини-студия)
 
 ## Как называть для класса
 - В тексте урока используем **«мини-студия»** — Nodly внутри урока (блоки, «Данные», «Старт»).
@@ -3744,7 +3744,7 @@ export async function ensureModuleAQuestTemplate() {
         id: "q00_briefing_title",
         type: "text",
         textScale: "lg",
-        body: `# Лабораторное дело №1: Iris и метки
+        body: `# Дело №1: Ирисы для единорогов
 
 Ты **стажёр** в **Агентстве историй Нодус**. Так устроено бюро: мы не просто «рассказываем сказку», а собираем **понятную цепочку фактов** — чтобы любой человек мог повторить, **как вышли из тупика**, если что-то пошло не так.
 
@@ -4367,8 +4367,9 @@ export async function ensureModuleAQuestTemplate() {
     where: { id: MODULE_A_QUEST_TEMPLATE_ID },
     create: {
       id: MODULE_A_QUEST_TEMPLATE_ID,
-      title: "Лабораторное дело №1: Iris и метки",
-      description: "Спецификация партии — только setosa; подпорченные метки в оранжерее; Iris.csv и лабораторный файл; две мини-студии в Nodly.",
+      title: "Дело №1: Ирисы для единорогов",
+      description:
+        "Изучим основы ИИ, чтобы по данным найти нужный вид ирисов и спасти единорогов.",
       moduleKey: "module_a",
       sortOrder: 0,
       starterPayload: EMPTY_SNAPSHOT,
@@ -4376,18 +4377,19 @@ export async function ensureModuleAQuestTemplate() {
       published: true,
       teacherGuideMd: guide.teacherGuideMd,
       studentSummary:
-        "Табличное дело: только Iris setosa по спецификации; кто-то испортил подписи; две мини-студии; во второй можно подключить готовый проект в админке."
+        "Основы ИИ на примере ирисов: найти нужный вид и помочь единорогам; две мини-студии; во второй можно подключить готовый проект в админке."
     },
     update: {
-      title: "Лабораторное дело №1: Iris и метки",
-      description: "Спецификация партии — только setosa; подпорченные метки в оранжерее; Iris.csv и лабораторный файл; две мини-студии в Nodly.",
+      title: "Дело №1: Ирисы для единорогов",
+      description:
+        "Изучим основы ИИ, чтобы по данным найти нужный вид ирисов и спасти единорогов.",
       moduleKey: "module_a",
       sortOrder: 0,
       lessonContent: questContent,
       published: true,
       teacherGuideMd: guide.teacherGuideMd,
       studentSummary:
-        "Табличное дело: только Iris setosa по спецификации; кто-то испортил подписи; две мини-студии; во второй можно подключить готовый проект в админке."
+        "Основы ИИ на примере ирисов: найти нужный вид и помочь единорогам; две мини-студии; во второй можно подключить готовый проект в админке."
     }
   });
 }
