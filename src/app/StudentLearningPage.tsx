@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Button, Card, List, Select, Space, Typography, message } from "antd";
+import { Button, Card, Select, Space, Typography, message } from "antd";
 import { Link, useNavigate } from "react-router-dom";
 import { useSessionStore } from "@/store/useSessionStore";
 import { apiClient } from "@/shared/api/client";
@@ -166,32 +166,11 @@ export function StudentLearningPage() {
               ) : null}
             </Card>
           ) : null}
-          <List
-            bordered
-            loading={loading}
-            dataSource={templates}
-            locale={{ emptyText: "Пока нет опубликованных уроков" }}
-            renderItem={(item) => (
-              <List.Item
-                actions={[
-                  <Button
-                    key="player"
-                    type="primary"
-                    size="small"
-                    disabled={
-                      user.studentMode === "direct" &&
-                      (directModuleStatus.get(item.moduleKey)?.unlocked ?? true) === false
-                    }
-                    onClick={() => navigate(`/lesson/${encodeURIComponent(item.id)}`)}
-                  >
-                    Открыть урок
-                  </Button>,
-                ]}
-              >
-                <List.Item.Meta title={item.title} description={item.description ?? `Модуль: ${item.moduleKey}`} />
-              </List.Item>
-            )}
-          />
+          {!loading && templates.length === 0 ? (
+            <Paragraph type="secondary" style={{ marginBottom: 0 }}>
+              Пока нет опубликованных уроков
+            </Paragraph>
+          ) : null}
         </Space>
         </div>
       </Card>
