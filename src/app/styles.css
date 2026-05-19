@@ -3180,6 +3180,14 @@ html[data-theme="light"] .lesson-reveal__shell--closed::after {
   font-weight: 600;
 }
 
+/* Серая плашка «Не открыто» на карте миссий (без цвета Ant default). */
+.lesson-quest-player__node-tag--pending.ant-tag {
+  margin: 0;
+  border: 1px solid color-mix(in srgb, #94a3b8 40%, transparent);
+  background: color-mix(in srgb, #475569 28%, transparent);
+  color: #e2e8f0;
+}
+
 .lesson-quest-player__stage {
   min-height: 0;
   min-width: 0;
@@ -3555,6 +3563,12 @@ html[data-theme="light"] .lesson-quest-player__node {
 
 html[data-theme="light"] .lesson-quest-player__node-index {
   color: #0369a1;
+}
+
+html[data-theme="light"] .lesson-quest-player__node-tag--pending.ant-tag {
+  border-color: rgba(148, 163, 184, 0.55);
+  background: rgba(226, 232, 240, 0.95);
+  color: #475569;
 }
 
 html[data-theme="light"] .lesson-quest-player__stage {

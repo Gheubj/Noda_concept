@@ -1,4 +1,4 @@
-import { lazy, Suspense, useMemo, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { Alert, Button, Card, Checkbox, Input, Progress, Radio, Space, Spin, Tag, Typography } from "antd";
 import ReactMarkdown from "react-markdown";
@@ -116,6 +116,10 @@ function splitScenes(blocks: LessonContentBlock[]): QuestScene[] {
   });
 }
 
+function sceneHasActions(s: QuestScene): boolean {
+  return s.checkpointIds.length > 0 || s.studioIds.length > 0;
+}
+
 export function LessonQuestPlayer({
   title,
   summary,
@@ -137,11 +141,25 @@ export function LessonQuestPlayer({
 }: LessonQuestPlayerProps) {
   const scenes = useMemo(() => splitScenes(blocks), [blocks]);
   const [sceneIndex, setSceneIndex] = useState(0);
+  /** Сцены только с текстом: «выполнено» только после «Следующая миссия», иначе .every([]) давало бы ложное Закрыто. */
+  const [readOnlyPassedSceneIds, setReadOnlyPassedSceneIds] = useState<Set<string>>(() => new Set());
+  const [enteredSceneIds, setEnteredSceneIds] = useState<Set<string>>(() => new Set());
   const safeIndex = Math.min(Math.max(0, sceneIndex), Math.max(0, scenes.length - 1));
   const scene = scenes[safeIndex];
 
   const sceneDone = (s: QuestScene): boolean =>
     s.checkpointIds.every((id) => checkpointOk(id)) && s.studioIds.every((id) => miniDevDone(id));
+
+  const sceneWorkComplete = (s: QuestScene): boolean =>
+    sceneHasActions(s) ? sceneDone(s) : readOnlyPassedSceneIds.has(s.id);
+
+  useEffect(() => {
+    const id = scenes[safeIndex]?.id;
+    if (!id) {
+      return;
+    }
+    setEnteredSceneIds((prev) => (prev.has(id) ? prev : new Set(prev).add(id)));
+  }, [scenes, safeIndex]);
 
   const missionLabel = `${safeIndex + 1} / ${scenes.length}`;
 
@@ -149,7 +167,7 @@ export function LessonQuestPlayer({
     return idx >= 0 && idx < scenes.length;
   };
 
-  const completedScenes = scenes.filter(sceneDone).length;
+  const completedScenes = scenes.filter(sceneWorkComplete).length;
   const completionPct = scenes.length > 0 ? Math.round((completedScenes / scenes.length) * 100) : 0;
 
   const checkpointOrdinalById = useMemo(() => {
@@ -347,6 +365,22 @@ export function LessonQuestPlayer({
     return <Alert type="warning" showIcon message="В квесте пока нет миссий" />;
   }
 
+  const currentScene = scenes[safeIndex];
+  const currentHasActions = currentScene ? sceneHasActions(currentScene) : false;
+  const currentActionsDone = currentScene ? sceneDone(currentScene) : false;
+  const canAdvanceMission =
+    safeIndex < scenes.length - 1 && (!currentHasActions || currentActionsDone);
+
+  const goNextMission = () => {
+    if (!currentScene || safeIndex >= scenes.length - 1) {
+      return;
+    }
+    if (!sceneHasActions(currentScene)) {
+      setReadOnlyPassedSceneIds((p) => new Set(p).add(currentScene.id));
+    }
+    setSceneIndex((v) => Math.min(scenes.length - 1, v + 1));
+  };
+
   return (
     <div className="lesson-quest-player">
       <aside className="lesson-quest-player__map" aria-label="Карта миссий">
@@ -369,9 +403,17 @@ export function LessonQuestPlayer({
         <div className="lesson-quest-player__map-scroll">
           <Space direction="vertical" style={{ width: "100%" }} size="small">
             {scenes.map((s, idx) => {
-              const done = sceneDone(s);
+              const complete = sceneWorkComplete(s);
               const canOpen = unlocked(idx);
               const active = idx === safeIndex;
+              const entered = enteredSceneIds.has(s.id);
+              const tag = complete ? (
+                <Tag color="success">Выполнено</Tag>
+              ) : entered ? (
+                <Tag color="processing">В работе</Tag>
+              ) : (
+                <Tag className="lesson-quest-player__node-tag--pending">Не открыто</Tag>
+              );
               return (
                 <button
                   key={s.id}
@@ -382,7 +424,7 @@ export function LessonQuestPlayer({
                 >
                   <span className="lesson-quest-player__node-index">{idx + 1}</span>
                   <span className="lesson-quest-player__node-title">{s.title}</span>
-                  <Tag color={done ? "success" : canOpen ? "processing" : "default"}>{done ? "Закрыто" : "Дело"}</Tag>
+                  {tag}
                 </button>
               );
             })}
@@ -411,8 +453,8 @@ export function LessonQuestPlayer({
             </Button>
             <Button
               type="primary"
-              disabled={safeIndex >= scenes.length - 1}
-              onClick={() => setSceneIndex((v) => Math.min(scenes.length - 1, v + 1))}
+              disabled={!canAdvanceMission}
+              onClick={goNextMission}
             >
               Следующая миссия
             </Button>
